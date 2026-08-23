@@ -3,11 +3,14 @@
 Reemplazo independiente de **SobrantsV4.74.xlsm**: misma lógica, mismas
 reglas de negocio, sin necesidad de Microsoft Excel. Construida en
 Python + PySide6 (Qt), con los datos en una base de datos SQLite local
-(`SobrantsData/sobrants.db`, junto al ejecutable). **Interfaz bilingüe
-catalán/castellano**, con selector en el menú "🌐 Idioma" (se recuerda
-entre arranques en `SobrantsData/settings.json`); toda la traducción vive
-en `app/i18n.py`. Esta documentación y los comentarios del código quedan
-en castellano por continuidad con el resto del proyecto.
+(`SobrantsData/sobrants.db`, junto al ejecutable). **Interfaz en 4 idiomas
+(catalán, castellano, inglés, francés)**, con selector en el menú
+"🌐 Idioma/Language/Langue" (se recuerda entre arranques en
+`SobrantsData/settings.json`); toda la traducción vive en `app/i18n.py`,
+con las 164 claves siempre en los 4 idiomas a la vez (cualquier cadena
+nueva que se añada debe seguir esa misma regla). Esta documentación y los
+comentarios del código quedan en castellano por continuidad con el resto
+del proyecto.
 
 ## Qué hace cada pieza
 

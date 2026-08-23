@@ -51,13 +51,20 @@ class Repository:
         ).fetchone()
         return row["description"] if row else rules.EMPTY_MATERIAL_MARK
 
-    def search_materials(self, query: str, limit: int = 50) -> list[sqlite3.Row]:
+    def search_materials(self, query: str, limit: int | None = None) -> list[sqlite3.Row]:
+        """limit=None (per defecte) retorna TOT el catàleg que coincideixi;
+        el catàleg és petit (uns 4.000 materials) i cal que es puguin veure
+        tots a la pestanya Materials, no només els primers N."""
         q = f"%{query.strip()}%"
-        return self.conn.execute(
+        sql = (
             "SELECT code, description FROM materials WHERE description LIKE ? "
-            "OR CAST(code AS TEXT) LIKE ? ORDER BY code LIMIT ?",
-            (q, q, limit),
-        ).fetchall()
+            "OR CAST(code AS TEXT) LIKE ? ORDER BY code"
+        )
+        params: tuple = (q, q)
+        if limit is not None:
+            sql += " LIMIT ?"
+            params = (q, q, limit)
+        return self.conn.execute(sql, params).fetchall()
 
     def add_material(self, code: int, description: str, overwrite: bool = False) -> None:
         """Alta (o actualització) d'un material al catàleg.

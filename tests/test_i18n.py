@@ -19,6 +19,10 @@ def test_default_language_is_catalan():
 def test_set_language_changes_translations():
     i18n.set_language("es")
     assert i18n.t("tab.board") == "Tablero"
+    i18n.set_language("en")
+    assert i18n.t("tab.board") == "Board"
+    i18n.set_language("fr")
+    assert i18n.t("tab.board") == "Tableau"
     i18n.set_language("ca")
     assert i18n.t("tab.board") == "Tauler"
 
@@ -27,7 +31,14 @@ def test_set_language_rejects_unknown_code():
     import pytest
 
     with pytest.raises(ValueError):
-        i18n.set_language("fr")
+        i18n.set_language("de")
+
+
+def test_all_translation_entries_cover_the_four_languages():
+    expected = set(i18n.LANGS.keys())
+    assert expected == {"ca", "es", "en", "fr"}
+    incomplete = {k: v for k, v in i18n.TRANSLATIONS.items() if set(v.keys()) != expected}
+    assert incomplete == {}
 
 
 def test_t_with_placeholders():

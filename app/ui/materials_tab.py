@@ -90,13 +90,20 @@ class MaterialsTab(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         layout.addWidget(self.table)
 
+        self.count_label = QLabel("")
+        self.count_label.setStyleSheet("color: #666;")
+        layout.addWidget(self.count_label)
+
     def refresh(self):
         query = self.search.text().strip()
-        rows = self.repo.search_materials(query, limit=500)
+        # Sense límit: el catàleg és petit (uns 4.000 materials) i han de
+        # poder-se veure tots, no només els primers N.
+        rows = self.repo.search_materials(query)
         self.table.setRowCount(len(rows))
         for r, row in enumerate(rows):
             self.table.setItem(r, 0, QTableWidgetItem(str(row["code"])))
             self.table.setItem(r, 1, QTableWidgetItem(row["description"]))
+        self.count_label.setText(t("materials.count", count=len(rows)))
 
     # ------------------------------------------------------------------ #
     def _on_add_material(self):
