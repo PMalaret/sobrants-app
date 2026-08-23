@@ -7,7 +7,8 @@ exactament igual, reutilitzant els mateixos colors que `SearchDialog`
 (`SEARCH_COLORS`) — mai es crea una paleta nova.
 
 L'ordenació es fa clicant la capçalera de cada columna (mode natiu de
-QTableWidget, alterna ascendent/descendent), no amb botons a part.
+QTableWidget, alterna ascendent/descendent), no amb botons a part. Per
+defecte surt ordenat per Data ascendent (la més antiga primer).
 """
 from __future__ import annotations
 
@@ -64,6 +65,7 @@ class DesmagatzemTab(QWidget):
     # original per a M20/M22/M24 respectivament.
     _SEARCH_COLUMN = {"code": 1, "description": 2, "notes": 4}
     _SEARCH_FIELD = {"code": "material_code", "description": "material_desc", "notes": "cart_ref"}
+    _DATE_COL = 5
 
     def __init__(self, repo: Repository, parent=None):
         super().__init__(parent)
@@ -88,6 +90,20 @@ class DesmagatzemTab(QWidget):
             "decrease": t("desmagatzem.confirm.decrease"),
             "delete": t("desmagatzem.confirm.delete"),
         }
+
+    def _configure_column_widths(self):
+        # Totes les columnes "Interactive" (redimensionables arrossegant la
+        # vora). Material tenia abans un ample "Stretch" excessiu; ara té un
+        # ample per defecte contingut, i és Carro/lot (text lliure, com
+        # Notes al Tauler) qui absorbeix l'espai sobrant.
+        header = self.table.horizontalHeader()
+        widths = [70, 80, 200, 90, None, 150]  # Quantitat, Núm., Material, Mides, Carro/lot, Data
+        for col, width in enumerate(widths):
+            if width is None:
+                header.setSectionResizeMode(col, QHeaderView.Stretch)
+            else:
+                header.setSectionResizeMode(col, QHeaderView.Interactive)
+                self.table.setColumnWidth(col, width)
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -119,7 +135,7 @@ class DesmagatzemTab(QWidget):
         self.table = QTableWidget(0, len(columns))
         self.table.setAlternatingRowColors(True)
         self.table.setHorizontalHeaderLabels(columns)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        self._configure_column_widths()
         self.table.horizontalHeader().setSortIndicatorShown(True)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -152,6 +168,9 @@ class DesmagatzemTab(QWidget):
             self.table.setItem(r, 4, QTableWidgetItem(row["cart_ref"] or ""))
             self.table.setItem(r, 5, QTableWidgetItem(row["ts"] or ""))
         self.table.setSortingEnabled(True)
+        # Per defecte, ordenat per data ascendent (la més antiga primer).
+        # L'usuari sempre pot canviar-ho clicant qualsevol altra capçalera.
+        self.table.sortByColumn(self._DATE_COL, Qt.AscendingOrder)
         self._reapply_highlights()
 
     # ------------------------------------------------------------------ #

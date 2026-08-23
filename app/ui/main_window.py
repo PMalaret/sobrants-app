@@ -121,7 +121,7 @@ class MainWindow(QMainWindow):
                     font-weight: 600;
                     border: none;
                     border-radius: 6px;
-                    padding: 6px 10px;
+                    padding: 1px 10px;
                 }}
                 """
             )

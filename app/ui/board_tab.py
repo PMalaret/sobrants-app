@@ -127,13 +127,14 @@ class BoardTab(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.verticalHeader().setDefaultSectionSize(20)
         self.table.setStyleSheet("QTableWidget { font-size: 12px; }")
+        # El tauler sempre té exactament 61 posicions (mai més, mai menys),
+        # però ara que la taula s'expandeix per ocupar l'espai vertical
+        # sobrant, les files creixen (Stretch) en lloc d'aparèixer files
+        # buides: mai canvia el nombre de files, només la seva alçada.
         exact_height = TABLE_ROWS * 20 + 40
         self.table.setMinimumHeight(exact_height)
-        # El tauler sempre té exactament 61 posicions: l'alçada de la taula
-        # es fixa (no "Expanding"), perquè l'espai sobrant vagi sempre al
-        # panell de detall de sota, no a files buides dins la taula.
-        self.table.setMaximumHeight(exact_height)
-        self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self._configure_column_widths()
         self.table.setItemDelegate(_BoardGridDelegate(self._POSITION_COLUMNS, self.table))
 
@@ -167,10 +168,9 @@ class BoardTab(QWidget):
         self.search_button.clicked.connect(self._open_search_dialog)
         search_row.addWidget(self.search_button)
         layout.addLayout(search_row)
-        # Sense el panell com a fila a part, sobra espai vertical: que
-        # quedi tot avall (fora de la vista útil) i no com un buit entre
-        # la taula i el buscador.
-        layout.addStretch()
+        # Sense stretch final: la taula (Expanding) ja absorbeix tot
+        # l'espai vertical sobrant, així que aquesta fila de botons queda
+        # sempre enganxada just sota la taula, amb l'alçada mínima.
 
         # Públic (no "_search_dialog"): MainWindow hi connecta el ressaltat
         # creuat de Desmagatzem (mateixos colors de cerca que el tauler).
@@ -181,12 +181,14 @@ class BoardTab(QWidget):
 
     def _configure_column_widths(self):
         header = self.table.horizontalHeader()
-        # Posició, Núm., Mides, Notes: ample inicial compacte però
-        # "Interactive" — l'usuari les pot eixamplar/estrènyer arrossegant
-        # la vora, i l'ample que triï es queda fixat (Qt no el reinicia
-        # sol; refresh_board() no torna a cridar aquest mètode).
-        # Material: s'estira per aprofitar l'espai sobrant de la pantalla.
-        initial_widths = [46, 62, None, 80, 70]
+        # Totes les columnes són "Interactive": l'usuari pot eixamplar o
+        # estrènyer qualsevol arrossegant la vora, i l'ample que triï es
+        # queda fixat (Qt no el reinicia sol; refresh_board() no torna a
+        # cridar aquest mètode). Material tenia abans un ample "Stretch"
+        # que la feia excessivament ampla i no es podia redimensionar
+        # manualment; ara té un ample per defecte contingut, i és Notes
+        # (l'últim camp de cada bloc) qui absorbeix l'espai sobrant.
+        initial_widths = [46, 62, 180, 80, None]
         for block_idx in range(len(BLOCKS)):
             for field_idx, width in enumerate(initial_widths):
                 col = block_idx * FIELDS_PER_BLOCK + field_idx
