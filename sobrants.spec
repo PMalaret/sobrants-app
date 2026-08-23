@@ -12,6 +12,7 @@ a = Analysis(
         ('app/ui/style.qss', 'app/ui'),
         ('app/assets/favicon.png', 'app/assets'),
         ('app/assets/app_icon.png', 'app/assets'),
+        ('app/assets/luvnus.webp', 'app/assets'),
     ],
     hiddenimports=[],
     hookspath=[],

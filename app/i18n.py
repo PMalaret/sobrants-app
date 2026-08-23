@@ -97,6 +97,16 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ca": "Versió {version}", "es": "Versión {version}",
         "en": "Version {version}", "fr": "Version {version}",
     },
+    "menu.about": {
+        "ca": "Sobre Sobrants", "es": "Sobre Sobrants",
+        "en": "About Sobrants", "fr": "À propos de Sobrants",
+    },
+    "about.creator": {
+        "ca": "Creador: <a href=\"{url}\">{url}</a>",
+        "es": "Creador: <a href=\"{url}\">{url}</a>",
+        "en": "Creator: <a href=\"{url}\">{url}</a>",
+        "fr": "Créateur : <a href=\"{url}\">{url}</a>",
+    },
     "action.backup": {
         "ca": "Còpia de\nseguretat",
         "es": "Copia de\nseguridad",
@@ -281,12 +291,11 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Position {position}", "fr": "Position {position}",
     },
     "position.subtitle": {
-        "ca": "Posició {position} — fins a 5 peces",
-        "es": "Posición {position} — hasta 5 piezas",
-        "en": "Position {position} — up to 5 pieces",
-        "fr": "Position {position} — jusqu'à 5 pièces",
+        "ca": "Posició {position}",
+        "es": "Posición {position}",
+        "en": "Position {position}",
+        "fr": "Position {position}",
     },
-    "position.detail.order": {"ca": "Ordre", "es": "Orden", "en": "Order", "fr": "Ordre"},
     "position.detail.entered": {"ca": "Entrada", "es": "Entrada", "en": "Entered", "fr": "Entrée"},
     "position.add_box": {
         "ca": "Afegir peça a aquesta posició", "es": "Añadir pieza a esta posición",
@@ -312,6 +321,20 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "es": "Este material ya está en la(s) posición(es): {positions}\n\n¿Confirmas añadirlo de todas formas?",
         "en": "This material is already in position(s): {positions}\n\nConfirm adding it anyway?",
         "fr": "Ce matériau se trouve déjà dans la (les) position(s) : {positions}\n\nConfirmez-vous l'ajouter quand même ?",
+    },
+    "position.material_not_found.title": {
+        "ca": "Material no trobat", "es": "Material no encontrado",
+        "en": "Material not found", "fr": "Matériau introuvable",
+    },
+    "position.material_not_found.text": {
+        "ca": "No s'ha trobat cap material amb el número {code} al catàleg. "
+        "S'afegirà igualment la peça.",
+        "es": "No se ha encontrado ningún material con el número {code} en el catálogo. "
+        "Se añadirá la pieza igualmente.",
+        "en": "No material with number {code} was found in the catalog. "
+        "The piece will be added anyway.",
+        "fr": "Aucun matériau portant le numéro {code} n'a été trouvé dans le catalogue. "
+        "La pièce sera quand même ajoutée.",
     },
     "common.error": {"ca": "Error", "es": "Error", "en": "Error", "fr": "Erreur"},
     "position.cannot_add": {

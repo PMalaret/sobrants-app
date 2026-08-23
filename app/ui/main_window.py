@@ -23,6 +23,7 @@ from app.backup import create_backup
 from app.export import covered_materials_report_text, export_board_pdf, export_desmagatzem_pdf
 from app.i18n import t
 from app.logic.repository import Repository
+from app.ui.about_dialog import AboutDialog
 from app.ui.board_tab import BoardTab
 from app.ui.desmagatzem_tab import DesmagatzemTab
 from app.ui.historic_tab import HistoricTab
@@ -181,6 +182,10 @@ class MainWindow(QMainWindow):
         exit_action.triggered.connect(self.close)
 
         menu.addSeparator()
+        about_action = menu.addAction(t("menu.about"))
+        about_action.triggered.connect(self._show_about)
+
+        menu.addSeparator()
         version_action = menu.addAction(t("menu.version", version=APP_VERSION))
         version_action.setEnabled(False)  # només informatiu, no cal que faci res en clicar
 
@@ -199,6 +204,10 @@ class MainWindow(QMainWindow):
             return
         i18n.set_language(lang)
         self._build_everything()
+
+    def _show_about(self):
+        dialog = AboutDialog(self)
+        dialog.exec()
 
     def _manual_backup(self):
         dest = create_backup(self.db_path)

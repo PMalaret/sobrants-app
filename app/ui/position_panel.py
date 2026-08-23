@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.i18n import t
+from app.logic import rules
 from app.logic.repository import DuplicateMaterialError, PositionFullError, Repository, RuleViolation
 
 _PANEL_STYLE = """
@@ -97,8 +98,11 @@ class PositionPanel(QFrame):
         self.title_label.setWordWrap(True)
         layout.addWidget(self.title_label)
 
+        # L'ordre (slot) segueix important internament — get_position_detail
+        # continua retornant les peces ordenades per slot, i encara és qui
+        # decideix quina és "l'última peça" a esborrar — però ja no es
+        # mostra com a columna a la taula.
         detail_columns = [
-            t("position.detail.order"),
             t("board.field.code"),
             t("board.field.material"),
             t("board.field.dimensions"),
@@ -112,12 +116,12 @@ class PositionPanel(QFrame):
         self.detail_table.verticalHeader().setVisible(False)
         self.detail_table.verticalHeader().setDefaultSectionSize(18)
         self.detail_table.setStyleSheet("font-size: 10px;")
-        # Ordre/Núm./Mides/Notes/Entrada: ample inicial ajustat, però
+        # Núm./Mides/Notes/Entrada: ample inicial ajustat, però
         # "Interactive" (l'usuari els pot canviar i es queden fixats).
         # Material: s'estira perquè les columnes aprofitin tot l'ample
         # que té el panell (que ja és el just i necessari).
         detail_header = self.detail_table.horizontalHeader()
-        detail_widths = [32, 55, None, 62, 55, 90]
+        detail_widths = [55, None, 62, 55, 90]
         for col, width in enumerate(detail_widths):
             if width is None:
                 detail_header.setSectionResizeMode(col, QHeaderView.Stretch)
@@ -143,12 +147,21 @@ class PositionPanel(QFrame):
         add_layout.setContentsMargins(6, 10, 6, 6)
         self.add_code = QSpinBox()
         self.add_code.setRange(0, 99999)
+        self.add_code.valueChanged.connect(self._update_material_preview)
+        # Material: només lectura, mai s'hi escriu a mà — es busca sola al
+        # catàleg segons el núm. material de sobre i es mostra aquí.
+        self.add_material_preview = QLineEdit()
+        self.add_material_preview.setReadOnly(True)
+        self.add_material_preview.setFocusPolicy(Qt.NoFocus)
+        self.add_material_preview.setStyleSheet("background-color: #eef0f3; color: #444;")
         self.add_dims = QLineEdit()
         self.add_notes = QLineEdit()
         add_layout.addRow(t("desmagatzem.field.code"), self.add_code)
+        add_layout.addRow(t("board.field.material") + ":", self.add_material_preview)
         add_layout.addRow(t("desmagatzem.field.dimensions"), self.add_dims)
         add_layout.addRow(t("board.field.notes") + ":", self.add_notes)
         layout.addWidget(add_box)
+        self._update_material_preview()
 
         # Afegir peça i Esborrar última peça en dues línies, una sota l'altra.
         add_delete_col = QVBoxLayout()
@@ -176,6 +189,14 @@ class PositionPanel(QFrame):
 
         layout.addStretch()
         return page
+
+    def _update_material_preview(self):
+        """Cerca el núm. material introduït al catàleg i mostra la seva
+        descripció al camp de només lectura "Material". Si no hi ha cap
+        coincidència, es deixen 5 espais en blanc (l'avís de "no trobat"
+        només es mostra en clicar Afegir peça, no mentre s'escriu)."""
+        desc = self.repo.lookup_material(self.add_code.value())
+        self.add_material_preview.setText("     " if desc == rules.EMPTY_MATERIAL_MARK else desc)
 
     def _fit_detail_table_height(self):
         """Alçada exacta per a capçalera + 5 files, sense marge de seguretat
@@ -208,7 +229,6 @@ class PositionPanel(QFrame):
             if r < len(detail):
                 p = detail[r]
                 values = [
-                    p["slot"],
                     p["material_code"],
                     p["material_desc"] or "",
                     p["dimensions"] or "",
@@ -225,6 +245,15 @@ class PositionPanel(QFrame):
         code = self.add_code.value()
         dims = self.add_dims.text().strip()
         notes = self.add_notes.text().strip()
+
+        # Avís (no bloquejant) si el número no existeix al catàleg: es pot
+        # continuar igualment, la peça s'afegeix amb el material en blanc.
+        if self.repo.lookup_material(code) == rules.EMPTY_MATERIAL_MARK:
+            QMessageBox.warning(
+                self,
+                t("position.material_not_found.title"),
+                t("position.material_not_found.text", code=code),
+            )
 
         try:
             self.repo.add_piece(self.position, code, dims, notes)
