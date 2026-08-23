@@ -58,12 +58,12 @@ class PositionPanel(QFrame):
         self._build_ui()
 
     def _build_ui(self):
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(8, 6, 8, 6)
-        outer.setSpacing(4)
+        self._outer = QVBoxLayout(self)
+        self._outer.setContentsMargins(8, 6, 8, 6)
+        self._outer.setSpacing(4)
 
         self._stack = QStackedWidget()
-        outer.addWidget(self._stack)
+        self._outer.addWidget(self._stack)
 
         placeholder = QLabel(t("position.panel.placeholder"))
         placeholder.setAlignment(Qt.AlignCenter)
@@ -72,6 +72,16 @@ class PositionPanel(QFrame):
         self._stack.addWidget(placeholder)  # índex 0
 
         self._stack.addWidget(self._build_detail_page())  # índex 1
+
+    def add_footer(self, layout):
+        """Afegeix una fila de botons a sota de tot, separada amb una línia
+        divisòria. Fora de l'`_stack`, així es veu sempre (hi hagi o no una
+        posició seleccionada) — s'hi reubica el buscador del Tauler."""
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        self._outer.addWidget(separator)
+        self._outer.addLayout(layout)
 
     def _build_detail_page(self) -> QWidget:
         # Disposició vertical i compacta: aquest panell viu incrustat dins
@@ -95,18 +105,13 @@ class PositionPanel(QFrame):
             t("board.field.notes"),
             t("position.detail.entered"),
         ]
-        self.detail_table = QTableWidget(0, len(detail_columns))
+        self.detail_table = QTableWidget(5, len(detail_columns))
         self.detail_table.setHorizontalHeaderLabels(detail_columns)
         self.detail_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.detail_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.detail_table.verticalHeader().setVisible(False)
         self.detail_table.verticalHeader().setDefaultSectionSize(18)
         self.detail_table.setStyleSheet("font-size: 10px;")
-        # 5 files sempre visibles (el màxim possible per posició), mai
-        # scroll intern: capçalera + 5 files exactes, ni una més ni menys.
-        # Capçalera ~29px + files ~19px (mínim imposat per Qt segons la
-        # lletra, encara que es demanin 18) + marge de seguretat.
-        self.detail_table.setFixedHeight(29 + 19 * 5 + 6)
         # Ordre/Núm./Mides/Notes/Entrada: ample inicial ajustat, però
         # "Interactive" (l'usuari els pot canviar i es queden fixats).
         # Material: s'estira perquè les columnes aprofitin tot l'ample
@@ -120,6 +125,10 @@ class PositionPanel(QFrame):
                 detail_header.setSectionResizeMode(col, QHeaderView.Interactive)
                 self.detail_table.setColumnWidth(col, width)
         layout.addWidget(self.detail_table)
+        # 5 files sempre visibles (el màxim possible per posició), mai
+        # scroll intern: mesurat en viu (no amb una xifra fixa en pixels),
+        # perquè l'alçada real de la lletra varia segons la plataforma.
+        self._fit_detail_table_height()
 
         # Botons compactes: menys padding que el QPushButton global.
         compact_button_style = "padding: 2px 8px; font-size: 10px;"
@@ -165,6 +174,14 @@ class PositionPanel(QFrame):
         layout.addStretch()
         return page
 
+    def _fit_detail_table_height(self):
+        """Alçada exacta per a capçalera + 5 files, sense marge de seguretat
+        arbitrari: es mesura l'alçada real (depèn de la lletra de cada
+        plataforma), no s'assumeix un valor fix en pixels."""
+        header_h = self.detail_table.horizontalHeader().height()
+        row_h = self.detail_table.rowHeight(0)
+        self.detail_table.setFixedHeight(header_h + row_h * 5 + 2)
+
     # ------------------------------------------------------------------ #
     def load_position(self, position: int):
         self.position = position
@@ -199,6 +216,7 @@ class PositionPanel(QFrame):
                 values = [""] * self.detail_table.columnCount()
             for c, v in enumerate(values):
                 self.detail_table.setItem(r, c, QTableWidgetItem(str(v)))
+        self._fit_detail_table_height()
 
     def _on_add_piece(self):
         code = self.add_code.value()

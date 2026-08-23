@@ -12,7 +12,8 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
-    QTabWidget,
+    QStackedWidget,
+    QTabBar,
     QVBoxLayout,
     QWidget,
 )
@@ -75,24 +76,43 @@ class MainWindow(QMainWindow):
         self.board_tab.search_dialog.search_changed.connect(self.desmagatzem_tab.apply_search_highlight)
         self.board_tab.search_dialog.cleared.connect(self.desmagatzem_tab.clear_search_highlight)
 
-        tabs = QTabWidget()
-        tabs.addTab(self.board_tab, t("tab.board"))
-        tabs.addTab(self.desmagatzem_tab, t("tab.desmagatzem"))
-        tabs.addTab(self.historic_tab, t("tab.historic"))
-        tabs.addTab(self.materials_tab, t("tab.materials"))
-        tabs.currentChanged.connect(self._on_tab_changed)
-        self._tabs = tabs
+        # Pestanyes (QTabBar sol, no QTabWidget) i botons d'acció en una
+        # sola fila: amb `QTabWidget.setCornerWidget` Qt força l'alçada
+        # dels botons a la de la barra de pestanyes i el text quedava
+        # tallat en fer-la compacta. Amb un QHBoxLayout normal cap dels
+        # dos widgets es força a encongir-se: la fila agafa l'alçada que
+        # calgui pel més alt dels dos.
+        tab_bar = QTabBar()
+        tab_bar.addTab(t("tab.board"))
+        tab_bar.addTab(t("tab.desmagatzem"))
+        tab_bar.addTab(t("tab.historic"))
+        tab_bar.addTab(t("tab.materials"))
+        tab_bar.setExpanding(False)
+        tab_bar.currentChanged.connect(self._on_tab_changed)
+        self._tab_bar = tab_bar
 
-        # Els botons d'acció es posaven a la cantonada del QTabWidget
-        # (`setCornerWidget`), però Qt força la seva alçada a la de la
-        # barra de pestanyes: en fer-la més compacta, el text quedava
-        # tallat. Ara van en una fila pròpia a sobre, amb alçada lliure.
+        stack = QStackedWidget()
+        stack.setObjectName("tabStack")
+        stack.addWidget(self.board_tab)
+        stack.addWidget(self.desmagatzem_tab)
+        stack.addWidget(self.historic_tab)
+        stack.addWidget(self.materials_tab)
+        self._stack = stack
+
+        top_row = QWidget()
+        top_row_layout = QHBoxLayout(top_row)
+        top_row_layout.setContentsMargins(0, 0, 4, 0)
+        top_row_layout.setSpacing(8)
+        top_row_layout.addWidget(tab_bar)
+        top_row_layout.addStretch()
+        self._add_action_buttons(top_row_layout)
+
         central = QWidget()
         central_layout = QVBoxLayout(central)
         central_layout.setContentsMargins(0, 0, 0, 0)
         central_layout.setSpacing(0)
-        central_layout.addWidget(self._build_action_bar())
-        central_layout.addWidget(tabs)
+        central_layout.addWidget(top_row)
+        central_layout.addWidget(stack)
         self.setCentralWidget(central)
 
         self.menuBar().clear()
@@ -109,15 +129,9 @@ class MainWindow(QMainWindow):
         status.addPermanentWidget(legend)
         status.showMessage(t("status.db", path=self.db_path))
 
-    def _build_action_bar(self) -> QWidget:
-        """Botons grans amb icona i color, en una fila pròpia a sobre de
-        les pestanyes, arraconats a la dreta."""
-        bar = QWidget()
-        layout = QHBoxLayout(bar)
-        layout.setContentsMargins(4, 3, 4, 3)
-        layout.setSpacing(8)
-        layout.addStretch()
-
+    def _add_action_buttons(self, layout):
+        """Botons grans amb icona i color, arraconats a la dreta de la
+        mateixa fila que les pestanyes."""
         for label_key, emoji, color, slot_name in ACTION_BUTTONS:
             label = t(label_key).replace("\n", " ")
             button = QPushButton(f"{emoji}  {label}")
@@ -138,10 +152,9 @@ class MainWindow(QMainWindow):
             button.clicked.connect(getattr(self, slot_name))
             layout.addWidget(button)
 
-        return bar
-
     def _on_tab_changed(self, index: int):
-        widget = self._tabs.widget(index)
+        self._stack.setCurrentIndex(index)
+        widget = self._stack.widget(index)
         if hasattr(widget, "refresh"):
             widget.refresh()
 

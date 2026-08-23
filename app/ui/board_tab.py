@@ -108,11 +108,10 @@ class BoardTab(QWidget):
     # ------------------------------------------------------------------ #
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        # Marge superior mínim (la taula queda enganxada a les pestanyes) i
-        # sense espaiat entre la taula i la fila de botons Netejar
-        # cerca/Cercar (aquesta fila ja té els seus propis marges a 0).
+        # Marge mínim a totes bandes: la taula és l'únic widget d'aquesta
+        # pestanya (els botons de cerca ara viuen dins del panell de
+        # detall), així que s'estén fins a la barra d'estat de sota.
         layout.setContentsMargins(9, 3, 9, 3)
-        layout.setSpacing(0)
 
         field_labels = [
             t("board.field.position"),
@@ -159,11 +158,13 @@ class BoardTab(QWidget):
         self.table.setCellWidget(PANEL_ROW0, PANEL_COL0, self.position_panel)
 
         layout.addWidget(self.table)
+        # Únic widget d'aquesta pestanya: s'estén (Expanding) fins a la
+        # barra d'estat de sota, sense cap fila de botons pel mig.
 
-        # Buscador abaix a la dreta, igual que el bloc de cerca (M19:O24)
-        # de Hoja1, que quedava a sota i a la dreta del tauler de posicions.
-        # Botons compactes (padding reduït respecte al QPushButton global):
-        # aquesta fila no necessita l'alçada dels botons grans d'acció.
+        # Botons de cerca reubicats dins del panell de detall (a sota de
+        # tot, separats amb una línia divisòria), no en una fila a part
+        # sota la taula — així la taula arriba fins a la barra d'estat.
+        # Botons compactes (padding reduït respecte al QPushButton global).
         _compact_button_style = "padding: 2px 12px; font-size: 12px;"
         search_row = QHBoxLayout()
         search_row.setContentsMargins(0, 0, 0, 0)
@@ -177,10 +178,7 @@ class BoardTab(QWidget):
         self.search_button.setStyleSheet(_compact_button_style)
         self.search_button.clicked.connect(self._open_search_dialog)
         search_row.addWidget(self.search_button)
-        layout.addLayout(search_row)
-        # Sense stretch final: la taula (Expanding) ja absorbeix tot
-        # l'espai vertical sobrant, així que aquesta fila de botons queda
-        # sempre enganxada just sota la taula, amb l'alçada mínima.
+        self.position_panel.add_footer(search_row)
 
         # Públic (no "_search_dialog"): MainWindow hi connecta el ressaltat
         # creuat de Desmagatzem (mateixos colors de cerca que el tauler).

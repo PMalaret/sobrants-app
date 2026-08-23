@@ -12,6 +12,14 @@ QTabWidget::pane {
     background: #ffffff;
 }
 
+/* MainWindow ja no fa servir QTabWidget (les pestanyes i els botons
+   d'acció comparteixen una sola fila amb QTabBar solt), però la vora
+   visual sota la barra de pestanyes és la mateixa. */
+QStackedWidget#tabStack {
+    border: 1px solid #d0d3d9;
+    background: #ffffff;
+}
+
 QTabBar::tab {
     background: #e8eaee;
     padding: 3px 18px;
