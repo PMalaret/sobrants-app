@@ -1,4 +1,9 @@
-"""Diàleg de cerca del Tauler (abans eren 3 caixes fixes a la pantalla)."""
+"""Diàleg de cerca del Tauler (abans eren 3 caixes fixes a la pantalla).
+
+Cada camp té el mateix color que fa servir per ressaltar les coincidències
+al tauler (igual que a l'Excel original, on el color de la pròpia cel·la
+de cerca M20/M22/M24 era el que s'usava per pintar les coincidències).
+"""
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
@@ -12,6 +17,14 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+# Mateixos colors que BoardTab._SEARCH_COLOR, perquè es vegi d'un cop d'ull
+# quin cercador pinta quin color al tauler.
+SEARCH_COLORS = {
+    "code": "#ffe08a",
+    "description": "#a8e6a1",
+    "notes": "#9fd3ff",
+}
+
 
 class SearchDialog(QDialog):
     """Emet `search_changed(mode, text)` cada vegada que canvia un camp, i
@@ -24,26 +37,36 @@ class SearchDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Cercar al tauler")
-        self.setMinimumWidth(480)
+        self.setMinimumWidth(520)
         self.setModal(False)
 
         layout = QVBoxLayout(self)
         form = QFormLayout()
+        form.setVerticalSpacing(12)
 
         self.code_edit = QLineEdit()
         self.code_edit.setPlaceholderText("Núm. de material exacte")
         self.code_result = QLabel("")
-        form.addRow("Per núm. (exacte):", self._with_result(self.code_edit, self.code_result))
+        form.addRow(
+            "Per núm. (exacte):",
+            self._with_result(self.code_edit, self.code_result, SEARCH_COLORS["code"]),
+        )
 
         self.desc_edit = QLineEdit()
         self.desc_edit.setPlaceholderText("Text parcial a la descripció")
         self.desc_result = QLabel("")
-        form.addRow("Per material (parcial):", self._with_result(self.desc_edit, self.desc_result))
+        form.addRow(
+            "Per material (parcial):",
+            self._with_result(self.desc_edit, self.desc_result, SEARCH_COLORS["description"]),
+        )
 
         self.notes_edit = QLineEdit()
         self.notes_edit.setPlaceholderText("Text parcial a les notes")
         self.notes_result = QLabel("")
-        form.addRow("Per notes (parcial):", self._with_result(self.notes_edit, self.notes_result))
+        form.addRow(
+            "Per notes (parcial):",
+            self._with_result(self.notes_edit, self.notes_result, SEARCH_COLORS["notes"]),
+        )
 
         layout.addLayout(form)
 
@@ -62,7 +85,11 @@ class SearchDialog(QDialog):
         layout.addLayout(buttons)
 
     @staticmethod
-    def _with_result(edit: QLineEdit, result: QLabel) -> QHBoxLayout:
+    def _with_result(edit: QLineEdit, result: QLabel, color: str) -> QHBoxLayout:
+        edit.setStyleSheet(
+            f"background-color: {color}; color: #1a1a1a; border: 1px solid #999; "
+            "border-radius: 4px; padding: 5px 7px;"
+        )
         row = QHBoxLayout()
         row.addWidget(edit)
         row.addWidget(result)

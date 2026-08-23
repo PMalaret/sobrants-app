@@ -28,7 +28,7 @@ from app.logic.repository import Repository
 from app.ui.position_dialog import PositionDialog
 from app.ui.search_dialog import SearchDialog
 
-FIELD_LABELS = ["Posició", "Núm. material", "Material", "Mides", "Notes", "Peces"]
+FIELD_LABELS = ["Posició", "Núm. material", "Material", "Mides", "Notes"]
 
 # (posició inicial, nombre de posicions) de cada bloc de columnes, igual que
 # els blocs A/F/K de Hoja1.
@@ -58,17 +58,9 @@ class BoardTab(QWidget):
     def _build_ui(self):
         layout = QVBoxLayout(self)
 
-        toolbar = QHBoxLayout()
-        self.search_button = QPushButton("🔍 Cercar…")
-        self.search_button.clicked.connect(self._open_search_dialog)
-        toolbar.addWidget(self.search_button)
-        self.clear_search_button = QPushButton("Netejar cerca")
-        self.clear_search_button.clicked.connect(self._clear_search)
-        self.clear_search_button.setEnabled(False)
-        toolbar.addWidget(self.clear_search_button)
-        toolbar.addStretch()
-        toolbar.addWidget(QLabel("Doble clic sobre una posició per veure'n el detall, afegir o moure peces"))
-        layout.addLayout(toolbar)
+        hint = QLabel("Doble clic sobre una posició per veure'n el detall, afegir o moure peces")
+        hint.setStyleSheet("color: #666;")
+        layout.addWidget(hint)
 
         self.table = QTableWidget(TABLE_ROWS, FIELDS_PER_BLOCK * len(BLOCKS))
         self.table.setHorizontalHeaderLabels(FIELD_LABELS * len(BLOCKS))
@@ -81,10 +73,23 @@ class BoardTab(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.verticalHeader().setDefaultSectionSize(22)
         self.table.setStyleSheet("QTableWidget { font-size: 13px; }")
-        self.table.setMinimumHeight(TABLE_ROWS * 22 + 32)
+        self.table.setMinimumHeight(TABLE_ROWS * 22 + 44)
         self._configure_column_widths()
         layout.addWidget(self.table)
         layout.addWidget(self._build_legend())
+
+        # Buscador abaix a la dreta, igual que el bloc de cerca (M19:O24)
+        # de Hoja1, que quedava a sota i a la dreta del tauler de posicions.
+        search_row = QHBoxLayout()
+        search_row.addStretch()
+        self.clear_search_button = QPushButton("Netejar cerca")
+        self.clear_search_button.clicked.connect(self._clear_search)
+        self.clear_search_button.setEnabled(False)
+        search_row.addWidget(self.clear_search_button)
+        self.search_button = QPushButton("🔍  Cercar…")
+        self.search_button.clicked.connect(self._open_search_dialog)
+        search_row.addWidget(self.search_button)
+        layout.addLayout(search_row)
 
         self._search_dialog = SearchDialog(self)
         self._search_dialog.search_changed.connect(self._on_search_changed)
@@ -93,9 +98,9 @@ class BoardTab(QWidget):
 
     def _configure_column_widths(self):
         header = self.table.horizontalHeader()
-        # Posició, Núm., Mides, Notes, Peces: ample fix i compacte.
+        # Posició, Núm., Mides, Notes: ample fix i compacte.
         # Material: s'estira per aprofitar l'espai sobrant de la pantalla.
-        fixed_widths = [46, 62, None, 80, 65, 48]
+        fixed_widths = [46, 62, None, 80, 70]
         for block_idx in range(len(BLOCKS)):
             for field_idx, width in enumerate(fixed_widths):
                 col = block_idx * FIELDS_PER_BLOCK + field_idx
@@ -150,7 +155,6 @@ class BoardTab(QWidget):
                 entry["material_desc"] or "",
                 entry["dimensions"] or "",
                 entry["notes"] or "",
-                entry["piece_count"],
             ]
             fill = QColor(entry["fill_color"])
             # El fons vermell (posició plena) necessita text blanc per
