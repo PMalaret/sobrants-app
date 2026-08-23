@@ -59,10 +59,6 @@ class BoardTab(QWidget):
     def _build_ui(self):
         layout = QVBoxLayout(self)
 
-        hint = QLabel(t("board.hint"))
-        hint.setStyleSheet("color: #666;")
-        layout.addWidget(hint)
-
         field_labels = [
             t("board.field.position"),
             t("board.field.code"),
@@ -79,9 +75,9 @@ class BoardTab(QWidget):
         # Files compactes i sense numeració de fila (ja hi ha la columna
         # "Posició") perquè les 61 posicions càpiguen sense fer scroll.
         self.table.verticalHeader().setVisible(False)
-        self.table.verticalHeader().setDefaultSectionSize(22)
-        self.table.setStyleSheet("QTableWidget { font-size: 13px; }")
-        self.table.setMinimumHeight(TABLE_ROWS * 22 + 44)
+        self.table.verticalHeader().setDefaultSectionSize(20)
+        self.table.setStyleSheet("QTableWidget { font-size: 12px; }")
+        self.table.setMinimumHeight(TABLE_ROWS * 20 + 30)
         self._configure_column_widths()
         layout.addWidget(self.table)
 

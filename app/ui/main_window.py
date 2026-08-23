@@ -45,7 +45,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.repo = repo
         self.db_path = db_path
-        self.resize(1500, 900)
+        self.resize(1500, 820)
 
         self._backup_timer = QTimer(self)
         self._backup_timer.timeout.connect(self._auto_backup)
