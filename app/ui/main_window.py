@@ -227,7 +227,7 @@ class MainWindow(QMainWindow):
         )
         if not path:
             return
-        export_board_pdf(self.repo, path)
+        export_board_pdf(self.board_tab, path)
         QMessageBox.information(self, t("dialog.exported.title"), t("dialog.export_board.done", path=path))
 
     def _export_desmagatzem(self):
@@ -236,7 +236,7 @@ class MainWindow(QMainWindow):
         )
         if not path:
             return
-        export_desmagatzem_pdf(self.repo, path)
+        export_desmagatzem_pdf(self.desmagatzem_tab, path)
         QMessageBox.information(self, t("dialog.exported.title"), t("dialog.export_desmagatzem.done", path=path))
 
     def _show_covered_report(self):

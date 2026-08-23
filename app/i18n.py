@@ -523,20 +523,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     },
 
     # -- Exportació / informes ------------------------------------------------- #
-    "export.board.title": {
-        "ca": "Tauler de sobrants", "es": "Tablero de sobrants",
-        "en": "Sobrants board", "fr": "Tableau de sobrants",
-    },
     "export.col.position": {"ca": "Pos.", "es": "Pos.", "en": "Pos.", "fr": "Pos."},
     "export.col.code": {"ca": "Núm.", "es": "Núm.", "en": "No.", "fr": "N°"},
     "export.col.material": {"ca": "Material", "es": "Material", "en": "Material", "fr": "Matériau"},
     "export.col.dimensions": {"ca": "Mides", "es": "Medidas", "en": "Dimensions", "fr": "Dimensions"},
-    "export.col.notes": {"ca": "Notes", "es": "Notas", "en": "Notes", "fr": "Notes"},
-    "export.desmagatzem.title": {
-        "ca": "Desmagatzem", "es": "Desmagatzem", "en": "Desmagatzem", "fr": "Desmagatzem",
-    },
-    "export.col.quantity": {"ca": "Quant.", "es": "Cant.", "en": "Qty.", "fr": "Qté"},
-    "export.col.cart": {"ca": "Notes", "es": "Notas", "en": "Notes", "fr": "Notes"},
     "report.covered.title": {
         "ca": "MATERIALS TAPATS", "es": "MATERIALES TAPADOS",
         "en": "HIDDEN MATERIALS", "fr": "MATÉRIAUX MASQUÉS",
