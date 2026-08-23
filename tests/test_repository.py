@@ -6,6 +6,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.data.db import connect
+from app.logic import rules
 from app.logic.repository import (
     DuplicateMaterialError,
     PositionFullError,
@@ -242,3 +243,21 @@ def test_list_desmagatzem_orders_by_row_order(repo):
 
     rows = repo.list_desmagatzem()
     assert [r["cart_ref"] for r in rows] == ["A", "B"]
+
+
+def test_delete_material_removes_it(repo):
+    repo.delete_material(41011)
+    assert repo.lookup_material(41011) == rules.EMPTY_MATERIAL_MARK
+
+
+def test_delete_material_rejects_unknown_code(repo):
+    with pytest.raises(RuleViolation):
+        repo.delete_material(77777)
+
+
+def test_get_historic_returns_all_rows_without_limit(repo):
+    for i in range(1200):
+        repo.add_piece(position=1, material_code=999)
+        repo.delete_piece(position=1, slot=1)
+    rows = repo.get_historic()
+    assert len(rows) == 2400  # 1200 "in" + 1200 "out", cap tallat als 500/1000 d'abans

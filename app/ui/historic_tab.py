@@ -113,7 +113,9 @@ class HistoricTab(QWidget):
 
     def refresh(self):
         position = self.position_filter.text().strip() or None
-        rows = self.repo.get_historic(limit=1000, position=position, order_by=self.order_by)
+        # Sense límit: s'han de veure totes les entrades de l'històric, per
+        # moltes que n'hi hagi (igual que Materials i Desmagatzem).
+        rows = self.repo.get_historic(position=position, order_by=self.order_by)
         kind_labels = self._kind_labels()
         self.table.setRowCount(len(rows))
         for r, row in enumerate(rows):

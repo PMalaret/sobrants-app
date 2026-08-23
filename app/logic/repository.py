@@ -87,6 +87,21 @@ class Repository:
         )
         self.conn.commit()
 
+    def delete_material(self, code: int) -> str:
+        """Baixa d'un material del catàleg (mateixa protecció per contrasenya
+        que `add_material`, des de la UI). No hi ha cap referència de clau
+        forana des de pieces/desmagatzem/historic (guarden la descripció en
+        caché), així que esborrar-lo no trenca cap registre existent.
+        Retorna la descripció esborrada, perquè la UI la pugui mostrar."""
+        existing = self.conn.execute(
+            "SELECT description FROM materials WHERE code = ?", (code,)
+        ).fetchone()
+        if existing is None:
+            raise RuleViolation(t("err.material_not_found", code=code))
+        self.conn.execute("DELETE FROM materials WHERE code = ?", (code,))
+        self.conn.commit()
+        return existing["description"]
+
     # ------------------------------------------------------------------ #
     # Panell principal (fulla "Hoja1" + "llista")
     # ------------------------------------------------------------------ #
@@ -336,7 +351,11 @@ class Repository:
     # order_by="date" = més recents primer (per defecte). order_by="position"
     # = ordre per posició ascendent, equivalent al toggle AlternarOrdre de
     # l'original (que alternava entre ordenar la fulla històric per columna A o D).
-    def get_historic(self, limit: int = 500, position: str | None = None, order_by: str = "date") -> list[dict]:
+    def get_historic(
+        self, limit: int | None = None, position: str | None = None, order_by: str = "date"
+    ) -> list[dict]:
+        """limit=None (per defecte) retorna TOT l'històric, sense tallar-lo a
+        les primeres N files: cal poder veure'l sencer, per gran que sigui."""
         if order_by == "date":
             order_sql = "ts DESC, id DESC"
         else:
@@ -348,14 +367,15 @@ class Repository:
                 "position, ts DESC, id DESC"
             )
         if position:
-            rows = self.conn.execute(
-                f"SELECT * FROM historic WHERE position = ? ORDER BY {order_sql} LIMIT ?",  # noqa: S608
-                (position, limit),
-            ).fetchall()
+            sql = f"SELECT * FROM historic WHERE position = ? ORDER BY {order_sql}"  # noqa: S608
+            params: tuple = (position,)
         else:
-            rows = self.conn.execute(
-                f"SELECT * FROM historic ORDER BY {order_sql} LIMIT ?", (limit,)  # noqa: S608
-            ).fetchall()
+            sql = f"SELECT * FROM historic ORDER BY {order_sql}"  # noqa: S608
+            params = ()
+        if limit is not None:
+            sql += " LIMIT ?"
+            params += (limit,)
+        rows = self.conn.execute(sql, params).fetchall()
         return [dict(r) for r in rows]
 
     def covered_materials_report(self) -> list[dict]:

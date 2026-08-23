@@ -93,6 +93,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "fr": "Rapport des matériaux masqués",
     },
     "menu.exit": {"ca": "Sortir", "es": "Salir", "en": "Exit", "fr": "Quitter"},
+    "menu.version": {
+        "ca": "Versió {version}", "es": "Versión {version}",
+        "en": "Version {version}", "fr": "Version {version}",
+    },
     "action.backup": {
         "ca": "Còpia de\nseguretat",
         "es": "Copia de\nseguridad",
@@ -613,6 +617,12 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "A material with number {code} already exists: «{description}».",
         "fr": "Un matériau portant le numéro {code} existe déjà : « {description} ».",
     },
+    "err.material_not_found": {
+        "ca": "No existeix cap material amb el número {code}.",
+        "es": "No existe ningún material con el número {code}.",
+        "en": "There is no material with number {code}.",
+        "fr": "Aucun matériau n'existe avec le numéro {code}.",
+    },
 
     # -- Panell de detall de posició (incrustat sota el tauler) --------------- #
     "position.panel.placeholder": {
@@ -689,5 +699,51 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "Do you want to update its description?",
         "fr": "Un matériau portant le numéro {code} existe déjà (« {description} »). "
         "Voulez-vous mettre à jour sa description ?",
+    },
+
+    # -- Materials: baixa protegida amb contrasenya (mateix mecanisme que l'alta) -- #
+    "materials.delete_button": {
+        "ca": "🗑️ Esborrar material", "es": "🗑️ Borrar material",
+        "en": "🗑️ Delete material", "fr": "🗑️ Supprimer le matériau",
+    },
+    "materials.password.label_delete": {
+        "ca": "Introdueix la contrasenya per esborrar aquest material:",
+        "es": "Introduce la contraseña para borrar este material:",
+        "en": "Enter the password to delete this material:",
+        "fr": "Entrez le mot de passe pour supprimer ce matériau :",
+    },
+    "materials.password.wrong.text_delete": {
+        "ca": "La contrasenya introduïda no és correcta. No s'ha esborrat cap material.",
+        "es": "La contraseña introducida no es correcta. No se ha borrado ningún material.",
+        "en": "The password entered is not correct. No material has been deleted.",
+        "fr": "Le mot de passe saisi est incorrect. Aucun matériau n'a été supprimé.",
+    },
+    "materials.delete.no_selection.title": {
+        "ca": "Cap material seleccionat", "es": "Ningún material seleccionado",
+        "en": "No material selected", "fr": "Aucun matériau sélectionné",
+    },
+    "materials.delete.no_selection.text": {
+        "ca": "Selecciona primer una fila de la taula per esborrar-ne el material.",
+        "es": "Selecciona primero una fila de la tabla para borrar su material.",
+        "en": "First select a row in the table to delete its material.",
+        "fr": "Sélectionnez d'abord une ligne du tableau pour supprimer son matériau.",
+    },
+    "materials.delete.confirm.title": {
+        "ca": "Esborrar material", "es": "Borrar material",
+        "en": "Delete material", "fr": "Supprimer le matériau",
+    },
+    "materials.delete.confirm.text": {
+        "ca": "Segur que vols esborrar el material {code} («{description}») del catàleg? "
+        "Aquesta acció no es pot desfer.",
+        "es": "¿Seguro que quieres borrar el material {code} («{description}») del catálogo? "
+        "Esta acción no se puede deshacer.",
+        "en": "Are you sure you want to delete material {code} («{description}») from the catalog? "
+        "This action cannot be undone.",
+        "fr": "Voulez-vous vraiment supprimer le matériau {code} (« {description} ») du catalogue ? "
+        "Cette action est irréversible.",
+    },
+    "materials.delete.success": {
+        "ca": "Material esborrat correctament.", "es": "Material borrado correctamente.",
+        "en": "Material deleted successfully.", "fr": "Matériau supprimé avec succès.",
     },
 }

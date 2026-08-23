@@ -27,6 +27,7 @@ from app.ui.board_tab import BoardTab
 from app.ui.desmagatzem_tab import DesmagatzemTab
 from app.ui.historic_tab import HistoricTab
 from app.ui.materials_tab import MaterialsTab
+from app.version import APP_VERSION
 
 # Cada 4 hores, igual que IniciarBackupAutomatic a l'original.
 BACKUP_INTERVAL_MS = 4 * 60 * 60 * 1000
@@ -178,6 +179,10 @@ class MainWindow(QMainWindow):
         menu.addSeparator()
         exit_action = menu.addAction(t("menu.exit"))
         exit_action.triggered.connect(self.close)
+
+        menu.addSeparator()
+        version_action = menu.addAction(t("menu.version", version=APP_VERSION))
+        version_action.setEnabled(False)  # només informatiu, no cal que faci res en clicar
 
         lang_menu = self.menuBar().addMenu(f"🌐 {t('app.language')}")
         group = QActionGroup(self)

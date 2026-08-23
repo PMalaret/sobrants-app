@@ -1,9 +1,10 @@
 """Pestanya 'Materials': catàleg (equivalent a la fulla Materials).
 
 L'Excel original no tenia cap protecció per editar aquesta fulla (es
-podia escriure directament a les cel·les). Afegir un material nou és una
-funcionalitat pròpia de l'app, protegida amb una contrasenya senzilla
-(`app/security.py`) perquè no ho faci qualsevol per error.
+podia escriure directament a les cel·les). Afegir i esborrar un material
+són funcionalitats pròpies de l'app, protegides amb la mateixa
+contrasenya senzilla (`app/security.py`) perquè no ho faci qualsevol
+per error.
 """
 from __future__ import annotations
 
@@ -96,6 +97,9 @@ class MaterialsTab(QWidget):
         self.add_button = QPushButton(t("materials.add_button"))
         self.add_button.clicked.connect(self._on_add_material)
         search_row.addWidget(self.add_button)
+        self.delete_button = QPushButton(t("materials.delete_button"))
+        self.delete_button.clicked.connect(self._on_delete_material)
+        search_row.addWidget(self.delete_button)
         layout.addLayout(search_row)
 
         columns = [t("materials.col.code"), t("materials.col.description")]
@@ -176,3 +180,47 @@ class MaterialsTab(QWidget):
 
         self.refresh()
         QMessageBox.information(self, t("common.done"), t("materials.add.success"))
+
+    def _on_delete_material(self):
+        items = self.table.selectedItems()
+        if not items:
+            QMessageBox.warning(
+                self, t("materials.delete.no_selection.title"), t("materials.delete.no_selection.text")
+            )
+            return
+        row = items[0].row()
+        code = int(self.table.item(row, 0).text())
+        description = self.table.item(row, 1).text()
+
+        # Mateix mecanisme de contrasenya que per afegir un material.
+        password, ok = QInputDialog.getText(
+            self,
+            t("materials.password.title"),
+            t("materials.password.label_delete"),
+            QLineEdit.Password,
+        )
+        if not ok:
+            return
+        if not check_password(password):
+            QMessageBox.critical(
+                self, t("materials.password.wrong.title"), t("materials.password.wrong.text_delete")
+            )
+            return
+
+        resp = QMessageBox.question(
+            self,
+            t("materials.delete.confirm.title"),
+            t("materials.delete.confirm.text", code=code, description=description),
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if resp != QMessageBox.Yes:
+            return
+
+        try:
+            self.repo.delete_material(code)
+        except RuleViolation as exc:
+            QMessageBox.critical(self, t("common.error"), str(exc))
+            return
+
+        self.refresh()
+        QMessageBox.information(self, t("common.done"), t("materials.delete.success"))
