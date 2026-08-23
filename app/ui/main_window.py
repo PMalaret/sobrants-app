@@ -1,16 +1,16 @@
 """Finestra principal: substitueix el llibre Excel amb una pestanya per fulla."""
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 
-from PySide6.QtCore import QTimer
-from PySide6.QtGui import QAction, QActionGroup
+from PySide6.QtCore import QTimer, QUrl
+from PySide6.QtGui import QAction, QActionGroup, QDesktopServices
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
     QMainWindow,
     QMessageBox,
-    QPlainTextEdit,
     QPushButton,
     QStackedWidget,
     QTabBar,
@@ -239,21 +239,14 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, t("dialog.exported.title"), t("dialog.export_desmagatzem.done", path=path))
 
     def _show_covered_report(self):
+        # Igual que l'original (ComprovarIMostrarTapats_Correcte): escriu
+        # l'informe a un .txt a la carpeta temporal i l'obre directament
+        # amb l'aplicació de text per defecte del sistema — sense mostrar
+        # cap finestra pròpia de l'app (l'original feia "Shell notepad.exe").
         text = covered_materials_report_text(self.repo)
-        # "flags" no és el nom del paràmetre al constructor de QWidget a
-        # PySide6 (és "f", posicional/keyword) — amb "flags=" petava amb
-        # AttributeError cada vegada que es clicava el botó.
-        dialog = QWidget(self, f=self.windowFlags())
-        dialog.setWindowTitle(t("dialog.covered.title"))
-        dialog.resize(700, 500)
-        layout = QVBoxLayout(dialog)
-        box = QPlainTextEdit()
-        box.setReadOnly(True)
-        box.setPlainText(text)
-        box.setFont(self.font())
-        layout.addWidget(box)
-        dialog.show()
-        self._report_dialog = dialog  # evita que el GC el tanqui
+        path = Path(tempfile.gettempdir()) / t("report.covered.filename")
+        path.write_text(text, encoding="utf-8")
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
 
     def closeEvent(self, event):
         try:

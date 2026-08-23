@@ -194,12 +194,6 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Desmagatzem exported to:\n{path}",
         "fr": "Desmagatzem exporté dans :\n{path}",
     },
-    "dialog.covered.title": {
-        "ca": "Materials tapats",
-        "es": "Materiales tapados",
-        "en": "Hidden materials",
-        "fr": "Matériaux masqués",
-    },
     "legend.title": {
         "ca": "Ocupació de les posicions",
         "es": "Ocupación de las posiciones",
@@ -581,6 +575,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "es": "(No se han detectado materiales tapados)",
         "en": "(No hidden materials detected)",
         "fr": "(Aucun matériau masqué détecté)",
+    },
+    "report.covered.filename": {
+        "ca": "Materials tapats.txt", "es": "Materiales tapados.txt",
+        "en": "Hidden materials.txt", "fr": "Matériaux masqués.txt",
     },
 
     # -- Missatges de negoci (repository.py / rules.py) ------------------------ #
