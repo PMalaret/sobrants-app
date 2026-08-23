@@ -1,9 +1,9 @@
-"""Operaciones sobre la base de datos: la traducción del motor VBA a Python.
+"""Operacions sobre la base de dades: la traducció del motor VBA a Python.
 
-Cada método documenta de qué macro(s) de SobrantsV4.74.xlsm proviene.
-Los errores de validación se señalizan con excepciones dedicadas para que la
-capa de interfaz (GUI) decida cómo mostrarlas (equivalente a los MsgBox del
-original).
+Cada mètode documenta de quina(es) macro(s) de SobrantsV4.74.xlsm prové.
+Els errors de validació es senyalitzen amb excepcions dedicades perquè la
+capa d'interfície (GUI) decideixi com mostrar-les (equivalent als MsgBox
+de l'original).
 """
 from __future__ import annotations
 
@@ -13,19 +13,19 @@ from datetime import datetime
 
 from . import rules
 
-BOARD_POSITIONS = range(1, 62)  # 61 posiciones, igual que Hoja1 (A2:A28, F2:F28, K2:K8)
+BOARD_POSITIONS = range(1, 62)  # 61 posicions, igual que Hoja1 (A2:A28, F2:F28, K2:K8)
 
 
 class RuleViolation(Exception):
-    """Error de validación de negocio (equivalente a un MsgBox de error/bloqueo)."""
+    """Error de validació de negoci (equivalent a un MsgBox d'error/bloqueig)."""
 
 
 class DuplicateMaterialError(Exception):
-    """Material ya presente en otras posiciones; requiere confirmación del usuario."""
+    """Material ja present en altres posicions; requereix confirmació de l'usuari."""
 
     def __init__(self, positions: list[int]):
         self.positions = positions
-        super().__init__(f"Material duplicado en posiciones: {positions}")
+        super().__init__(f"Material duplicat a les posicions: {positions}")
 
 
 class PositionFullError(RuleViolation):
@@ -41,10 +41,10 @@ class Repository:
         self.conn = conn
 
     # ------------------------------------------------------------------ #
-    # Materiales (hoja "Materials")
+    # Materials (fulla "Materials")
     # ------------------------------------------------------------------ #
     def lookup_material(self, code: int) -> str:
-        """Equivalente a =SI.ERROR(BUSCARV(...);"---------") de Hoja1!M12:M16."""
+        """Equivalent a =SI.ERROR(BUSCARV(...);"---------") de Hoja1!M12:M16."""
         row = self.conn.execute(
             "SELECT description FROM materials WHERE code = ?", (code,)
         ).fetchone()
@@ -59,10 +59,10 @@ class Repository:
         ).fetchall()
 
     # ------------------------------------------------------------------ #
-    # Panel principal (hoja "Hoja1" + "llista")
+    # Panell principal (fulla "Hoja1" + "llista")
     # ------------------------------------------------------------------ #
     def get_board(self) -> list[dict]:
-        """Resumen por posición mostrado en el panel (ActualitzarUltimesCoincidencies)."""
+        """Resum per posició mostrat al panell (ActualitzarUltimesCoincidencies)."""
         all_pieces = self._all_pieces_by_position()
         board = []
         for pos in BOARD_POSITIONS:
@@ -83,7 +83,7 @@ class Repository:
         return board
 
     def get_position_detail(self, position: int) -> list[dict]:
-        """Contenido completo (hasta 5 piezas) de una posición (L12:O16 al seleccionarla)."""
+        """Contingut complet (fins a 5 peces) d'una posició (L12:O16 en seleccionar-la)."""
         rows = self.conn.execute(
             "SELECT slot, material_code, material_desc, dimensions, notes, entered_at "
             "FROM pieces WHERE position = ? ORDER BY slot",
@@ -105,7 +105,7 @@ class Repository:
         return [(r["position"], r["slot"], r["material_code"]) for r in rows]
 
     def check_duplicate(self, position: int, material_code: int) -> list[int]:
-        """Devuelve las otras posiciones donde ya existe ese material (o lista vacía)."""
+        """Retorna les altres posicions on ja existeix aquest material (o llista buida)."""
         return rules.find_duplicate_positions(self._all_pieces_flat(), material_code, position)
 
     def add_piece(
@@ -116,16 +116,16 @@ class Repository:
         notes: str = "",
         confirm_duplicate: bool = False,
     ) -> dict:
-        """Alta de una pieza en una posición (ComprovarCoincidenciesL12L16 + Worksheet_Change).
+        """Alta d'una peça en una posició (ComprovarCoincidenciesL12L16 + Worksheet_Change).
 
-        Lanza:
-          - RuleViolation si el código no es válido o la posición está llena / desordenada.
-          - DuplicateMaterialError si el material ya existe en otra posición y
-            confirm_duplicate=False (la GUI debe volver a llamar con True tras
-            confirmarlo con el usuario, igual que el MsgBox OK/Cancel original).
+        Llança:
+          - RuleViolation si el codi no és vàlid o la posició està plena / desordenada.
+          - DuplicateMaterialError si el material ja existeix en una altra posició i
+            confirm_duplicate=False (la GUI ha de tornar a cridar amb True després
+            de confirmar-ho amb l'usuari, igual que el MsgBox OK/Cancel original).
         """
         if not rules.is_valid_material_code(material_code):
-            raise RuleViolation("Entrada incorrecta. Sólo se admiten números entre 0 y 99999.")
+            raise RuleViolation("Entrada incorrecta. Només s'admeten números entre 0 i 99999.")
         material_code = int(material_code)
 
         existing = self.get_position_detail(position)
@@ -155,15 +155,15 @@ class Repository:
         return {"position": position, "slot": slot, "material_code": material_code, "material_desc": desc}
 
     def delete_piece(self, position: int, slot: int) -> None:
-        """Baja de una pieza (confirmación 'Estàs segur que vols esborrar la posició?').
+        """Baixa d'una peça (confirmació 'Estàs segur que vols esborrar la posició?').
 
-        Sólo permite borrar el último slot ocupado (de abajo a arriba), igual
-        que el control 'ORDRE INCORRECTE' del original.
+        Només permet esborrar l'últim slot ocupat (de baix a dalt), igual
+        que el control 'ORDRE INCORRECTE' de l'original.
         """
         existing = self.get_position_detail(position)
         filled_slots = [p["slot"] for p in existing]
         if not rules.can_delete_slot(filled_slots, slot):
-            raise RuleViolation("ORDRE INCORRECTE: sólo se puede borrar la última pieza de la posición.")
+            raise RuleViolation("ORDRE INCORRECTE: només es pot esborrar l'última peça de la posició.")
 
         piece = next(p for p in existing if p["slot"] == slot)
         self.conn.execute("DELETE FROM pieces WHERE position = ? AND slot = ?", (position, slot))
@@ -173,12 +173,12 @@ class Repository:
         self.conn.commit()
 
     def move_piece(self, from_position: int, to_position: int) -> dict:
-        """Traslado de la pieza 'visible' de una posición a otra.
+        """Trasllat de la peça 'visible' d'una posició a una altra.
 
-        Traduce MostrarPreview + CopiarPreviewAFilaDinamica: mueve la pieza que
-        el panel muestra para from_position (el slot más alto con código > 1)
-        al primer slot libre de to_position, y registra dos líneas de
-        histórico (⇒⇒ origen / ⇐⇐ destino).
+        Tradueix MostrarPreview + CopiarPreviewAFilaDinamica: mou la peça que
+        el panell mostra per a from_position (el slot més alt amb codi > 1)
+        al primer slot lliure de to_position, i registra dues línies
+        d'històric (⇒⇒ origen / ⇐⇐ destí).
         """
         if from_position == to_position:
             raise RuleViolation("NO ES POT MOURE ELL MATEIX")
@@ -186,7 +186,7 @@ class Repository:
         pieces = self.get_position_detail(from_position)
         piece = rules.board_summary_piece(pieces)
         if piece is None:
-            raise RuleViolation("No hay ninguna pieza que mover en esa posición.")
+            raise RuleViolation("No hi ha cap peça per moure en aquesta posició.")
 
         dest_existing = self.get_position_detail(to_position)
         dest_filled = [p["slot"] for p in dest_existing]
@@ -197,7 +197,7 @@ class Repository:
         if dest_slot is None:
             raise PositionFullError("MOVIMENT IMPOSIBLE: POSICIÓ PLENA")
 
-        # Quita la pieza del origen y renumera los slots restantes para no dejar huecos
+        # Treu la peça de l'origen i renumera els slots restants per no deixar forats
         self.conn.execute(
             "DELETE FROM pieces WHERE position = ? AND slot = ?", (from_position, piece["slot"])
         )
@@ -236,13 +236,13 @@ class Repository:
         return {"from_position": from_position, "to_position": to_position, "piece": piece}
 
     # ------------------------------------------------------------------ #
-    # Buscadores (M20 / M22 / M24 en Hoja1)
+    # Cercadors (M20 / M22 / M24 a Hoja1)
     # ------------------------------------------------------------------ #
     def search(self, query: str, mode: str) -> dict:
-        """mode: 'code' (M20, exacto por nº material), 'description' (M22, parcial),
+        """mode: 'code' (M20, exacte per núm. material), 'description' (M22, parcial),
         'notes' (M24, parcial)."""
         if mode not in ("code", "description", "notes"):
-            raise ValueError("mode debe ser 'code', 'description' o 'notes'")
+            raise ValueError("mode ha de ser 'code', 'description' o 'notes'")
         if not str(query).strip():
             return {"matches": [], "count": 0, "oldest_position": None, "desmagatzem_qty": 0}
 
@@ -251,7 +251,7 @@ class Repository:
             "description": "material_desc",
             "notes": "notes",
         }[mode]
-        rows = self.conn.execute(f"SELECT * FROM pieces").fetchall()  # noqa: S608 (columna fija, no input)
+        rows = self.conn.execute(f"SELECT * FROM pieces").fetchall()  # noqa: S608 (columna fixa, no input)
         matches = []
         for r in rows:
             value = r[field_by_mode]
@@ -274,15 +274,15 @@ class Repository:
             "desmagatzem_qty": desmagatzem_qty,
         }
 
-    # Columna de "desmagatzem" que corresponde a cada modo de búsqueda del
-    # Tablero (BuscaCoincidenciesDesmagatzem_Q20/M22/M24): código exacto,
-    # descripción parcial, o el campo de carro/lote (equivalente a "notas").
+    # Columna de "desmagatzem" que correspon a cada mode de cerca del
+    # Tauler (BuscaCoincidenciesDesmagatzem_Q20/M22/M24): codi exacte,
+    # descripció parcial, o el camp de carro/lot (equivalent a "notes").
     _DESMAGATZEM_FIELD = {"code": "material_code", "description": "material_desc", "notes": "cart_ref"}
 
     def _search_desmagatzem_quantity(self, query: str, mode: str) -> int:
-        """Suma de unidades que hay en Desmagatzem para la misma búsqueda del
-        Tablero (los buscadores M20/M22/M24 del original también recorrían la
-        hoja desmagatzem y mostraban el total en Q20/Q22/Q24)."""
+        """Suma d'unitats que hi ha a Desmagatzem per a la mateixa cerca del
+        Tauler (els cercadors M20/M22/M24 de l'original també recorrien la
+        fulla desmagatzem i mostraven el total a Q20/Q22/Q24)."""
         field = self._DESMAGATZEM_FIELD[mode]
         rows = self.conn.execute(f"SELECT quantity, {field} AS value FROM desmagatzem").fetchall()  # noqa: S608
         total = 0
@@ -296,7 +296,7 @@ class Repository:
         return total
 
     # ------------------------------------------------------------------ #
-    # Histórico (hoja "històric")
+    # Històric (fulla "històric")
     # ------------------------------------------------------------------ #
     def _log_historic(self, position: str, material_code, material_desc, direction: int, kind: str):
         self.conn.execute(
@@ -304,16 +304,16 @@ class Repository:
             (position, str(material_code) if material_code is not None else None, material_desc, _now(), direction, kind),
         )
 
-    # order_by="date" = más recientes primero (por defecto). order_by="position"
-    # = orden por posición ascendente, equivalente al toggle AlternarOrdre del
-    # original (que alternaba entre ordenar la hoja històric por columna A o D).
+    # order_by="date" = més recents primer (per defecte). order_by="position"
+    # = ordre per posició ascendent, equivalent al toggle AlternarOrdre de
+    # l'original (que alternava entre ordenar la fulla històric per columna A o D).
     def get_historic(self, limit: int = 500, position: str | None = None, order_by: str = "date") -> list[dict]:
         if order_by == "date":
             order_sql = "ts DESC, id DESC"
         else:
-            # "position" puede ser un nº (texto) o "Desmagatzem"; se ordena
-            # numéricamente cuando es posible y el resto al final, como hacía
-            # el ordenado ascendente por columna A en el Excel original.
+            # "position" pot ser un núm. (text) o "Desmagatzem"; s'ordena
+            # numèricament quan és possible i la resta al final, com feia
+            # l'ordenat ascendent per columna A a l'Excel original.
             order_sql = (
                 "CASE WHEN position GLOB '[0-9]*' THEN CAST(position AS INTEGER) ELSE 999999 END, "
                 "position, ts DESC, id DESC"
@@ -331,7 +331,7 @@ class Repository:
 
     def covered_materials_report(self) -> list[dict]:
         """Informe 'Materials tapats' (ComprovarIMostrarTapats_Correcte), a partir
-        del histórico de entradas ('in') ordenado cronológicamente por posición."""
+        de l'històric d'entrades ('in') ordenat cronològicament per posició."""
         rows = self.conn.execute(
             "SELECT position, material_code, material_desc, ts FROM historic "
             "WHERE kind = 'in' ORDER BY position, ts"
@@ -353,14 +353,14 @@ class Repository:
     def add_desmagatzem_row(
         self, material_code: str, quantity: int, dimensions: str, cart_ref: str, custom_text: str | None = None
     ) -> dict:
-        """Nueva línea de retirada (CercaMaterialIMarcaHist + Worksheet_Change desmagatzem)."""
+        """Nova línia de retirada (CercaMaterialIMarcaHist + Worksheet_Change desmagatzem)."""
         if not rules.is_valid_desmagatzem_qty(quantity):
-            raise RuleViolation("Sólo se admiten cantidades entre 0 y 20.")
+            raise RuleViolation("Només s'admeten quantitats entre 0 i 20.")
 
         code_str = str(material_code)
         if code_str == str(rules.CUSTOM_MATERIAL_SENTINEL):
             if not custom_text:
-                raise RuleViolation("Escribe un material no registrado.")
+                raise RuleViolation("Escriu un material no registrat.")
             desc = custom_text
         else:
             desc = self.lookup_material(int(material_code))
@@ -379,17 +379,17 @@ class Repository:
         return {"row_order": next_order, "material_desc": desc}
 
     def update_desmagatzem_quantity(self, row_id: int, new_qty: int) -> str:
-        """Cambia la cantidad de una línea (ActualitzaHistorialQuantitat).
+        """Canvia la quantitat d'una línia (ActualitzaHistorialQuantitat).
 
-        Devuelve 'increase', 'decrease', 'delete' o 'noop' para que la GUI
-        pida confirmación con el texto adecuado antes de llamar de nuevo
-        (equivalente al MsgBox Sí/No del original).
+        Retorna 'increase', 'decrease', 'delete' o 'noop' perquè la GUI
+        demani confirmació amb el text adequat abans de tornar a cridar
+        (equivalent al MsgBox Sí/No de l'original).
         """
         if not rules.is_valid_desmagatzem_qty(new_qty):
-            raise RuleViolation("Sólo se admiten cantidades entre 0 y 20.")
+            raise RuleViolation("Només s'admeten quantitats entre 0 i 20.")
         row = self.conn.execute("SELECT * FROM desmagatzem WHERE id = ?", (row_id,)).fetchone()
         if row is None:
-            raise RuleViolation("Línea de desmagatzem no encontrada.")
+            raise RuleViolation("Línia de desmagatzem no trobada.")
 
         change = rules.quantity_change_kind(row["quantity"], new_qty)
         if change is None:
@@ -412,7 +412,7 @@ class Repository:
         return change
 
     def _compact_desmagatzem(self):
-        """Apilar: renumera row_order para no dejar huecos tras un borrado."""
+        """Apilar: renumera row_order per no deixar forats després d'un esborrat."""
         rows = self.conn.execute("SELECT id FROM desmagatzem ORDER BY row_order").fetchall()
         for order, r in enumerate(rows, start=1):
             self.conn.execute("UPDATE desmagatzem SET row_order = ? WHERE id = ?", (order, r["id"]))

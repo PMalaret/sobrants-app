@@ -1,8 +1,8 @@
-"""Copias de seguridad automáticas (equivalente a CrearBackup/IniciarBackupAutomatic).
+"""Còpies de seguretat automàtiques (equivalent a CrearBackup/IniciarBackupAutomatic).
 
-En el Excel original se guardaba una copia del libro cada 4 horas en una
-carpeta "Backups" junto al fichero, conservando sólo las 10 más recientes.
-Aquí se replica igual mediante una copia del fichero SQLite.
+A l'Excel original es desava una còpia del llibre cada 4 hores en una
+carpeta "Backups" al costat del fitxer, conservant només les 10 més
+recents. Aquí es replica igual mitjançant una còpia del fitxer SQLite.
 """
 from __future__ import annotations
 

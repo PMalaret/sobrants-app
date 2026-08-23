@@ -1,4 +1,4 @@
-"""Pestaña 'Materiales': equivalente a la hoja Materials (catálogo, sólo lectura)."""
+"""Pestanya 'Materials': equivalent a la fulla Materials (catàleg, només lectura)."""
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 
 from app.logic.repository import Repository
 
-COLUMNS = ["Nº material", "Descripción"]
+COLUMNS = ["Núm. material", "Descripció"]
 
 
 class MaterialsTab(QWidget):
@@ -28,9 +28,9 @@ class MaterialsTab(QWidget):
         layout = QVBoxLayout(self)
 
         search_row = QHBoxLayout()
-        search_row.addWidget(QLabel("Buscar:"))
+        search_row.addWidget(QLabel("Cercar:"))
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Nº o parte de la descripción")
+        self.search.setPlaceholderText("Núm. o part de la descripció")
         self.search.textChanged.connect(self.refresh)
         search_row.addWidget(self.search)
         layout.addLayout(search_row)

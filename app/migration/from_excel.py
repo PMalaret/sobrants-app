@@ -1,11 +1,11 @@
-"""Migración de datos desde SobrantsV4.74.xlsm a la base de datos SQLite nueva.
+"""Migració de dades des de SobrantsV4.74.xlsm a la base de dades SQLite nova.
 
-Lee las hojas Materials, llista y històric (Entrades es una copia redundante de
-llista, se omite) y desmagatzem, y las vuelca en el esquema relacional nuevo,
-preservando el estado exacto del inventario en el momento de la migración.
+Llegeix les fulles Materials, llista i històric (Entrades és una còpia redundant
+de llista, s'omet) i desmagatzem, i les bolca a l'esquema relacional nou,
+preservant l'estat exacte de l'inventari en el moment de la migració.
 
-Uso:
-    python -m app.migration.from_excel <ruta_excel.xlsm> <ruta_destino.db>
+Ús:
+    python -m app.migration.from_excel <ruta_excel.xlsm> <ruta_desti.db>
 """
 from __future__ import annotations
 
@@ -50,8 +50,8 @@ def migrate_materials(wb, conn) -> int:
 def migrate_pieces(wb, conn) -> int:
     ws = wb["llista"]
     count = 0
-    # Cada posición ocupa 5 filas consecutivas (slots 1..5), ya ordenadas por
-    # posición en el Excel original (se reordena en cada apertura/cierre).
+    # Cada posició ocupa 5 files consecutives (slots 1..5), ja ordenades per
+    # posició a l'Excel original (es reordena en cada obertura/tancament).
     slot_counters: dict[int, int] = {}
     for r in range(1, ws.max_row + 1):
         position = ws.cell(row=r, column=1).value
@@ -67,7 +67,7 @@ def migrate_pieces(wb, conn) -> int:
         slot = slot_counters.get(position, 0) + 1
         slot_counters[position] = slot
         if slot > 5:
-            continue  # por seguridad; no debería ocurrir en datos válidos
+            continue  # per seguretat; no hauria de passar en dades vàlides
 
         is_empty = code in (None, "") and (desc in (None, "", EMPTY_MARK))
         if is_empty:
@@ -93,18 +93,18 @@ def migrate_pieces(wb, conn) -> int:
 
 
 def _parse_kind(e_value):
-    """Traduce la columna E de històric (1 / -1 / flechas de movimiento)."""
+    """Tradueix la columna E de històric (1 / -1 / fletxes de moviment)."""
     if isinstance(e_value, (int, float)):
         if e_value > 0:
             return 1, "in"
         if e_value < 0:
             return -1, "out"
     text = str(e_value)
-    if "⇒" in text:  # ⇒⇒ origen de un movimiento
+    if "⇒" in text:  # ⇒⇒ origen d'un moviment
         return None, "move_out"
-    if "⇐" in text:  # ⇐⇐ destino de un movimiento
+    if "⇐" in text:  # ⇐⇐ destí d'un moviment
         return None, "move_in"
-    return None, "in"  # valor inesperado; se conserva sin perder el registro
+    return None, "in"  # valor inesperat; es conserva sense perdre el registre
 
 
 def migrate_historic(wb, conn) -> int:
@@ -190,9 +190,9 @@ def migrate(excel_path: str, db_path: str) -> dict:
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print("Uso: python -m app.migration.from_excel <origen.xlsm> <destino.db>")
+        print("Ús: python -m app.migration.from_excel <origen.xlsm> <desti.db>")
         raise SystemExit(1)
     result = migrate(sys.argv[1], sys.argv[2])
-    print("Migración completada:")
+    print("Migració completada:")
     for k, v in result.items():
-        print(f"  {k}: {v} filas")
+        print(f"  {k}: {v} files")

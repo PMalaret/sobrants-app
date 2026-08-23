@@ -1,8 +1,8 @@
-"""Reglas de negocio puras (sin base de datos), fáciles de testear.
+"""Regles de negoci pures (sense base de dades), fàcils de testejar.
 
-Cada función aquí es la traducción directa de una regla concreta del VBA
-original de SobrantsV4.74.xlsm. Se documenta en el docstring de qué macro
-proviene, para poder auditar la fidelidad de la conversión.
+Cada funció aquí és la traducció directa d'una regla concreta del VBA
+original de SobrantsV4.74.xlsm. Es documenta al docstring de quina macro
+prové, per poder auditar la fidelitat de la conversió.
 """
 from __future__ import annotations
 
@@ -13,23 +13,23 @@ from datetime import datetime
 MAX_SLOTS = 5
 MATERIAL_CODE_MIN, MATERIAL_CODE_MAX = 0, 99999
 DESMAGATZEM_QTY_MIN, DESMAGATZEM_QTY_MAX = 0, 20
-CUSTOM_MATERIAL_SENTINEL = 1  # código "1" = material no registrado (texto libre)
+CUSTOM_MATERIAL_SENTINEL = 1  # codi "1" = material no registrat (text lliure)
 EMPTY_MATERIAL_MARK = "---------"
 
 
 def normalize_text(text) -> str:
-    """Equivalente a NormalitzaText: minúsculas, sin espacios extremos, sin acentos."""
+    """Equivalent a NormalitzaText: minúscules, sense espais als extrems, sense accents."""
     if text is None:
         return ""
     text = str(text).strip().lower()
-    # Descompone y elimina marcas diacríticas (á->a, ñ->n queda cubierto aparte)
+    # Descompon i elimina marques diacrítiques (á->a, ñ->n es cobreix a part)
     text = text.replace("ñ", "n").replace("ç", "c")
     text = unicodedata.normalize("NFKD", text)
     return "".join(ch for ch in text if not unicodedata.combining(ch))
 
 
 def is_valid_material_code(value) -> bool:
-    """Worksheet_Change Hoja1: sólo números 0..99999 en L12:L16."""
+    """Worksheet_Change Hoja1: només números 0..99999 a L12:L16."""
     try:
         n = float(value)
     except (TypeError, ValueError):
@@ -38,7 +38,7 @@ def is_valid_material_code(value) -> bool:
 
 
 def is_valid_desmagatzem_qty(value) -> bool:
-    """Worksheet_Change desmagatzem: sólo números 0..20 en columna A."""
+    """Worksheet_Change desmagatzem: només números 0..20 a la columna A."""
     try:
         n = float(value)
     except (TypeError, ValueError):
@@ -47,26 +47,26 @@ def is_valid_desmagatzem_qty(value) -> bool:
 
 
 def next_free_slot(filled_slots: list[int]) -> int | None:
-    """Siguiente slot disponible para una posición (llenado ordenado, sin huecos).
+    """Següent slot disponible per a una posició (ompliment ordenat, sense forats).
 
-    Corresponde al control 'ORDRE NO CORRECTE' de Worksheet_Change/SelectionChange:
-    sólo se puede escribir en la fila siguiente a la última ocupada.
+    Correspon al control 'ORDRE NO CORRECTE' de Worksheet_Change/SelectionChange:
+    només es pot escriure a la fila següent a l'última ocupada.
     """
     filled = sorted(filled_slots)
     expected = list(range(1, len(filled) + 1))
     if filled != expected:
-        raise ValueError("Los huecos de la posición están corruptos (deben ser consecutivos desde 1)")
+        raise ValueError("Els forats de la posició estan corromputs (han de ser consecutius des d'1)")
     if len(filled) >= MAX_SLOTS:
         return None
     return len(filled) + 1
 
 
 def can_delete_slot(filled_slots: list[int], slot: int) -> bool:
-    """Sólo se puede borrar el último slot ocupado (de abajo hacia arriba).
+    """Només es pot esborrar l'últim slot ocupat (de baix cap amunt).
 
-    Corresponde al bloqueo 'ORDRE INCORRECTE' al borrar en Worksheet_Change Hoja1
-    (comprueba que la fila inferior no tenga valor > 1) y a la lógica análoga
-    de desmagatzem (borrado de fila = vaciar cantidad a 0).
+    Correspon al bloqueig 'ORDRE INCORRECTE' en esborrar a Worksheet_Change Hoja1
+    (comprova que la fila inferior no tingui valor > 1) i a la lògica anàloga
+    de desmagatzem (esborrat de fila = buidar quantitat a 0).
     """
     if not filled_slots:
         return False
@@ -82,11 +82,11 @@ class DuplicateMatch:
 def find_duplicate_positions(
     all_pieces: list[tuple[int, int, int]], material_code: int, exclude_position: int
 ) -> list[int]:
-    """MATERIAL DUPLICAT: posiciones (≠ la actual) que ya contienen ese código.
+    """MATERIAL DUPLICAT: posicions (≠ l'actual) que ja contenen aquest codi.
 
-    all_pieces: lista de (position, slot, material_code).
-    Devuelve la lista de posiciones distintas donde aparece el material,
-    tal y como se listaba en el MsgBox de ComprovarCoincidenciesL12L16.
+    all_pieces: llista de (position, slot, material_code).
+    Retorna la llista de posicions diferents on apareix el material,
+    tal com es llistava al MsgBox de ComprovarCoincidenciesL12L16.
     """
     positions = set()
     for position, _slot, code in all_pieces:
@@ -96,12 +96,12 @@ def find_duplicate_positions(
 
 
 def board_summary_piece(pieces_in_position: list[dict]) -> dict | None:
-    """Pieza que se muestra en el panel principal para una posición.
+    """Peça que es mostra al panell principal per a una posició.
 
-    Traduce ActualitzarUltimesCoincidencies / MostrarUltimValorMesGranQue1:
-    recorre las piezas de la posición de la última a la primera y toma la
-    primera con código numérico > 1 (es decir, el slot ocupado más alto que
-    no sea el código "material no registrado" = 1).
+    Tradueix ActualitzarUltimesCoincidencies / MostrarUltimValorMesGranQue1:
+    recorre les peces de la posició de l'última a la primera i agafa la
+    primera amb codi numèric > 1 (és a dir, el slot ocupat més alt que no
+    sigui el codi "material no registrat" = 1).
     """
     for piece in sorted(pieces_in_position, key=lambda p: p["slot"], reverse=True):
         code = piece.get("material_code")
@@ -111,12 +111,12 @@ def board_summary_piece(pieces_in_position: list[dict]) -> dict | None:
 
 
 def matches_exact(value: str, query: str) -> bool:
-    """Buscador M20: coincidencia exacta normalizada (por código de material)."""
+    """Cercador M20: coincidència exacta normalitzada (per codi de material)."""
     return normalize_text(value) == normalize_text(query)
 
 
 def matches_partial(value: str, query: str) -> bool:
-    """Buscadores M22/M24: coincidencia parcial normalizada (substring)."""
+    """Cercadors M22/M24: coincidència parcial normalitzada (subcadena)."""
     q = normalize_text(query)
     if q == "":
         return False
@@ -124,10 +124,10 @@ def matches_partial(value: str, query: str) -> bool:
 
 
 def oldest_matching_position(matches: list[dict]) -> int | str | None:
-    """Posición de prioridad (O20/O22/O24): la coincidencia con entered_at más antiguo.
+    """Posició de prioritat (O20/O22/O24): la coincidència amb entered_at més antic.
 
-    matches: lista de dicts con 'position' y 'entered_at' (ISO str o None).
-    Sólo se consideran piezas con fecha de entrada (código > 1, igual que el original).
+    matches: llista de dicts amb 'position' i 'entered_at' (ISO str o None).
+    Només es consideren peces amb data d'entrada (codi > 1, igual que l'original).
     """
     dated = [m for m in matches if m.get("entered_at")]
     if not dated:
@@ -136,15 +136,15 @@ def oldest_matching_position(matches: list[dict]) -> int | str | None:
     return best["position"]
 
 
-# Escala de color por ocupación de una posición (AplicarColorsPerCoincidencies /
-# AplicarColorSegonsFilaIValorK12): el color de referencia se tomaba de las
-# celdas K12:K16 del propio Excel. Valores extraídos del archivo original:
-# 0-1 pieza=blanco, 2=amarillo claro, 3=verde claro, 4=azul claro, 5+=rojo.
+# Escala de color per ocupació d'una posició (AplicarColorsPerCoincidencies /
+# AplicarColorSegonsFilaIValorK12): el color de referència es prenia de les
+# cel·les K12:K16 del mateix Excel. Valors extrets del fitxer original:
+# 0-1 peça=blanc, 2=groc clar, 3=verd clar, 4=blau clar, 5+=vermell.
 FILL_COLOR_SCALE = ["#FFFFFF", "#FFF2CC", "#C6E0B4", "#B4C6E7", "#FF0000"]
 
 
 def fill_color_for_count(piece_count: int) -> str:
-    """Color de "cuánto ocupa" una posición, igual que la referencia K12:K16."""
+    """Color de "com d'ocupada" està una posició, igual que la referència K12:K16."""
     if piece_count <= 1:
         return FILL_COLOR_SCALE[0]
     if piece_count >= 5:
@@ -153,15 +153,15 @@ def fill_color_for_count(piece_count: int) -> str:
 
 
 def has_material_inconsistency(material_codes: list) -> bool:
-    """MarcarInconsistencies: una posición se marca en rojo si contiene más de
-    un material distinto entre sus piezas (aviso de posible error de ubicación).
+    """MarcarInconsistencies: una posició es marca en vermell si conté més
+    d'un material diferent entre les seves peces (avís de possible error d'ubicació).
     """
     distinct = {c for c in material_codes if c not in (None, "")}
     return len(distinct) > 1
 
 
 def quantity_change_kind(old_qty: int, new_qty: int) -> str | None:
-    """ActualitzaHistorialQuantitat: determina si es un aumento, disminución o borrado."""
+    """ActualitzaHistorialQuantitat: determina si és un augment, disminució o esborrat."""
     if new_qty == 0 and old_qty > 0:
         return "delete"
     if new_qty > old_qty:
@@ -174,12 +174,12 @@ def quantity_change_kind(old_qty: int, new_qty: int) -> str | None:
 def find_covered_materials(entries_by_position: dict[int, list[dict]]) -> list[dict]:
     """Informe 'Materials tapats' (ComprovarIMostrarTapats_Correcte).
 
-    Para cada posición, si ha habido más de un material distinto a lo largo
-    del histórico de entradas y el último registrado no es el único, se listan
-    todas las entradas "tapadas" (todas menos la última válida).
-    entries_by_position: {posicion: [ {material_code, material_desc, dimensions}, ... ]}
-    en orden cronológico de entrada.
-    Devuelve lista de dicts {position, material_code, material_desc, dimensions}.
+    Per a cada posició, si hi ha hagut més d'un material diferent al llarg
+    de l'històric d'entrades i l'últim registrat no és l'únic, es llisten
+    totes les entrades "tapades" (totes menys l'última vàlida).
+    entries_by_position: {posicio: [ {material_code, material_desc, dimensions}, ... ]}
+    en ordre cronològic d'entrada.
+    Retorna llista de dicts {position, material_code, material_desc, dimensions}.
     """
     covered = []
     for position, entries in entries_by_position.items():
@@ -192,6 +192,6 @@ def find_covered_materials(entries_by_position: dict[int, list[dict]]) -> list[d
         last_valid = valid[-1]
         for e in valid[:-1]:
             covered.append({"position": position, **e})
-        # nota: last_valid se omite a propósito (es la entrada vigente, no "tapada")
+        # nota: last_valid s'omet a propòsit (és l'entrada vigent, no "tapada")
         del last_valid
     return covered

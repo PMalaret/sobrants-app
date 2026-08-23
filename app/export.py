@@ -1,9 +1,9 @@
-"""Impresión/exportación (ImprimirHoja1, ImprimirDesmagatzem, Materials tapats).
+"""Impressió/exportació (ImprimirHoja1, ImprimirDesmagatzem, Materials tapats).
 
-En el original se imprimía directamente a la impresora de Windows y el
-informe de materiales tapados se abría en el Bloc de notas. En la app nueva
-se exporta a PDF (multiplataforma, sin depender de una impresora concreta) y
-el informe se muestra en un diálogo dentro de la propia aplicación.
+A l'original s'imprimia directament a la impressora de Windows i l'informe
+de materials tapats s'obria al Bloc de notes. A l'app nova s'exporta a PDF
+(multiplataforma, sense dependre d'una impressora concreta) i l'informe es
+mostra en un diàleg dins de la mateixa aplicació.
 """
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def export_board_pdf(repo: Repository, dest_path: str) -> None:
         [b["position"], b["material_code"] or "", b["material_desc"] or "", b["dimensions"] or "", b["notes"] or ""]
         for b in board
     ]
-    html = _html_table("Tablero de sobrants", ["Posición", "Nº", "Material", "Medidas", "Notas"], rows)
+    html = _html_table("Tauler de sobrants", ["Posició", "Núm.", "Material", "Mides", "Notes"], rows)
     _print_html_to_pdf(html, dest_path, landscape=True)
 
 
@@ -52,7 +52,7 @@ def export_desmagatzem_pdf(repo: Repository, dest_path: str) -> None:
         [r["quantity"], r["material_code"], r["material_desc"] or "", r["dimensions"] or "", r["cart_ref"] or ""]
         for r in rows_data
     ]
-    html = _html_table("Desmagatzem", ["Cant.", "Nº", "Material", "Medidas", "Carro/lote"], rows)
+    html = _html_table("Desmagatzem", ["Quant.", "Núm.", "Material", "Mides", "Carro/lot"], rows)
     _print_html_to_pdf(html, dest_path, landscape=False)
 
 
@@ -74,13 +74,13 @@ def _print_html_to_pdf(html: str, dest_path: str, landscape: bool) -> None:
 
 
 def covered_materials_report_text(repo: Repository) -> str:
-    """Informe 'Materials tapats': texto para mostrar en un diálogo de la app."""
+    """Informe 'Materials tapats': text per mostrar en un diàleg de l'app."""
     covered = repo.covered_materials_report()
     now = datetime.now().strftime("%d/%m/%Y %H:%M")
-    lines = [f"MATERIALES TAPADOS — {now}", "", f"{'Posición':<10}{'Nº':<10}{'Material'}"]
+    lines = [f"MATERIALS TAPATS — {now}", "", f"{'Posició':<10}{'Núm.':<10}{'Material'}"]
     lines.append("-" * 70)
     if not covered:
-        lines.append("(No se han detectado materiales tapados)")
+        lines.append("(No s'han detectat materials tapats)")
     for c in covered:
         lines.append(f"{c['position']:<10}{c['material_code'] or '':<10}{c['material_desc'] or ''}")
     return "\n".join(lines)

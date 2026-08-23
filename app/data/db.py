@@ -1,4 +1,4 @@
-"""Capa de acceso a la base de datos SQLite (sustituye al libro .xlsm)."""
+"""Capa d'accés a la base de dades SQLite (substitueix el llibre .xlsm)."""
 from __future__ import annotations
 
 import sqlite3
@@ -8,7 +8,7 @@ SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 
 def connect(db_path: str | Path) -> sqlite3.Connection:
-    """Abre (creando si hace falta) la base de datos y aplica el esquema."""
+    """Obre (creant-la si cal) la base de dades i aplica l'esquema."""
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")

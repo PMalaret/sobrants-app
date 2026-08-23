@@ -1,4 +1,4 @@
-"""Pestaña 'Histórico': equivalente a la hoja històric (auditoría, sólo lectura)."""
+"""Pestanya 'Històric': equivalent a la fulla històric (auditoria, només lectura)."""
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
@@ -17,20 +17,20 @@ from PySide6.QtWidgets import (
 
 from app.logic.repository import Repository
 
-COLUMNS = ["Posición", "Nº material", "Material", "Fecha/hora", "Movimiento"]
+COLUMNS = ["Posició", "Núm. material", "Material", "Data/hora", "Moviment"]
 
-# Mismos colores que el original: verde = entrada, rojo = salida,
-# marrón claro/oscuro = origen/destino de un traslado.
+# Mateixos colors que l'original: verd = entrada, vermell = sortida,
+# marró clar/fosc = origen/destí d'un trasllat.
 KIND_LABELS = {
     "in": ("Entrada", QColor("#1a7f37")),
-    "out": ("Salida", QColor("#c62828")),
-    "move_out": ("Traslado (origen)", QColor("#b48c64")),
-    "move_in": ("Traslado (destino)", QColor("#78460f")),
+    "out": ("Sortida", QColor("#c62828")),
+    "move_out": ("Trasllat (origen)", QColor("#b48c64")),
+    "move_in": ("Trasllat (destí)", QColor("#78460f")),
 }
 
-# Los botones de orden usan el mismo QPushButton azul por defecto cuando
-# están activos; cuando no lo están, se atenúan a gris para marcar cuál es
-# el orden vigente (equivalente al punto verde en A1/D1 del original).
+# Els botons d'ordre fan servir el mateix QPushButton blau per defecte quan
+# estan actius; quan no ho estan, s'atenuen a gris per marcar quin és
+# l'ordre vigent (equivalent al punt verd a A1/D1 de l'original).
 ACTIVE_SORT_STYLE = ""
 INACTIVE_SORT_STYLE = "background-color: #d8dae0; color: #444;"
 
@@ -39,7 +39,7 @@ class HistoricTab(QWidget):
     def __init__(self, repo: Repository, parent=None):
         super().__init__(parent)
         self.repo = repo
-        self.order_by = "date"  # equivalente al estado inicial del original (ordenado por fecha)
+        self.order_by = "date"  # equivalent a l'estat inicial de l'original (ordenat per data)
         self._build_ui()
         self.refresh()
 
@@ -47,22 +47,22 @@ class HistoricTab(QWidget):
         layout = QVBoxLayout(self)
 
         filters = QHBoxLayout()
-        filters.addWidget(QLabel("Filtrar por posición:"))
+        filters.addWidget(QLabel("Filtrar per posició:"))
         self.position_filter = QLineEdit()
-        self.position_filter.setPlaceholderText("p.ej. 12, o 'Desmagatzem'")
+        self.position_filter.setPlaceholderText("p.ex. 12, o 'Desmagatzem'")
         self.position_filter.textChanged.connect(self.refresh)
         filters.addWidget(self.position_filter)
 
         filters.addSpacing(16)
-        filters.addWidget(QLabel("Ordenar por:"))
-        self.sort_date_button = QPushButton("Fecha")
+        filters.addWidget(QLabel("Ordenar per:"))
+        self.sort_date_button = QPushButton("Data")
         self.sort_date_button.clicked.connect(lambda: self._set_order("date"))
-        self.sort_position_button = QPushButton("Posición")
+        self.sort_position_button = QPushButton("Posició")
         self.sort_position_button.clicked.connect(lambda: self._set_order("position"))
         filters.addWidget(self.sort_date_button)
         filters.addWidget(self.sort_position_button)
 
-        self.refresh_button = QPushButton("Actualizar")
+        self.refresh_button = QPushButton("Actualitzar")
         self.refresh_button.clicked.connect(self.refresh)
         filters.addWidget(self.refresh_button)
         filters.addStretch()
@@ -83,8 +83,6 @@ class HistoricTab(QWidget):
         self.refresh()
 
     def _update_sort_buttons(self):
-        # Indicador visual de cuál es el orden activo (equivalente al punto
-        # verde en A1/D1 de AlternarOrdre/ActualitzaColorOrdre del original).
         self.sort_date_button.setStyleSheet(
             ACTIVE_SORT_STYLE if self.order_by == "date" else INACTIVE_SORT_STYLE
         )

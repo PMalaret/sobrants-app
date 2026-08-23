@@ -1,4 +1,4 @@
-"""Punto de entrada de la aplicación."""
+"""Punt d'entrada de l'aplicació."""
 from __future__ import annotations
 
 import sys
@@ -11,7 +11,7 @@ from app.logic.repository import Repository
 
 
 def _data_dir() -> Path:
-    """Carpeta donde vive la base de datos: junto al ejecutable (portable)."""
+    """Carpeta on viu la base de dades: al costat de l'executable (portàtil)."""
     if getattr(sys, "frozen", False):
         base = Path(sys.executable).parent
     else:
@@ -28,15 +28,15 @@ def _ensure_database(data_dir: Path) -> Path:
 
     resp = QMessageBox.question(
         None,
-        "Primer arranque",
-        "No se ha encontrado ninguna base de datos todavía.\n\n"
-        "¿Quieres importar los datos desde un archivo Excel "
-        "(SobrantsV4.74.xlsm) existente?",
+        "Primer arrencada",
+        "Encara no s'ha trobat cap base de dades.\n\n"
+        "Vols importar les dades des d'un fitxer Excel "
+        "(SobrantsV4.74.xlsm) existent?",
         QMessageBox.Yes | QMessageBox.No,
     )
     if resp == QMessageBox.Yes:
         excel_path, _ = QFileDialog.getOpenFileName(
-            None, "Selecciona el Excel a importar", str(Path.home()), "Excel (*.xlsm *.xlsx)"
+            None, "Selecciona l'Excel a importar", str(Path.home()), "Excel (*.xlsm *.xlsx)"
         )
         if excel_path:
             from app.migration.from_excel import migrate
@@ -44,12 +44,12 @@ def _ensure_database(data_dir: Path) -> Path:
             stats = migrate(excel_path, str(db_path))
             QMessageBox.information(
                 None,
-                "Importación completada",
-                "Datos importados:\n" + "\n".join(f"  {k}: {v}" for k, v in stats.items()),
+                "Importació completada",
+                "Dades importades:\n" + "\n".join(f"  {k}: {v}" for k, v in stats.items()),
             )
             return db_path
 
-    # Sin importación: crea una base de datos vacía con el esquema
+    # Sense importació: crea una base de dades buida amb l'esquema
     connect(db_path).close()
     return db_path
 

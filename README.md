@@ -3,20 +3,31 @@
 Reemplazo independiente de **SobrantsV4.74.xlsm**: misma lógica, mismas
 reglas de negocio, sin necesidad de Microsoft Excel. Construida en
 Python + PySide6 (Qt), con los datos en una base de datos SQLite local
-(`SobrantsData/sobrants.db`, junto al ejecutable).
+(`SobrantsData/sobrants.db`, junto al ejecutable). **Interfaz en catalán**
+(igual que el Excel original); esta documentación y los comentarios del
+código quedan en castellano por continuidad con el resto del proyecto.
 
 ## Qué hace cada pieza
 
 | Excel original | Aquí |
 |---|---|
-| Hoja1 (panel + buscadores + entrada de datos) | Pestaña **Tablero** |
+| Hoja1 (panel + buscadores + entrada de datos) | Pestaña **Tauler** |
 | llista / Entrades (fuente de verdad de piezas por posición) | tabla `pieces` en SQLite |
-| històric (auditoría) | Pestaña **Histórico** + tabla `historic` |
-| Materials (catálogo) | Pestaña **Materiales** + tabla `materials` |
+| històric (auditoría) | Pestaña **Històric** + tabla `historic` |
+| Materials (catálogo) | Pestaña **Materials** + tabla `materials` |
 | desmagatzem | Pestaña **Desmagatzem** + tabla `desmagatzem` |
 | Macros VBA (~4.800 líneas) | `app/logic/rules.py` + `app/logic/repository.py` |
 
 Ver `docs/ANALISIS_VBA.md` para el mapeo detallado macro por macro.
+
+### Diseño del Tauler
+
+Las 61 posiciones se muestran en 3 bloques de columnas lado a lado (1-27,
+28-54, 55-61) para que quepan todas a la vista sin scroll — igual que
+hacía Hoja1 con sus bloques A:E / F:J / K:O. La búsqueda (antes 3 cajas
+fijas) y el detalle de una posición (antes un panel fijo) son ahora un
+botón + diálogo cada uno, para que la tabla principal use todo el ancho
+de la pantalla.
 
 ## Uso en desarrollo
 
