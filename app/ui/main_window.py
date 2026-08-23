@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QTimer
 from PySide6.QtGui import QAction, QActionGroup
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -81,10 +81,19 @@ class MainWindow(QMainWindow):
         tabs.addTab(self.historic_tab, t("tab.historic"))
         tabs.addTab(self.materials_tab, t("tab.materials"))
         tabs.currentChanged.connect(self._on_tab_changed)
-        tabs.setCornerWidget(self._build_action_bar(), Qt.TopRightCorner)
         self._tabs = tabs
 
-        self.setCentralWidget(tabs)
+        # Els botons d'acció es posaven a la cantonada del QTabWidget
+        # (`setCornerWidget`), però Qt força la seva alçada a la de la
+        # barra de pestanyes: en fer-la més compacta, el text quedava
+        # tallat. Ara van en una fila pròpia a sobre, amb alçada lliure.
+        central = QWidget()
+        central_layout = QVBoxLayout(central)
+        central_layout.setContentsMargins(0, 0, 0, 0)
+        central_layout.setSpacing(0)
+        central_layout.addWidget(self._build_action_bar())
+        central_layout.addWidget(tabs)
+        self.setCentralWidget(central)
 
         self.menuBar().clear()
         self._build_menu()
@@ -101,12 +110,13 @@ class MainWindow(QMainWindow):
         status.showMessage(t("status.db", path=self.db_path))
 
     def _build_action_bar(self) -> QWidget:
-        """Botons grans amb icona i color, a la mateixa alçada que les
-        pestanyes i a la dreta (cantonada superior dreta del QTabWidget)."""
+        """Botons grans amb icona i color, en una fila pròpia a sobre de
+        les pestanyes, arraconats a la dreta."""
         bar = QWidget()
         layout = QHBoxLayout(bar)
-        layout.setContentsMargins(4, 2, 4, 2)
+        layout.setContentsMargins(4, 3, 4, 3)
         layout.setSpacing(8)
+        layout.addStretch()
 
         for label_key, emoji, color, slot_name in ACTION_BUTTONS:
             label = t(label_key).replace("\n", " ")
@@ -121,7 +131,7 @@ class MainWindow(QMainWindow):
                     font-weight: 600;
                     border: none;
                     border-radius: 6px;
-                    padding: 1px 10px;
+                    padding: 4px 10px;
                 }}
                 """
             )

@@ -180,16 +180,23 @@ class PositionPanel(QFrame):
         if self.position is None:
             return
         detail = self.repo.get_position_detail(self.position)
-        self.detail_table.setRowCount(len(detail))
-        for r, p in enumerate(detail):
-            values = [
-                p["slot"],
-                p["material_code"],
-                p["material_desc"] or "",
-                p["dimensions"] or "",
-                p["notes"] or "",
-                p["entered_at"] or "",
-            ]
+        # Sempre 5 files (el màxim de peces per posició), tingui dades o
+        # no: així la graella es veu sencera igual buida que plena, no
+        # només quan hi ha 5 peces.
+        self.detail_table.setRowCount(5)
+        for r in range(5):
+            if r < len(detail):
+                p = detail[r]
+                values = [
+                    p["slot"],
+                    p["material_code"],
+                    p["material_desc"] or "",
+                    p["dimensions"] or "",
+                    p["notes"] or "",
+                    p["entered_at"] or "",
+                ]
+            else:
+                values = [""] * self.detail_table.columnCount()
             for c, v in enumerate(values):
                 self.detail_table.setItem(r, c, QTableWidgetItem(str(v)))
 

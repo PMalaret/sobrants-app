@@ -108,6 +108,11 @@ class BoardTab(QWidget):
     # ------------------------------------------------------------------ #
     def _build_ui(self):
         layout = QVBoxLayout(self)
+        # Marge superior mínim (la taula queda enganxada a les pestanyes) i
+        # sense espaiat entre la taula i la fila de botons Netejar
+        # cerca/Cercar (aquesta fila ja té els seus propis marges a 0).
+        layout.setContentsMargins(9, 3, 9, 3)
+        layout.setSpacing(0)
 
         field_labels = [
             t("board.field.position"),
@@ -126,7 +131,12 @@ class BoardTab(QWidget):
         # "Posició") perquè les 61 posicions càpiguen sense fer scroll.
         self.table.verticalHeader().setVisible(False)
         self.table.verticalHeader().setDefaultSectionSize(20)
-        self.table.setStyleSheet("QTableWidget { font-size: 12px; }")
+        # Capçalera més prima: es redueix el padding vertical de la secció,
+        # no la mida de la lletra (que es queda igual, a 12px).
+        self.table.setStyleSheet(
+            "QTableWidget { font-size: 12px; }"
+            "QHeaderView::section { font-size: 12px; padding: 1px 4px; }"
+        )
         # El tauler sempre té exactament 61 posicions (mai més, mai menys),
         # però ara que la taula s'expandeix per ocupar l'espai vertical
         # sobrant, les files creixen (Stretch) en lloc d'aparèixer files

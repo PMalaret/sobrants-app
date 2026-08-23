@@ -53,6 +53,7 @@ class HistoricTab(QWidget):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(9, 3, 9, 9)  # marge superior mínim, taula enganxada a les pestanyes
 
         filters = QHBoxLayout()
         filters.addWidget(QLabel(t("historic.filter_label")))

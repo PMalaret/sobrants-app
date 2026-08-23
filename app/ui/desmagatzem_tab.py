@@ -107,6 +107,7 @@ class DesmagatzemTab(QWidget):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(9, 3, 9, 9)  # marge superior mínim, taula enganxada a les pestanyes
 
         form_box = QGroupBox(t("desmagatzem.form_title"))
         form = QFormLayout(form_box)

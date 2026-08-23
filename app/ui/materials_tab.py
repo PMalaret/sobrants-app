@@ -31,6 +31,20 @@ from app.logic.repository import Repository, RuleViolation
 from app.security import check_password
 
 
+class _NumericItem(QTableWidgetItem):
+    """Perquè "Núm. material" s'ordeni numèricament en clicar la
+    capçalera, no com a text (10 abans que 2)."""
+
+    def __init__(self, text: str, sort_value: float):
+        super().__init__(text)
+        self._sort_value = sort_value
+
+    def __lt__(self, other):
+        if isinstance(other, _NumericItem):
+            return self._sort_value < other._sort_value
+        return super().__lt__(other)
+
+
 class _AddMaterialDialog(QDialog):
     """Formulari mínim (número + descripció) per donar d'alta un material."""
 
@@ -70,6 +84,7 @@ class MaterialsTab(QWidget):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(9, 3, 9, 9)  # marge superior mínim, taula enganxada a les pestanyes
 
         search_row = QHBoxLayout()
         search_row.addWidget(QLabel(t("materials.search_label")))
@@ -89,17 +104,18 @@ class MaterialsTab(QWidget):
         self.table.setHorizontalHeaderLabels(columns)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        # Núm. material: estret, ajustat al contingut (són números curts).
-        # Descripció: no hi ha més columnes, així que pot aprofitar tot
-        # l'ample sobrant — però només l'ample just que calgui perquè es
-        # vegi el text (no cal forçar-la al 100% de l'ample de la taula).
-        # NOTA: fem servir Interactive + un sol resizeColumnToContents()
-        # després d'omplir la taula (a refresh()), no el mode
-        # ResizeToContents "en viu": amb ~4.000 files, recalcular l'ample
-        # a cada fila inserida penja la interfície (és O(files²)).
+        # Núm. material i Descripció: totes dues "Interactive" amb un ample
+        # per defecte contingut (no ajustat al contingut més llarg de tot
+        # el catàleg, que la feia excessivament ampla); l'usuari les pot
+        # redimensionar arrossegant la vora de la capçalera.
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Interactive)
         header.setSectionResizeMode(1, QHeaderView.Interactive)
+        self.table.setColumnWidth(0, 90)
+        self.table.setColumnWidth(1, 320)
+        # Ordenació clicant la capçalera (nativa de QTableWidget, alterna
+        # ascendent/descendent). "Núm. material" s'ordena numèricament.
+        self.table.setSortingEnabled(True)
         layout.addWidget(self.table)
 
         self.count_label = QLabel("")
@@ -111,14 +127,15 @@ class MaterialsTab(QWidget):
         # Sense límit: el catàleg és petit (uns 4.000 materials) i han de
         # poder-se veure tots, no només els primers N.
         rows = self.repo.search_materials(query)
+        # Desactivem l'ordenació mentre omplim la taula (si no, Qt reordena
+        # fila a fila a cada setItem: amb ~4.000 files és O(files²) i penja
+        # la interfície).
+        self.table.setSortingEnabled(False)
         self.table.setRowCount(len(rows))
         for r, row in enumerate(rows):
-            self.table.setItem(r, 0, QTableWidgetItem(str(row["code"])))
+            self.table.setItem(r, 0, _NumericItem(str(row["code"]), float(row["code"])))
             self.table.setItem(r, 1, QTableWidgetItem(row["description"]))
-        # Un sol càlcul d'ample "a mida" en acabar d'omplir (no en mode
-        # ResizeToContents en viu, que amb milers de files penja la UI).
-        self.table.resizeColumnToContents(0)
-        self.table.resizeColumnToContents(1)
+        self.table.setSortingEnabled(True)
         self.count_label.setText(t("materials.count", count=len(rows)))
 
     # ------------------------------------------------------------------ #
