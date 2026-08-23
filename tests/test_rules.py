@@ -136,17 +136,28 @@ def test_quantity_change_kind():
     assert rules.quantity_change_kind(3, 3) is None
 
 
-def test_find_covered_materials_detects_conflict_and_keeps_last():
-    entries_by_position = {
-        7: [
-            {"material_code": 100, "material_desc": "A", "dimensions": "1x1"},
-            {"material_code": 200, "material_desc": "B", "dimensions": "2x2"},
-        ],
-        8: [
-            {"material_code": 300, "material_desc": "C", "dimensions": "3x3"},
-        ],
-    }
-    covered = rules.find_covered_materials(entries_by_position)
+def test_find_covered_in_position_detects_conflict_and_keeps_last_slot():
+    pieces = [
+        {"slot": 1, "material_code": 100, "material_desc": "A", "dimensions": "1x1"},
+        {"slot": 2, "material_code": 200, "material_desc": "B", "dimensions": "2x2"},
+    ]
+    covered = rules.find_covered_in_position(7, pieces)
     assert len(covered) == 1
     assert covered[0]["position"] == 7
-    assert covered[0]["material_code"] == 100
+    assert covered[0]["material_code"] == 100  # slot 1: tapat pel de l'slot 2 (el més alt)
+
+
+def test_find_covered_in_position_no_conflict_when_single_material():
+    pieces = [
+        {"slot": 1, "material_code": 300, "material_desc": "C", "dimensions": "3x3"},
+        {"slot": 2, "material_code": 300, "material_desc": "C", "dimensions": "3x3"},
+    ]
+    assert rules.find_covered_in_position(8, pieces) == []
+
+
+def test_find_covered_in_position_ignores_empty_slots():
+    pieces = [
+        {"slot": 1, "material_code": None, "material_desc": "---------", "dimensions": None},
+        {"slot": 2, "material_code": 300, "material_desc": "C", "dimensions": "3x3"},
+    ]
+    assert rules.find_covered_in_position(9, pieces) == []

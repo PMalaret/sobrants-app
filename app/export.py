@@ -95,11 +95,15 @@ def covered_materials_report_text(repo: Repository) -> str:
     lines = [
         f"{t('report.covered.title')} — {now}",
         "",
-        f"{t('export.col.position'):<10}{t('export.col.code'):<10}{t('export.col.material')}",
+        f"{t('export.col.position'):<10}{t('export.col.code'):<10}{t('export.col.material'):<50}"
+        f"{t('export.col.dimensions')}",
     ]
-    lines.append("-" * 70)
+    lines.append("-" * 90)
     if not covered:
         lines.append(t("report.covered.empty"))
     for c in covered:
-        lines.append(f"{c['position']:<10}{c['material_code'] or '':<10}{c['material_desc'] or ''}")
+        lines.append(
+            f"{c['position']:<10}{c['material_code'] or '':<10}{c['material_desc'] or '':<50}"
+            f"{c['dimensions'] or ''}"
+        )
     return "\n".join(lines)

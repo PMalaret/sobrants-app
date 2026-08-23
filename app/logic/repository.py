@@ -216,6 +216,19 @@ class Repository:
         )
         self.conn.commit()
 
+    def update_piece_field(self, position: int, slot: int, field: str, value: str) -> None:
+        """Edició en línia de Mides/Notes des del panell de detall de
+        posició. Núm./Material no es poden editar mai des d'aquí (només
+        des del formulari d'alta): per això només s'accepten aquests dos
+        camps, mai el codi o la descripció del material."""
+        if field not in ("dimensions", "notes"):
+            raise ValueError(f"Camp no editable: {field}")
+        self.conn.execute(
+            f"UPDATE pieces SET {field} = ? WHERE position = ? AND slot = ?",  # noqa: S608
+            (value or None, position, slot),
+        )
+        self.conn.commit()
+
     def move_piece(self, from_position: int, to_position: int) -> dict:
         """Trasllat de la peça 'visible' d'una posició a una altra.
 
@@ -385,18 +398,21 @@ class Repository:
         return [dict(r) for r in rows]
 
     def covered_materials_report(self) -> list[dict]:
-        """Informe 'Materials tapats' (ComprovarIMostrarTapats_Correcte), a partir
-        de l'històric d'entrades ('in') ordenat cronològicament per posició."""
-        rows = self.conn.execute(
-            "SELECT position, material_code, material_desc, ts FROM historic "
-            "WHERE kind = 'in' ORDER BY position, ts"
-        ).fetchall()
-        by_position: dict[str, list[dict]] = {}
-        for r in rows:
-            by_position.setdefault(r["position"], []).append(
-                {"material_code": r["material_code"], "material_desc": r["material_desc"], "dimensions": None}
-            )
-        return rules.find_covered_materials(by_position)
+        """Informe 'Materials tapats' (ComprovarIMostrarTapats_Correcte).
+
+        Fidel a l'original: la macro llegia "Entrades", una còpia literal
+        de "Llista" (l'estat ACTUAL de les peces, com la nostra taula
+        `pieces`) — no l'històric. Per això es recorren les peces
+        VIGENTS de cada posició, no els esdeveniments passats: un
+        material que ja s'ha tret o mogut deixa de comptar, i un que hi
+        ha arribat movent-lo (no només afegint-lo de nou) sí que hi
+        compta.
+        """
+        covered = []
+        for position in BOARD_POSITIONS:
+            pieces = self.get_position_detail(position)
+            covered.extend(rules.find_covered_in_position(position, pieces))
+        return covered
 
     # ------------------------------------------------------------------ #
     # Desmagatzem

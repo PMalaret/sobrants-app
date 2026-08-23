@@ -240,7 +240,10 @@ class MainWindow(QMainWindow):
 
     def _show_covered_report(self):
         text = covered_materials_report_text(self.repo)
-        dialog = QWidget(self, flags=self.windowFlags())
+        # "flags" no és el nom del paràmetre al constructor de QWidget a
+        # PySide6 (és "f", posicional/keyword) — amb "flags=" petava amb
+        # AttributeError cada vegada que es clicava el botó.
+        dialog = QWidget(self, f=self.windowFlags())
         dialog.setWindowTitle(t("dialog.covered.title"))
         dialog.resize(700, 500)
         layout = QVBoxLayout(dialog)

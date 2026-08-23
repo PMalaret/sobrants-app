@@ -89,6 +89,23 @@ def test_delete_piece_logs_historic_out(repo):
     assert hist[0]["direction"] == -1
 
 
+def test_update_piece_field_edits_dimensions_and_notes(repo):
+    repo.add_piece(position=5, material_code=41011, dimensions="1x1", notes="abans")
+    repo.update_piece_field(position=5, slot=1, field="dimensions", value="2600x3210")
+    repo.update_piece_field(position=5, slot=1, field="notes", value="després")
+
+    piece = repo.get_position_detail(5)[0]
+    assert piece["dimensions"] == "2600x3210"
+    assert piece["notes"] == "després"
+    assert piece["material_code"] == 41011  # no s'ha tocat
+
+
+def test_update_piece_field_rejects_non_editable_field(repo):
+    repo.add_piece(position=5, material_code=41011)
+    with pytest.raises(ValueError):
+        repo.update_piece_field(position=5, slot=1, field="material_code", value="999")
+
+
 def test_move_piece_between_positions(repo):
     repo.add_piece(position=10, material_code=41011, dimensions="2600x3210")
     result = repo.move_piece(from_position=10, to_position=20)
@@ -173,6 +190,37 @@ def test_board_not_inconsistent_when_same_material_repeated(repo):
     board = repo.get_board()
     row7 = next(b for b in board if b["position"] == 7)
     assert row7["inconsistent"] is False
+
+
+def test_covered_materials_report_detects_mixed_position(repo):
+    repo.add_piece(position=7, material_code=41011)
+    repo.add_piece(position=7, material_code=41952, confirm_duplicate=True)
+    covered = repo.covered_materials_report()
+    assert len(covered) == 1
+    assert covered[0]["position"] == 7
+    assert covered[0]["material_code"] == 41011  # el de l'slot 1, tapat pel de l'slot 2
+
+
+def test_covered_materials_report_detects_mixing_caused_by_a_move(repo):
+    # Abans, l'informe només mirava l'històric d'altes ("in"): una posició
+    # que quedava mesclada per un TRASLLAT (no una alta nova) no hi sortia.
+    repo.add_piece(position=1, material_code=41011)
+    repo.add_piece(position=2, material_code=41952)
+    repo.move_piece(from_position=2, to_position=1)  # ara la 1 té dos materials
+
+    covered = repo.covered_materials_report()
+    assert len(covered) == 1
+    assert covered[0]["position"] == 1
+    assert covered[0]["material_code"] == 41011
+
+
+def test_covered_materials_report_ignores_resolved_position(repo):
+    # Una posició que va estar mesclada però ja no ho està (s'ha esborrat
+    # l'última peça, tornant a tenir un sol material) no ha de sortir.
+    repo.add_piece(position=7, material_code=41011)
+    repo.add_piece(position=7, material_code=41952, confirm_duplicate=True)
+    repo.delete_piece(position=7, slot=2)
+    assert repo.covered_materials_report() == []
 
 
 def test_search_reports_desmagatzem_quantity(repo):

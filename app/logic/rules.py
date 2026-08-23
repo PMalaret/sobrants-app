@@ -173,27 +173,34 @@ def quantity_change_kind(old_qty: int, new_qty: int) -> str | None:
     return None
 
 
-def find_covered_materials(entries_by_position: dict[int, list[dict]]) -> list[dict]:
-    """Informe 'Materials tapats' (ComprovarIMostrarTapats_Correcte).
+def find_covered_in_position(position, pieces: list[dict]) -> list[dict]:
+    """Peces "tapades" d'UNA posició (ComprovarIMostrarTapats_Correcte).
 
-    Per a cada posició, si hi ha hagut més d'un material diferent al llarg
-    de l'històric d'entrades i l'últim registrat no és l'únic, es llisten
-    totes les entrades "tapades" (totes menys l'última vàlida).
-    entries_by_position: {posicio: [ {material_code, material_desc, dimensions}, ... ]}
-    en ordre cronològic d'entrada.
-    Retorna llista de dicts {position, material_code, material_desc, dimensions}.
+    Fidel a l'original: la macro llegia la fulla "Entrades" (una còpia
+    literal de "Llista", és a dir, l'estat ACTUAL de les peces — no
+    l'històric) i, per a cada posició, agrupava les seves files (slots).
+    Si hi havia més d'un material diferent entre les peces ocupades de la
+    posició, es mostraven totes MENYS la de l'slot ocupat més alt (la
+    "vigent"): les altres es consideren "tapades" per aquesta.
+
+    `pieces`: les peces d'UNA posició tal com les retorna
+    `Repository.get_position_detail` (amb "slot", "material_code", etc.).
+    Retorna una llista de dicts {position, material_code, material_desc, dimensions}.
     """
-    covered = []
-    for position, entries in entries_by_position.items():
-        valid = [e for e in entries if e.get("material_code") not in (None, "", EMPTY_MATERIAL_MARK)]
-        if not valid:
-            continue
-        distinct_codes = {e["material_code"] for e in valid}
-        if len(distinct_codes) <= 1:
-            continue
-        last_valid = valid[-1]
-        for e in valid[:-1]:
-            covered.append({"position": position, **e})
-        # nota: last_valid s'omet a propòsit (és l'entrada vigent, no "tapada")
-        del last_valid
-    return covered
+    valid = [p for p in pieces if p.get("material_code") is not None]
+    if not valid:
+        return []
+    distinct_codes = {p["material_code"] for p in valid}
+    if len(distinct_codes) <= 1:
+        return []
+    last_valid = max(valid, key=lambda p: p["slot"])
+    return [
+        {
+            "position": position,
+            "material_code": p["material_code"],
+            "material_desc": p["material_desc"],
+            "dimensions": p["dimensions"],
+        }
+        for p in valid
+        if p["slot"] != last_valid["slot"]
+    ]

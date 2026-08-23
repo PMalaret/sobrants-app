@@ -94,34 +94,40 @@ class PositionPanel(QFrame):
         layout.setSpacing(4)
 
         self.title_label = QLabel()
-        self.title_label.setStyleSheet("font-weight: 700; font-size: 11px; color: #1a1a1a;")
+        self.title_label.setStyleSheet("font-weight: 700; font-size: 15px; color: #1a1a1a;")
         self.title_label.setWordWrap(True)
         layout.addWidget(self.title_label)
 
         # L'ordre (slot) segueix important internament — get_position_detail
         # continua retornant les peces ordenades per slot, i encara és qui
         # decideix quina és "l'última peça" a esborrar — però ja no es
-        # mostra com a columna a la taula.
+        # mostra com a columna a la taula (com tampoc "Entrada").
         detail_columns = [
             t("board.field.code"),
             t("board.field.material"),
             t("board.field.dimensions"),
             t("board.field.notes"),
-            t("position.detail.entered"),
         ]
+        self._DETAIL_CODE_COL, self._DETAIL_MATERIAL_COL, self._DETAIL_DIMS_COL, self._DETAIL_NOTES_COL = range(4)
         self.detail_table = QTableWidget(5, len(detail_columns))
         self.detail_table.setHorizontalHeaderLabels(detail_columns)
-        self.detail_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        # Només Mides i Notes són editables (i només quan l'slot té un
+        # material), i només amb doble clic / tecla d'edició — mai en
+        # viu-clic simple, per no editar per error en seleccionar la fila.
+        self.detail_table.setEditTriggers(
+            QAbstractItemView.DoubleClicked | QAbstractItemView.EditKeyPressed
+        )
+        self.detail_table.itemChanged.connect(self._on_detail_item_changed)
         self.detail_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.detail_table.verticalHeader().setVisible(False)
         self.detail_table.verticalHeader().setDefaultSectionSize(18)
         self.detail_table.setStyleSheet("font-size: 10px;")
-        # Núm./Mides/Notes/Entrada: ample inicial ajustat, però
-        # "Interactive" (l'usuari els pot canviar i es queden fixats).
-        # Material: s'estira perquè les columnes aprofitin tot l'ample
-        # que té el panell (que ja és el just i necessari).
+        # Núm./Mides/Notes: ample inicial ajustat, però "Interactive"
+        # (l'usuari els pot canviar i es queden fixats). Material: s'estira
+        # perquè les columnes aprofitin tot l'ample que té el panell (que
+        # ja és el just i necessari).
         detail_header = self.detail_table.horizontalHeader()
-        detail_widths = [55, None, 62, 55, 90]
+        detail_widths = [55, None, 62, 90]
         for col, width in enumerate(detail_widths):
             if width is None:
                 detail_header.setSectionResizeMode(col, QHeaderView.Stretch)
@@ -224,22 +230,44 @@ class PositionPanel(QFrame):
         # Sempre 5 files (el màxim de peces per posició), tingui dades o
         # no: així la graella es veu sencera igual buida que plena, no
         # només quan hi ha 5 peces.
+        # Bloquejem senyals mentre l'omplim: si no, cada setItem dispara
+        # itemChanged i intentaria desar-ho com si l'usuari ho hagués
+        # editat (a més de ser innecessari, petaria a les files buides).
+        self.detail_table.blockSignals(True)
         self.detail_table.setRowCount(5)
         for r in range(5):
-            if r < len(detail):
+            occupied = r < len(detail)
+            if occupied:
                 p = detail[r]
-                values = [
-                    p["material_code"],
-                    p["material_desc"] or "",
-                    p["dimensions"] or "",
-                    p["notes"] or "",
-                    p["entered_at"] or "",
-                ]
+                values = [p["material_code"], p["material_desc"] or "", p["dimensions"] or "", p["notes"] or ""]
             else:
                 values = [""] * self.detail_table.columnCount()
             for c, v in enumerate(values):
-                self.detail_table.setItem(r, c, QTableWidgetItem(str(v)))
+                item = QTableWidgetItem(str(v))
+                # Mides i Notes són editables només si l'slot té material;
+                # Núm./Material no s'editen mai des d'aquí.
+                editable = occupied and c in (self._DETAIL_DIMS_COL, self._DETAIL_NOTES_COL)
+                flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+                if editable:
+                    flags |= Qt.ItemIsEditable
+                item.setFlags(flags)
+                self.detail_table.setItem(r, c, item)
+        self.detail_table.blockSignals(False)
         self._fit_detail_table_height()
+
+    def _on_detail_item_changed(self, item):
+        if self.position is None:
+            return
+        col = item.column()
+        if col not in (self._DETAIL_DIMS_COL, self._DETAIL_NOTES_COL):
+            return
+        row = item.row()
+        code_item = self.detail_table.item(row, self._DETAIL_CODE_COL)
+        if code_item is None or not code_item.text():
+            return  # slot buit: mai s'hauria de poder arribar aquí
+        field = "dimensions" if col == self._DETAIL_DIMS_COL else "notes"
+        self.repo.update_piece_field(self.position, slot=row + 1, field=field, value=item.text().strip())
+        self.changed.emit()
 
     def _on_add_piece(self):
         code = self.add_code.value()

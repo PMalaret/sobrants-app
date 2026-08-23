@@ -93,17 +93,14 @@ class DesmagatzemTab(QWidget):
 
     def _configure_column_widths(self):
         # Totes les columnes "Interactive" (redimensionables arrossegant la
-        # vora). Material tenia abans un ample "Stretch" excessiu; ara té un
-        # ample per defecte contingut, i és Carro/lot (text lliure, com
-        # Notes al Tauler) qui absorbeix l'espai sobrant.
+        # vora), sense cap "Stretch": una columna en mode "Stretch" no es
+        # pot redimensionar manualment (Qt en controla l'ample per omplir
+        # l'espai sobrant), i totes s'han de poder canviar de mida.
         header = self.table.horizontalHeader()
-        widths = [70, 80, 200, 90, None, 150]  # Quantitat, Núm., Material, Mides, Carro/lot, Data
+        widths = [70, 80, 200, 90, 200, 150]  # Quantitat, Núm., Material, Mides, Notes, Data
         for col, width in enumerate(widths):
-            if width is None:
-                header.setSectionResizeMode(col, QHeaderView.Stretch)
-            else:
-                header.setSectionResizeMode(col, QHeaderView.Interactive)
-                self.table.setColumnWidth(col, width)
+            header.setSectionResizeMode(col, QHeaderView.Interactive)
+            self.table.setColumnWidth(col, width)
 
     def _build_ui(self):
         layout = QVBoxLayout(self)

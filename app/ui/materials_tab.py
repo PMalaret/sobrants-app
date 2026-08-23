@@ -115,7 +115,7 @@ class MaterialsTab(QWidget):
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Interactive)
         header.setSectionResizeMode(1, QHeaderView.Interactive)
-        self.table.setColumnWidth(0, 90)
+        self.table.setColumnWidth(0, 130)  # que hi càpiga el títol "Núm. material" sencer
         self.table.setColumnWidth(1, 320)
         # Ordenació clicant la capçalera (nativa de QTableWidget, alterna
         # ascendent/descendent). "Núm. material" s'ordena numèricament.

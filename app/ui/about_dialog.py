@@ -39,6 +39,12 @@ class AboutDialog(QDialog):
         creator_label.setOpenExternalLinks(True)
         layout.addWidget(creator_label)
 
+        # "Raül Vives Morros" no es tradueix mai (és un nom propi), en cap
+        # dels 4 idiomes; només la frase que l'envolta.
+        original_idea_label = QLabel(t("about.original_idea"))
+        original_idea_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(original_idea_label)
+
         image_path = ASSETS_DIR / "luvnus.webp"
         if image_path.exists():
             pixmap = QPixmap(str(image_path))

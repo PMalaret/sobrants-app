@@ -107,6 +107,13 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Creator: <a href=\"{url}\">{url}</a>",
         "fr": "Créateur : <a href=\"{url}\">{url}</a>",
     },
+    # El nom "Raül Vives Morros" no es tradueix mai, en cap idioma.
+    "about.original_idea": {
+        "ca": "Idea original de Raül Vives Morros",
+        "es": "Idea original de Raül Vives Morros",
+        "en": "Original idea by Raül Vives Morros",
+        "fr": "Idée originale de Raül Vives Morros",
+    },
     "action.backup": {
         "ca": "Còpia de\nseguretat",
         "es": "Copia de\nseguridad",
@@ -238,7 +245,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ca": "🔍  Cercar…", "es": "🔍  Buscar…", "en": "🔍  Search…", "fr": "🔍  Rechercher…",
     },
     "board.clear_search": {
-        "ca": "Netejar cerca", "es": "Limpiar búsqueda", "en": "Clear search", "fr": "Effacer la recherche",
+        "ca": "🧹 Netejar cerca", "es": "🧹 Limpiar búsqueda", "en": "🧹 Clear search", "fr": "🧹 Effacer la recherche",
     },
     "board.search_result": {
         "ca": "{count} coincidència(es) · més antiga: posc. {oldest}",
@@ -296,21 +303,20 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Position {position}",
         "fr": "Position {position}",
     },
-    "position.detail.entered": {"ca": "Entrada", "es": "Entrada", "en": "Entered", "fr": "Entrée"},
     "position.add_box": {
         "ca": "Afegir peça a aquesta posició", "es": "Añadir pieza a esta posición",
         "en": "Add a piece to this position", "fr": "Ajouter une pièce à cette position",
     },
     "position.add_button": {
-        "ca": "Afegir peça", "es": "Añadir pieza", "en": "Add piece", "fr": "Ajouter une pièce",
+        "ca": "➕ Afegir peça", "es": "➕ Añadir pieza", "en": "➕ Add piece", "fr": "➕ Ajouter une pièce",
     },
     "position.delete_button": {
-        "ca": "Esborrar última peça", "es": "Borrar última pieza",
-        "en": "Delete last piece", "fr": "Supprimer la dernière pièce",
+        "ca": "🗑️ Esborrar última peça", "es": "🗑️ Borrar última pieza",
+        "en": "🗑️ Delete last piece", "fr": "🗑️ Supprimer la dernière pièce",
     },
     "position.move_button": {
-        "ca": "Moure peça visible a posició →", "es": "Mover pieza visible a posición →",
-        "en": "Move visible piece to position →", "fr": "Déplacer la pièce visible vers la position →",
+        "ca": "📤 Moure peça visible a posició →", "es": "📤 Mover pieza visible a posición →",
+        "en": "📤 Move visible piece to position →", "fr": "📤 Déplacer la pièce visible vers la position →",
     },
     "position.duplicate.title": {
         "ca": "Material duplicat", "es": "Material duplicado",
