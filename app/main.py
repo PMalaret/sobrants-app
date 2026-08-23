@@ -4,6 +4,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox
 
 from app import i18n
@@ -54,9 +55,25 @@ def _ensure_database(data_dir: Path) -> Path:
     return db_path
 
 
+def _app_icon() -> QIcon:
+    """Icona de l'app: el logotip (RIOU. Vidresif, sobre fons blanc) per a
+    mides grans, i el favicon (marca "R.") per a mides petites (barra de
+    tasques, títol de finestra), on el logotip sencer no es llegiria."""
+    assets_dir = Path(__file__).with_name("assets")
+    icon = QIcon()
+    favicon_path = assets_dir / "favicon.png"
+    logo_path = assets_dir / "app_icon.png"
+    if favicon_path.exists():
+        icon.addFile(str(favicon_path))
+    if logo_path.exists():
+        icon.addFile(str(logo_path))
+    return icon
+
+
 def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Sobrants")
+    app.setWindowIcon(_app_icon())
     style_path = Path(__file__).with_name("ui") / "style.qss"
     if style_path.exists():
         app.setStyleSheet(style_path.read_text(encoding="utf-8"))

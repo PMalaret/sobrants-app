@@ -32,6 +32,11 @@ from app.logic.repository import Repository, RuleViolation
 from app.logic.rules import quantity_change_kind
 from app.ui.search_dialog import SEARCH_COLORS
 
+# Mateix patró que a HistoricTab: el botó d'ordre actiu es queda amb
+# l'estil blau per defecte, l'inactiu s'atenua a gris.
+ACTIVE_SORT_STYLE = ""
+INACTIVE_SORT_STYLE = "background-color: #d8dae0; color: #444;"
+
 
 class DesmagatzemTab(QWidget):
     # Columna de la taula (Quantitat, Núm., Material, Mides, Carro/lot, Data)
@@ -44,6 +49,7 @@ class DesmagatzemTab(QWidget):
         super().__init__(parent)
         self.repo = repo
         self._search_state: dict[str, str] = {}
+        self.order_by = "date"  # per defecte: per data/hora ascendent
         self._build_ui()
         self.refresh()
 
@@ -90,6 +96,17 @@ class DesmagatzemTab(QWidget):
         form.addRow(self.add_button)
         layout.addWidget(form_box)
 
+        sort_row = QHBoxLayout()
+        sort_row.addWidget(QLabel(t("historic.sort_label")))
+        self.sort_date_button = QPushButton(t("historic.sort_date"))
+        self.sort_date_button.clicked.connect(lambda: self._set_order("date"))
+        self.sort_order_button = QPushButton(t("desmagatzem.sort_order"))
+        self.sort_order_button.clicked.connect(lambda: self._set_order("order"))
+        sort_row.addWidget(self.sort_date_button)
+        sort_row.addWidget(self.sort_order_button)
+        sort_row.addStretch()
+        layout.addLayout(sort_row)
+
         columns = self._columns()
         self.table = QTableWidget(0, len(columns))
         self.table.setAlternatingRowColors(True)
@@ -98,6 +115,8 @@ class DesmagatzemTab(QWidget):
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         layout.addWidget(self.table)
+
+        self._update_sort_buttons()
 
         qty_row = QHBoxLayout()
         qty_row.addWidget(QLabel(t("desmagatzem.new_qty_label")))
@@ -110,8 +129,17 @@ class DesmagatzemTab(QWidget):
         qty_row.addStretch()
         layout.addLayout(qty_row)
 
+    def _set_order(self, order_by: str):
+        self.order_by = order_by
+        self._update_sort_buttons()
+        self.refresh()
+
+    def _update_sort_buttons(self):
+        self.sort_date_button.setStyleSheet(ACTIVE_SORT_STYLE if self.order_by == "date" else INACTIVE_SORT_STYLE)
+        self.sort_order_button.setStyleSheet(ACTIVE_SORT_STYLE if self.order_by == "order" else INACTIVE_SORT_STYLE)
+
     def refresh(self):
-        rows = self.repo.list_desmagatzem()
+        rows = self.repo.list_desmagatzem(order_by=self.order_by)
         self._rows = rows
         self._row_ids = [r["id"] for r in rows]
         self.table.setRowCount(len(rows))

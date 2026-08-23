@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QGroupBox,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -100,10 +101,28 @@ class PositionPanel(QFrame):
         self.detail_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.detail_table.verticalHeader().setVisible(False)
         self.detail_table.verticalHeader().setDefaultSectionSize(18)
-        self.detail_table.horizontalHeader().setDefaultSectionSize(46)
         self.detail_table.setStyleSheet("font-size: 10px;")
-        self.detail_table.setFixedHeight(18 * 5 + 24)  # capçalera + fins a 5 files, mai més
+        # 5 files sempre visibles (el màxim possible per posició), mai
+        # scroll intern: capçalera + 5 files exactes, ni una més ni menys.
+        # Capçalera ~29px + files ~19px (mínim imposat per Qt segons la
+        # lletra, encara que es demanin 18) + marge de seguretat.
+        self.detail_table.setFixedHeight(29 + 19 * 5 + 6)
+        # Ordre/Núm./Mides/Notes/Entrada: ample inicial ajustat, però
+        # "Interactive" (l'usuari els pot canviar i es queden fixats).
+        # Material: s'estira perquè les columnes aprofitin tot l'ample
+        # que té el panell (que ja és el just i necessari).
+        detail_header = self.detail_table.horizontalHeader()
+        detail_widths = [32, 55, None, 62, 55, 90]
+        for col, width in enumerate(detail_widths):
+            if width is None:
+                detail_header.setSectionResizeMode(col, QHeaderView.Stretch)
+            else:
+                detail_header.setSectionResizeMode(col, QHeaderView.Interactive)
+                self.detail_table.setColumnWidth(col, width)
         layout.addWidget(self.detail_table)
+
+        # Botons compactes: menys padding que el QPushButton global.
+        compact_button_style = "padding: 2px 8px; font-size: 10px;"
 
         add_box = QGroupBox(t("position.add_box"))
         add_box.setStyleSheet("QGroupBox { font-size: 10px; }")
@@ -117,20 +136,27 @@ class PositionPanel(QFrame):
         add_layout.addRow(t("desmagatzem.field.code"), self.add_code)
         add_layout.addRow(t("desmagatzem.field.dimensions"), self.add_dims)
         add_layout.addRow(t("board.field.notes") + ":", self.add_notes)
-        self.add_button = QPushButton(t("position.add_button"))
-        self.add_button.clicked.connect(self._on_add_piece)
-        add_layout.addRow(self.add_button)
         layout.addWidget(add_box)
 
+        # Afegir peça i Esborrar última peça a la mateixa fila.
+        add_delete_row = QHBoxLayout()
+        add_delete_row.setSpacing(4)
+        self.add_button = QPushButton(t("position.add_button"))
+        self.add_button.setStyleSheet(compact_button_style)
+        self.add_button.clicked.connect(self._on_add_piece)
+        add_delete_row.addWidget(self.add_button)
         self.delete_button = QPushButton(t("position.delete_button"))
+        self.delete_button.setStyleSheet(compact_button_style)
         self.delete_button.clicked.connect(self._on_delete_last_piece)
-        layout.addWidget(self.delete_button)
+        add_delete_row.addWidget(self.delete_button)
+        layout.addLayout(add_delete_row)
 
         move_row = QHBoxLayout()
         move_row.setSpacing(3)
         self.move_target = QSpinBox()
         self.move_target.setRange(1, 61)
         self.move_button = QPushButton(t("position.move_button"))
+        self.move_button.setStyleSheet(compact_button_style)
         self.move_button.clicked.connect(self._on_move_piece)
         move_row.addWidget(self.move_button, 1)
         move_row.addWidget(self.move_target)

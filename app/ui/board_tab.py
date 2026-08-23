@@ -18,7 +18,7 @@ llegenda de colors viu a la barra d'estat de la finestra
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QPen
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QSizePolicy,
+    QStyledItemDelegate,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -57,6 +58,42 @@ def _position_to_cell(position: int) -> tuple[int, int]:
         if start <= position < start + count:
             return position - start, block_idx * FIELDS_PER_BLOCK
     raise ValueError(f"Posició fora de rang: {position}")
+
+
+class _BoardGridDelegate(QStyledItemDelegate):
+    """Vores extra per llegir la graella d'un cop d'ull:
+    - Vora esquerra més gruixuda a la columna "Posició" de cada bloc (marca
+      on comença cada bloc de 5 camps).
+    - Vora inferior una mica gruixuda (menys que l'anterior) cada 5 files,
+      per poder comptar posicions de 5 en 5 sense haver de mirar el número.
+    """
+
+    _LEFT_COLOR = QColor("#6b7280")
+    _LEFT_WIDTH = 3
+    _BOTTOM_COLOR = QColor("#9aa0a8")
+    _BOTTOM_WIDTH = 2
+
+    def __init__(self, position_columns: set[int], parent=None):
+        super().__init__(parent)
+        self._position_columns = position_columns
+
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+        rect = option.rect
+        painter.save()
+        if index.column() in self._position_columns:
+            pen = QPen(self._LEFT_COLOR)
+            pen.setWidth(self._LEFT_WIDTH)
+            painter.setPen(pen)
+            x = rect.left()
+            painter.drawLine(x, rect.top(), x, rect.bottom())
+        if (index.row() + 1) % 5 == 0:
+            pen = QPen(self._BOTTOM_COLOR)
+            pen.setWidth(self._BOTTOM_WIDTH)
+            painter.setPen(pen)
+            y = rect.bottom()
+            painter.drawLine(rect.left(), y, rect.right(), y)
+        painter.restore()
 
 
 class BoardTab(QWidget):
@@ -98,6 +135,7 @@ class BoardTab(QWidget):
         self.table.setMaximumHeight(exact_height)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self._configure_column_widths()
+        self.table.setItemDelegate(_BoardGridDelegate(self._POSITION_COLUMNS, self.table))
 
         # Panell de detall incrustat DINS de la taula, a l'espai en blanc
         # del 3r bloc (sota la posició 61, a la dreta de tot). setSpan fon
@@ -113,13 +151,19 @@ class BoardTab(QWidget):
 
         # Buscador abaix a la dreta, igual que el bloc de cerca (M19:O24)
         # de Hoja1, que quedava a sota i a la dreta del tauler de posicions.
+        # Botons compactes (padding reduït respecte al QPushButton global):
+        # aquesta fila no necessita l'alçada dels botons grans d'acció.
+        _compact_button_style = "padding: 2px 12px; font-size: 12px;"
         search_row = QHBoxLayout()
+        search_row.setContentsMargins(0, 0, 0, 0)
         search_row.addStretch()
         self.clear_search_button = QPushButton(t("board.clear_search"))
+        self.clear_search_button.setStyleSheet(_compact_button_style)
         self.clear_search_button.clicked.connect(self._clear_search)
         self.clear_search_button.setEnabled(False)
         search_row.addWidget(self.clear_search_button)
         self.search_button = QPushButton(t("board.search_button"))
+        self.search_button.setStyleSheet(_compact_button_style)
         self.search_button.clicked.connect(self._open_search_dialog)
         search_row.addWidget(self.search_button)
         layout.addLayout(search_row)
@@ -137,16 +181,19 @@ class BoardTab(QWidget):
 
     def _configure_column_widths(self):
         header = self.table.horizontalHeader()
-        # Posició, Núm., Mides, Notes: ample fix i compacte.
+        # Posició, Núm., Mides, Notes: ample inicial compacte però
+        # "Interactive" — l'usuari les pot eixamplar/estrènyer arrossegant
+        # la vora, i l'ample que triï es queda fixat (Qt no el reinicia
+        # sol; refresh_board() no torna a cridar aquest mètode).
         # Material: s'estira per aprofitar l'espai sobrant de la pantalla.
-        fixed_widths = [46, 62, None, 80, 70]
+        initial_widths = [46, 62, None, 80, 70]
         for block_idx in range(len(BLOCKS)):
-            for field_idx, width in enumerate(fixed_widths):
+            for field_idx, width in enumerate(initial_widths):
                 col = block_idx * FIELDS_PER_BLOCK + field_idx
                 if width is None:
                     header.setSectionResizeMode(col, QHeaderView.Stretch)
                 else:
-                    header.setSectionResizeMode(col, QHeaderView.Fixed)
+                    header.setSectionResizeMode(col, QHeaderView.Interactive)
                     self.table.setColumnWidth(col, width)
 
     def build_legend_widget(self) -> QWidget:

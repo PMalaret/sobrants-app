@@ -10,6 +10,8 @@ a = Analysis(
     datas=[
         ('app/data/schema.sql', 'app/data'),
         ('app/ui/style.qss', 'app/ui'),
+        ('app/assets/favicon.png', 'app/assets'),
+        ('app/assets/app_icon.png', 'app/assets'),
     ],
     hiddenimports=[],
     hookspath=[],
@@ -39,5 +41,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,
+    icon='app/assets/app_icon.ico',
 )
