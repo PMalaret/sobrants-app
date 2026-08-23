@@ -132,6 +132,9 @@ class PositionPanel(QFrame):
 
         # Botons compactes: menys padding que el QPushButton global.
         compact_button_style = "padding: 2px 8px; font-size: 10px;"
+        # Afegir peça / Esborrar última peça: lletra una mica més gran que
+        # la resta de botons compactes d'aquest panell.
+        add_delete_style = "padding: 3px 8px; font-size: 11px;"
 
         add_box = QGroupBox(t("position.add_box"))
         add_box.setStyleSheet("QGroupBox { font-size: 10px; }")
@@ -147,18 +150,18 @@ class PositionPanel(QFrame):
         add_layout.addRow(t("board.field.notes") + ":", self.add_notes)
         layout.addWidget(add_box)
 
-        # Afegir peça i Esborrar última peça a la mateixa fila.
-        add_delete_row = QHBoxLayout()
-        add_delete_row.setSpacing(4)
+        # Afegir peça i Esborrar última peça en dues línies, una sota l'altra.
+        add_delete_col = QVBoxLayout()
+        add_delete_col.setSpacing(3)
         self.add_button = QPushButton(t("position.add_button"))
-        self.add_button.setStyleSheet(compact_button_style)
+        self.add_button.setStyleSheet(add_delete_style)
         self.add_button.clicked.connect(self._on_add_piece)
-        add_delete_row.addWidget(self.add_button)
+        add_delete_col.addWidget(self.add_button)
         self.delete_button = QPushButton(t("position.delete_button"))
-        self.delete_button.setStyleSheet(compact_button_style)
+        self.delete_button.setStyleSheet(add_delete_style)
         self.delete_button.clicked.connect(self._on_delete_last_piece)
-        add_delete_row.addWidget(self.delete_button)
-        layout.addLayout(add_delete_row)
+        add_delete_col.addWidget(self.delete_button)
+        layout.addLayout(add_delete_col)
 
         move_row = QHBoxLayout()
         move_row.setSpacing(3)

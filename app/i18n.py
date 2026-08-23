@@ -207,7 +207,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     # -- Tauler ------------------------------------------------------------ #
     "board.field.position": {"ca": "Pos.", "es": "Pos.", "en": "Pos.", "fr": "Pos."},
     "board.field.code": {
-        "ca": "Núm. material", "es": "Núm. material", "en": "Material no.", "fr": "N° matériau",
+        "ca": "Núm.", "es": "Núm.", "en": "No.", "fr": "N°",
     },
     "board.field.material": {"ca": "Material", "es": "Material", "en": "Material", "fr": "Matériau"},
     "board.field.dimensions": {"ca": "Mides", "es": "Medidas", "en": "Dimensions", "fr": "Dimensions"},

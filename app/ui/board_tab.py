@@ -164,8 +164,9 @@ class BoardTab(QWidget):
         # Botons de cerca reubicats dins del panell de detall (a sota de
         # tot, separats amb una línia divisòria), no en una fila a part
         # sota la taula — així la taula arriba fins a la barra d'estat.
-        # Botons compactes (padding reduït respecte al QPushButton global).
-        _compact_button_style = "padding: 2px 12px; font-size: 12px;"
+        # Text una mica més gran que abans, però sense eixamplar la
+        # secció: el padding horitzontal es queda igual de contingut.
+        _compact_button_style = "padding: 3px 10px; font-size: 14px;"
         search_row = QHBoxLayout()
         search_row.setContentsMargins(0, 0, 0, 0)
         search_row.addStretch()
