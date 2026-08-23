@@ -13,6 +13,7 @@ from PySide6.QtCore import QMarginsF, QSizeF
 from PySide6.QtGui import QPageLayout, QPageSize, QTextDocument
 from PySide6.QtPrintSupport import QPrinter
 
+from app.i18n import t
 from app.logic.repository import Repository
 
 
@@ -42,7 +43,14 @@ def export_board_pdf(repo: Repository, dest_path: str) -> None:
         [b["position"], b["material_code"] or "", b["material_desc"] or "", b["dimensions"] or "", b["notes"] or ""]
         for b in board
     ]
-    html = _html_table("Tauler de sobrants", ["Posició", "Núm.", "Material", "Mides", "Notes"], rows)
+    headers = [
+        t("export.col.position"),
+        t("export.col.code"),
+        t("export.col.material"),
+        t("export.col.dimensions"),
+        t("export.col.notes"),
+    ]
+    html = _html_table(t("export.board.title"), headers, rows)
     _print_html_to_pdf(html, dest_path, landscape=True)
 
 
@@ -52,7 +60,14 @@ def export_desmagatzem_pdf(repo: Repository, dest_path: str) -> None:
         [r["quantity"], r["material_code"], r["material_desc"] or "", r["dimensions"] or "", r["cart_ref"] or ""]
         for r in rows_data
     ]
-    html = _html_table("Desmagatzem", ["Quant.", "Núm.", "Material", "Mides", "Carro/lot"], rows)
+    headers = [
+        t("export.col.quantity"),
+        t("export.col.code"),
+        t("export.col.material"),
+        t("export.col.dimensions"),
+        t("export.col.cart"),
+    ]
+    html = _html_table(t("export.desmagatzem.title"), headers, rows)
     _print_html_to_pdf(html, dest_path, landscape=False)
 
 
@@ -77,10 +92,14 @@ def covered_materials_report_text(repo: Repository) -> str:
     """Informe 'Materials tapats': text per mostrar en un diàleg de l'app."""
     covered = repo.covered_materials_report()
     now = datetime.now().strftime("%d/%m/%Y %H:%M")
-    lines = [f"MATERIALS TAPATS — {now}", "", f"{'Posició':<10}{'Núm.':<10}{'Material'}"]
+    lines = [
+        f"{t('report.covered.title')} — {now}",
+        "",
+        f"{t('export.col.position'):<10}{t('export.col.code'):<10}{t('export.col.material')}",
+    ]
     lines.append("-" * 70)
     if not covered:
-        lines.append("(No s'han detectat materials tapats)")
+        lines.append(t("report.covered.empty"))
     for c in covered:
         lines.append(f"{c['position']:<10}{c['material_code'] or '':<10}{c['material_desc'] or ''}")
     return "\n".join(lines)

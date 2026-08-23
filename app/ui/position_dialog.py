@@ -13,18 +13,17 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QMessageBox,
     QPushButton,
     QSpinBox,
-    QLineEdit,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
 )
 
+from app.i18n import t
 from app.logic.repository import DuplicateMaterialError, PositionFullError, Repository, RuleViolation
-
-DETAIL_COLUMNS = ["Ordre", "Núm. material", "Material", "Mides", "Notes", "Entrada"]
 
 
 class PositionDialog(QDialog):
@@ -37,7 +36,7 @@ class PositionDialog(QDialog):
         super().__init__(parent)
         self.repo = repo
         self.position = position
-        self.setWindowTitle(f"Posició {position}")
+        self.setWindowTitle(t("position.title", position=position))
         self.setMinimumWidth(560)
         self._build_ui()
         self.refresh()
@@ -45,38 +44,46 @@ class PositionDialog(QDialog):
     def _build_ui(self):
         layout = QVBoxLayout(self)
 
-        self.title_label = QLabel(f"Posició {self.position} — fins a 5 peces")
+        self.title_label = QLabel(t("position.subtitle", position=self.position))
         self.title_label.setStyleSheet("font-weight: 600; font-size: 14px;")
         layout.addWidget(self.title_label)
 
-        self.detail_table = QTableWidget(0, len(DETAIL_COLUMNS))
-        self.detail_table.setHorizontalHeaderLabels(DETAIL_COLUMNS)
+        detail_columns = [
+            t("position.detail.order"),
+            t("board.field.code"),
+            t("board.field.material"),
+            t("board.field.dimensions"),
+            t("board.field.notes"),
+            t("position.detail.entered"),
+        ]
+        self.detail_table = QTableWidget(0, len(detail_columns))
+        self.detail_table.setHorizontalHeaderLabels(detail_columns)
         self.detail_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.detail_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         layout.addWidget(self.detail_table)
 
-        add_box = QGroupBox("Afegir peça a aquesta posició")
+        add_box = QGroupBox(t("position.add_box"))
         add_layout = QFormLayout(add_box)
         self.add_code = QSpinBox()
         self.add_code.setRange(0, 99999)
         self.add_dims = QLineEdit()
         self.add_notes = QLineEdit()
-        add_layout.addRow("Núm. material:", self.add_code)
-        add_layout.addRow("Mides:", self.add_dims)
-        add_layout.addRow("Notes:", self.add_notes)
-        self.add_button = QPushButton("Afegir peça")
+        add_layout.addRow(t("desmagatzem.field.code"), self.add_code)
+        add_layout.addRow(t("desmagatzem.field.dimensions"), self.add_dims)
+        add_layout.addRow(t("board.field.notes") + ":", self.add_notes)
+        self.add_button = QPushButton(t("position.add_button"))
         self.add_button.clicked.connect(self._on_add_piece)
         add_layout.addRow(self.add_button)
         layout.addWidget(add_box)
 
         actions = QHBoxLayout()
-        self.delete_button = QPushButton("Esborrar última peça")
+        self.delete_button = QPushButton(t("position.delete_button"))
         self.delete_button.clicked.connect(self._on_delete_last_piece)
         actions.addWidget(self.delete_button)
 
         self.move_target = QSpinBox()
         self.move_target.setRange(1, 61)
-        self.move_button = QPushButton("Moure peça visible a posició →")
+        self.move_button = QPushButton(t("position.move_button"))
         self.move_button.clicked.connect(self._on_move_piece)
         actions.addWidget(self.move_button)
         actions.addWidget(self.move_target)
@@ -84,7 +91,7 @@ class PositionDialog(QDialog):
 
         close_row = QHBoxLayout()
         close_row.addStretch()
-        close_button = QPushButton("Tancar")
+        close_button = QPushButton(t("common.close"))
         close_button.clicked.connect(self.close)
         close_row.addWidget(close_button)
         layout.addLayout(close_row)
@@ -114,22 +121,23 @@ class PositionDialog(QDialog):
         except DuplicateMaterialError as exc:
             resp = QMessageBox.question(
                 self,
-                "Material duplicat",
-                "Aquest material ja és a la(les) posició(ns): "
-                + ", ".join(str(p) for p in exc.positions)
-                + "\n\nConfirmes afegir-lo de totes maneres?",
+                t("position.duplicate.title"),
+                t(
+                    "position.duplicate.text",
+                    positions=", ".join(str(p) for p in exc.positions),
+                ),
                 QMessageBox.Yes | QMessageBox.No,
             )
             if resp == QMessageBox.Yes:
                 try:
                     self.repo.add_piece(self.position, code, dims, notes, confirm_duplicate=True)
                 except RuleViolation as exc2:
-                    QMessageBox.critical(self, "Error", str(exc2))
+                    QMessageBox.critical(self, t("common.error"), str(exc2))
                     return
             else:
                 return
         except (PositionFullError, RuleViolation) as exc:
-            QMessageBox.critical(self, "No es pot afegir", str(exc))
+            QMessageBox.critical(self, t("position.cannot_add"), str(exc))
             return
 
         self.add_code.setValue(0)
@@ -141,14 +149,18 @@ class PositionDialog(QDialog):
     def _on_delete_last_piece(self):
         detail = self.repo.get_position_detail(self.position)
         if not detail:
-            QMessageBox.information(self, "Sense peces", "Aquesta posició està buida.")
+            QMessageBox.information(self, t("position.no_pieces.title"), t("position.no_pieces.text"))
             return
         last = max(detail, key=lambda p: p["slot"])
         resp = QMessageBox.question(
             self,
-            "Confirmar esborrat",
-            f"Segur que vols esborrar la posició {self.position}?\n\n"
-            f"Núm. {last['material_code']} — {last['material_desc']}",
+            t("position.confirm_delete.title"),
+            t(
+                "position.confirm_delete.text",
+                position=self.position,
+                code=last["material_code"],
+                desc=last["material_desc"],
+            ),
             QMessageBox.Yes | QMessageBox.No,
         )
         if resp != QMessageBox.Yes:
@@ -156,7 +168,7 @@ class PositionDialog(QDialog):
         try:
             self.repo.delete_piece(self.position, last["slot"])
         except RuleViolation as exc:
-            QMessageBox.critical(self, "No es pot esborrar", str(exc))
+            QMessageBox.critical(self, t("position.cannot_delete"), str(exc))
             return
         self.refresh()
         self.changed.emit()
@@ -166,13 +178,18 @@ class PositionDialog(QDialog):
         try:
             result = self.repo.move_piece(self.position, target)
         except RuleViolation as exc:
-            QMessageBox.critical(self, "No es pot moure", str(exc))
+            QMessageBox.critical(self, t("position.cannot_move"), str(exc))
             return
         QMessageBox.information(
             self,
-            "Peça moguda",
-            f"Material {result['piece']['material_code']} — {result['piece']['material_desc']}\n"
-            f"traslladada de la posició {self.position} a la {target}.",
+            t("position.moved.title"),
+            t(
+                "position.moved.text",
+                code=result["piece"]["material_code"],
+                desc=result["piece"]["material_desc"],
+                from_pos=self.position,
+                to_pos=target,
+            ),
         )
         self.refresh()
         self.changed.emit()

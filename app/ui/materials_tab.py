@@ -12,9 +12,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.i18n import t
 from app.logic.repository import Repository
-
-COLUMNS = ["Núm. material", "Descripció"]
 
 
 class MaterialsTab(QWidget):
@@ -28,16 +27,17 @@ class MaterialsTab(QWidget):
         layout = QVBoxLayout(self)
 
         search_row = QHBoxLayout()
-        search_row.addWidget(QLabel("Cercar:"))
+        search_row.addWidget(QLabel(t("materials.search_label")))
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Núm. o part de la descripció")
+        self.search.setPlaceholderText(t("materials.search_placeholder"))
         self.search.textChanged.connect(self.refresh)
         search_row.addWidget(self.search)
         layout.addLayout(search_row)
 
-        self.table = QTableWidget(0, len(COLUMNS))
+        columns = [t("materials.col.code"), t("materials.col.description")]
+        self.table = QTableWidget(0, len(columns))
         self.table.setAlternatingRowColors(True)
-        self.table.setHorizontalHeaderLabels(COLUMNS)
+        self.table.setHorizontalHeaderLabels(columns)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         layout.addWidget(self.table)

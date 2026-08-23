@@ -6,7 +6,9 @@ K:O), perquè les 61 posicions es vegin totes alhora sense fer scroll i
 la taula ocupi tot l'ample disponible.
 
 La cerca i el detall d'una posició (abans panells fixos) ara són un botó
-+ diàleg, per deixar tot l'ample per a la taula.
++ diàleg, per deixar tot l'ample per a la taula. La llegenda de colors
+viu a la barra d'estat de la finestra (`build_legend_widget`), per no
+robar espai vertical a la taula.
 """
 from __future__ import annotations
 
@@ -24,16 +26,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.i18n import t
 from app.logic.repository import Repository
 from app.ui.position_dialog import PositionDialog
 from app.ui.search_dialog import SearchDialog
 
-FIELD_LABELS = ["Posició", "Núm. material", "Material", "Mides", "Notes"]
-
 # (posició inicial, nombre de posicions) de cada bloc de columnes, igual que
 # els blocs A/F/K de Hoja1.
 BLOCKS = [(1, 27), (28, 27), (55, 7)]
-FIELDS_PER_BLOCK = len(FIELD_LABELS)
+FIELDS_PER_BLOCK = 5
 TABLE_ROWS = max(count for _start, count in BLOCKS)
 
 
@@ -58,12 +59,19 @@ class BoardTab(QWidget):
     def _build_ui(self):
         layout = QVBoxLayout(self)
 
-        hint = QLabel("Doble clic sobre una posició per veure'n el detall, afegir o moure peces")
+        hint = QLabel(t("board.hint"))
         hint.setStyleSheet("color: #666;")
         layout.addWidget(hint)
 
+        field_labels = [
+            t("board.field.position"),
+            t("board.field.code"),
+            t("board.field.material"),
+            t("board.field.dimensions"),
+            t("board.field.notes"),
+        ]
         self.table = QTableWidget(TABLE_ROWS, FIELDS_PER_BLOCK * len(BLOCKS))
-        self.table.setHorizontalHeaderLabels(FIELD_LABELS * len(BLOCKS))
+        self.table.setHorizontalHeaderLabels(field_labels * len(BLOCKS))
         self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -76,17 +84,16 @@ class BoardTab(QWidget):
         self.table.setMinimumHeight(TABLE_ROWS * 22 + 44)
         self._configure_column_widths()
         layout.addWidget(self.table)
-        layout.addWidget(self._build_legend())
 
         # Buscador abaix a la dreta, igual que el bloc de cerca (M19:O24)
         # de Hoja1, que quedava a sota i a la dreta del tauler de posicions.
         search_row = QHBoxLayout()
         search_row.addStretch()
-        self.clear_search_button = QPushButton("Netejar cerca")
+        self.clear_search_button = QPushButton(t("board.clear_search"))
         self.clear_search_button.clicked.connect(self._clear_search)
         self.clear_search_button.setEnabled(False)
         search_row.addWidget(self.clear_search_button)
-        self.search_button = QPushButton("🔍  Cercar…")
+        self.search_button = QPushButton(t("board.search_button"))
         self.search_button.clicked.connect(self._open_search_dialog)
         search_row.addWidget(self.search_button)
         layout.addLayout(search_row)
@@ -110,31 +117,31 @@ class BoardTab(QWidget):
                     header.setSectionResizeMode(col, QHeaderView.Fixed)
                     self.table.setColumnWidth(col, width)
 
-    def _build_legend(self) -> QWidget:
-        """Llegenda de l'escala de color per ocupació (columna 'Posició')."""
+    def build_legend_widget(self) -> QWidget:
+        """Llegenda de l'escala de color per ocupació, per posar-la a la
+        barra d'estat de la finestra (no ocupa espai damunt la taula)."""
         legend = QWidget()
         row = QHBoxLayout(legend)
         row.setContentsMargins(0, 0, 0, 0)
-        row.addWidget(QLabel("Ocupació:"))
+        row.addWidget(QLabel(f"{t('legend.title')}:"))
         steps = [
-            ("#FFFFFF", "1 peça"),
+            ("#FFFFFF", t("legend.piece_1")),
             ("#FFF2CC", "2"),
             ("#C6E0B4", "3"),
             ("#B4C6E7", "4"),
-            ("#FF0000", "5 (plena)"),
+            ("#FF0000", t("legend.piece_5")),
         ]
         for color, text in steps:
-            swatch = QLabel(f"  {text}  ")
+            swatch = QLabel(f" {text} ")
             swatch.setStyleSheet(
                 f"background-color: {color}; border: 1px solid #999; border-radius: 3px;"
                 + ("color: white;" if color == "#FF0000" else "color: black;")
             )
             row.addWidget(swatch)
-        row.addSpacing(16)
-        warn = QLabel("Text vermell = material diferent barrejat a la posició")
+        row.addSpacing(12)
+        warn = QLabel(t("legend.warning"))
         warn.setStyleSheet("color: #c62828;")
         row.addWidget(warn)
-        row.addStretch()
         return legend
 
     # ------------------------------------------------------------------ #
@@ -171,7 +178,7 @@ class BoardTab(QWidget):
                 if entry["inconsistent"]:
                     if field_idx != 0:
                         item.setForeground(QColor("#c62828"))
-                    item.setToolTip("Aquesta posició té més d'un material diferent entre les seves peces.")
+                    item.setToolTip(t("board.tooltip.inconsistent"))
                 elif field_idx == 2 and entry["material_desc"]:
                     item.setToolTip(entry["material_desc"])
                 self.table.setItem(row, col0 + field_idx, item)
@@ -225,9 +232,9 @@ class BoardTab(QWidget):
             return
         result = self.repo.search(text, mode=mode)
         oldest = result["oldest_position"]
-        label = f"{result['count']} coincidència(es) · més antiga: posc. {oldest if oldest else '—'}"
+        label = t("board.search_result", count=result["count"], oldest=oldest if oldest else "—")
         if result["desmagatzem_qty"]:
-            label += f" · {result['desmagatzem_qty']} ud(s) a Desmagatzem"
+            label += t("board.search_result_desmagatzem", qty=result["desmagatzem_qty"])
         if update_label:
             self._search_dialog.set_result_text(mode, label)
         positions = {m["position"] for m in result["matches"]}

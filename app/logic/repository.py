@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from . import rules
+from app.i18n import t
 
 BOARD_POSITIONS = range(1, 62)  # 61 posicions, igual que Hoja1 (A2:A28, F2:F28, K2:K8)
 
@@ -25,7 +26,7 @@ class DuplicateMaterialError(Exception):
 
     def __init__(self, positions: list[int]):
         self.positions = positions
-        super().__init__(f"Material duplicat a les posicions: {positions}")
+        super().__init__(t("err.duplicate_material", positions=positions))
 
 
 class PositionFullError(RuleViolation):
@@ -125,7 +126,7 @@ class Repository:
             de confirmar-ho amb l'usuari, igual que el MsgBox OK/Cancel original).
         """
         if not rules.is_valid_material_code(material_code):
-            raise RuleViolation("Entrada incorrecta. Només s'admeten números entre 0 i 99999.")
+            raise RuleViolation(t("err.invalid_material_code"))
         material_code = int(material_code)
 
         existing = self.get_position_detail(position)
@@ -135,7 +136,7 @@ class Repository:
         except ValueError as exc:
             raise RuleViolation(str(exc)) from exc
         if slot is None:
-            raise PositionFullError("MOVIMENT IMPOSIBLE: POSICIÓ PLENA")
+            raise PositionFullError(t("err.position_full"))
 
         if not confirm_duplicate:
             dups = self.check_duplicate(position, material_code)
@@ -163,7 +164,7 @@ class Repository:
         existing = self.get_position_detail(position)
         filled_slots = [p["slot"] for p in existing]
         if not rules.can_delete_slot(filled_slots, slot):
-            raise RuleViolation("ORDRE INCORRECTE: només es pot esborrar l'última peça de la posició.")
+            raise RuleViolation(t("err.wrong_delete_order"))
 
         piece = next(p for p in existing if p["slot"] == slot)
         self.conn.execute("DELETE FROM pieces WHERE position = ? AND slot = ?", (position, slot))
@@ -181,12 +182,12 @@ class Repository:
         d'històric (⇒⇒ origen / ⇐⇐ destí).
         """
         if from_position == to_position:
-            raise RuleViolation("NO ES POT MOURE ELL MATEIX")
+            raise RuleViolation(t("err.cannot_move_to_self"))
 
         pieces = self.get_position_detail(from_position)
         piece = rules.board_summary_piece(pieces)
         if piece is None:
-            raise RuleViolation("No hi ha cap peça per moure en aquesta posició.")
+            raise RuleViolation(t("err.no_piece_to_move"))
 
         dest_existing = self.get_position_detail(to_position)
         dest_filled = [p["slot"] for p in dest_existing]
@@ -195,7 +196,7 @@ class Repository:
         except ValueError as exc:
             raise RuleViolation(str(exc)) from exc
         if dest_slot is None:
-            raise PositionFullError("MOVIMENT IMPOSIBLE: POSICIÓ PLENA")
+            raise PositionFullError(t("err.position_full"))
 
         # Treu la peça de l'origen i renumera els slots restants per no deixar forats
         self.conn.execute(
@@ -355,12 +356,12 @@ class Repository:
     ) -> dict:
         """Nova línia de retirada (CercaMaterialIMarcaHist + Worksheet_Change desmagatzem)."""
         if not rules.is_valid_desmagatzem_qty(quantity):
-            raise RuleViolation("Només s'admeten quantitats entre 0 i 20.")
+            raise RuleViolation(t("err.invalid_quantity"))
 
         code_str = str(material_code)
         if code_str == str(rules.CUSTOM_MATERIAL_SENTINEL):
             if not custom_text:
-                raise RuleViolation("Escriu un material no registrat.")
+                raise RuleViolation(t("err.unregistered_material_text"))
             desc = custom_text
         else:
             desc = self.lookup_material(int(material_code))
@@ -386,10 +387,10 @@ class Repository:
         (equivalent al MsgBox Sí/No de l'original).
         """
         if not rules.is_valid_desmagatzem_qty(new_qty):
-            raise RuleViolation("Només s'admeten quantitats entre 0 i 20.")
+            raise RuleViolation(t("err.invalid_quantity"))
         row = self.conn.execute("SELECT * FROM desmagatzem WHERE id = ?", (row_id,)).fetchone()
         if row is None:
-            raise RuleViolation("Línia de desmagatzem no trobada.")
+            raise RuleViolation(t("err.desmagatzem_row_not_found"))
 
         change = rules.quantity_change_kind(row["quantity"], new_qty)
         if change is None:

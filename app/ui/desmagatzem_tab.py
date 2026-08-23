@@ -18,16 +18,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.i18n import t
 from app.logic.repository import Repository, RuleViolation
 from app.logic.rules import quantity_change_kind
-
-COLUMNS = ["Quantitat", "Núm. material", "Material", "Mides", "Carro/lot", "Data/hora"]
-
-CONFIRM_TEXT = {
-    "increase": "Confirmes augmentar la quantitat? Es registrarà a l'històric.",
-    "decrease": "Confirmes disminuir la quantitat? Es registrarà a l'històric.",
-    "delete": "La quantitat queda a 0: confirmes esborrar la línia? Es registrarà la baixa a l'històric.",
-}
 
 
 class DesmagatzemTab(QWidget):
@@ -37,46 +30,64 @@ class DesmagatzemTab(QWidget):
         self._build_ui()
         self.refresh()
 
+    def _columns(self):
+        return [
+            t("desmagatzem.col.quantity"),
+            t("desmagatzem.col.code"),
+            t("desmagatzem.col.material"),
+            t("desmagatzem.col.dimensions"),
+            t("desmagatzem.col.cart"),
+            t("desmagatzem.col.datetime"),
+        ]
+
+    def _confirm_text(self):
+        return {
+            "increase": t("desmagatzem.confirm.increase"),
+            "decrease": t("desmagatzem.confirm.decrease"),
+            "delete": t("desmagatzem.confirm.delete"),
+        }
+
     def _build_ui(self):
         layout = QVBoxLayout(self)
 
-        form_box = QGroupBox("Nova retirada")
+        form_box = QGroupBox(t("desmagatzem.form_title"))
         form = QFormLayout(form_box)
         self.code_input = QLineEdit()
-        self.code_input.setPlaceholderText("Núm. de material (utilitza '1' per a material no registrat)")
+        self.code_input.setPlaceholderText(t("desmagatzem.code_placeholder"))
         self.custom_text_input = QLineEdit()
-        self.custom_text_input.setPlaceholderText("Només si el núm. és 1: descriu el material")
+        self.custom_text_input.setPlaceholderText(t("desmagatzem.custom_placeholder"))
         self.qty_input = QSpinBox()
         self.qty_input.setRange(0, 20)
         self.dims_input = QLineEdit()
         self.cart_input = QLineEdit()
-        self.cart_input.setPlaceholderText("p.ex. carro 88000")
+        self.cart_input.setPlaceholderText(t("desmagatzem.cart_placeholder"))
 
-        form.addRow("Núm. material:", self.code_input)
-        form.addRow("Material (si núm. = 1):", self.custom_text_input)
-        form.addRow("Quantitat:", self.qty_input)
-        form.addRow("Mides:", self.dims_input)
-        form.addRow("Carro/lot:", self.cart_input)
+        form.addRow(t("desmagatzem.field.code"), self.code_input)
+        form.addRow(t("desmagatzem.field.custom"), self.custom_text_input)
+        form.addRow(t("desmagatzem.field.quantity"), self.qty_input)
+        form.addRow(t("desmagatzem.field.dimensions"), self.dims_input)
+        form.addRow(t("desmagatzem.field.cart"), self.cart_input)
 
-        self.add_button = QPushButton("Registrar retirada")
+        self.add_button = QPushButton(t("desmagatzem.add_button"))
         self.add_button.clicked.connect(self._on_add_row)
         form.addRow(self.add_button)
         layout.addWidget(form_box)
 
-        self.table = QTableWidget(0, len(COLUMNS))
+        columns = self._columns()
+        self.table = QTableWidget(0, len(columns))
         self.table.setAlternatingRowColors(True)
-        self.table.setHorizontalHeaderLabels(COLUMNS)
+        self.table.setHorizontalHeaderLabels(columns)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         layout.addWidget(self.table)
 
         qty_row = QHBoxLayout()
-        qty_row.addWidget(QLabel("Nova quantitat per a la línia seleccionada:"))
+        qty_row.addWidget(QLabel(t("desmagatzem.new_qty_label")))
         self.new_qty_input = QSpinBox()
         self.new_qty_input.setRange(0, 20)
         qty_row.addWidget(self.new_qty_input)
-        self.update_qty_button = QPushButton("Aplicar canvi de quantitat")
+        self.update_qty_button = QPushButton(t("desmagatzem.apply_qty"))
         self.update_qty_button.clicked.connect(self._on_update_qty)
         qty_row.addWidget(self.update_qty_button)
         qty_row.addStretch()
@@ -107,7 +118,7 @@ class DesmagatzemTab(QWidget):
     def _on_add_row(self):
         code = self.code_input.text().strip()
         if not code:
-            QMessageBox.warning(self, "Falta el núm. de material", "Indica el núm. de material.")
+            QMessageBox.warning(self, t("desmagatzem.missing_code.title"), t("desmagatzem.missing_code.text"))
             return
         custom_text = self.custom_text_input.text().strip() or None
         try:
@@ -119,7 +130,7 @@ class DesmagatzemTab(QWidget):
                 custom_text=custom_text,
             )
         except RuleViolation as exc:
-            QMessageBox.critical(self, "No es pot registrar", str(exc))
+            QMessageBox.critical(self, t("desmagatzem.cannot_register"), str(exc))
             return
         self.code_input.clear()
         self.custom_text_input.clear()
@@ -131,7 +142,7 @@ class DesmagatzemTab(QWidget):
     def _on_update_qty(self):
         row_id = self._selected_row_id()
         if row_id is None:
-            QMessageBox.warning(self, "Sense selecció", "Selecciona primer una línia de la taula.")
+            QMessageBox.warning(self, t("desmagatzem.no_selection.title"), t("desmagatzem.no_selection.text"))
             return
         new_qty = self.new_qty_input.value()
 
@@ -142,13 +153,13 @@ class DesmagatzemTab(QWidget):
         if change is None:
             return
         resp = QMessageBox.question(
-            self, "Confirmar", CONFIRM_TEXT[change], QMessageBox.Yes | QMessageBox.No
+            self, t("common.confirm"), self._confirm_text()[change], QMessageBox.Yes | QMessageBox.No
         )
         if resp != QMessageBox.Yes:
             return
         try:
             self.repo.update_desmagatzem_quantity(row_id, new_qty)
         except RuleViolation as exc:
-            QMessageBox.critical(self, "Error", str(exc))
+            QMessageBox.critical(self, t("common.error"), str(exc))
             return
         self.refresh()

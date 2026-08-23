@@ -10,6 +10,8 @@ import unicodedata
 from dataclasses import dataclass
 from datetime import datetime
 
+from app.i18n import t
+
 MAX_SLOTS = 5
 MATERIAL_CODE_MIN, MATERIAL_CODE_MAX = 0, 99999
 DESMAGATZEM_QTY_MIN, DESMAGATZEM_QTY_MAX = 0, 20
@@ -55,7 +57,7 @@ def next_free_slot(filled_slots: list[int]) -> int | None:
     filled = sorted(filled_slots)
     expected = list(range(1, len(filled) + 1))
     if filled != expected:
-        raise ValueError("Els forats de la posició estan corromputs (han de ser consecutius des d'1)")
+        raise ValueError(t("err.corrupt_slots"))
     if len(filled) >= MAX_SLOTS:
         return None
     return len(filled) + 1

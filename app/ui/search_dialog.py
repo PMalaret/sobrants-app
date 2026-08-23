@@ -17,6 +17,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from app.i18n import t
+
 # Mateixos colors que BoardTab._SEARCH_COLOR, perquè es vegi d'un cop d'ull
 # quin cercador pinta quin color al tauler.
 SEARCH_COLORS = {
@@ -36,7 +38,7 @@ class SearchDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Cercar al tauler")
+        self.setWindowTitle(t("search.title"))
         self.setMinimumWidth(520)
         self.setModal(False)
 
@@ -45,41 +47,41 @@ class SearchDialog(QDialog):
         form.setVerticalSpacing(12)
 
         self.code_edit = QLineEdit()
-        self.code_edit.setPlaceholderText("Núm. de material exacte")
+        self.code_edit.setPlaceholderText(t("search.code_placeholder"))
         self.code_result = QLabel("")
         form.addRow(
-            "Per núm. (exacte):",
+            t("search.code_label"),
             self._with_result(self.code_edit, self.code_result, SEARCH_COLORS["code"]),
         )
 
         self.desc_edit = QLineEdit()
-        self.desc_edit.setPlaceholderText("Text parcial a la descripció")
+        self.desc_edit.setPlaceholderText(t("search.desc_placeholder"))
         self.desc_result = QLabel("")
         form.addRow(
-            "Per material (parcial):",
+            t("search.desc_label"),
             self._with_result(self.desc_edit, self.desc_result, SEARCH_COLORS["description"]),
         )
 
         self.notes_edit = QLineEdit()
-        self.notes_edit.setPlaceholderText("Text parcial a les notes")
+        self.notes_edit.setPlaceholderText(t("search.notes_placeholder"))
         self.notes_result = QLabel("")
         form.addRow(
-            "Per notes (parcial):",
+            t("search.notes_label"),
             self._with_result(self.notes_edit, self.notes_result, SEARCH_COLORS["notes"]),
         )
 
         layout.addLayout(form)
 
-        self.code_edit.textChanged.connect(lambda t: self.search_changed.emit("code", t))
-        self.desc_edit.textChanged.connect(lambda t: self.search_changed.emit("description", t))
-        self.notes_edit.textChanged.connect(lambda t: self.search_changed.emit("notes", t))
+        self.code_edit.textChanged.connect(lambda t_: self.search_changed.emit("code", t_))
+        self.desc_edit.textChanged.connect(lambda t_: self.search_changed.emit("description", t_))
+        self.notes_edit.textChanged.connect(lambda t_: self.search_changed.emit("notes", t_))
 
         buttons = QHBoxLayout()
-        clear_button = QPushButton("Netejar")
+        clear_button = QPushButton(t("common.clear"))
         clear_button.clicked.connect(self.clear_all)
         buttons.addWidget(clear_button)
         buttons.addStretch()
-        close_button = QPushButton("Tancar")
+        close_button = QPushButton(t("common.close"))
         close_button.clicked.connect(self.close)
         buttons.addWidget(close_button)
         layout.addLayout(buttons)

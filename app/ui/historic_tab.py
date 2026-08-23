@@ -15,18 +15,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.i18n import t
 from app.logic.repository import Repository
-
-COLUMNS = ["Posició", "Núm. material", "Material", "Data/hora", "Moviment"]
-
-# Mateixos colors que l'original: verd = entrada, vermell = sortida,
-# marró clar/fosc = origen/destí d'un trasllat.
-KIND_LABELS = {
-    "in": ("Entrada", QColor("#1a7f37")),
-    "out": ("Sortida", QColor("#c62828")),
-    "move_out": ("Trasllat (origen)", QColor("#b48c64")),
-    "move_in": ("Trasllat (destí)", QColor("#78460f")),
-}
 
 # Els botons d'ordre fan servir el mateix QPushButton blau per defecte quan
 # estan actius; quan no ho estan, s'atenuen a gris per marcar quin és
@@ -43,34 +33,52 @@ class HistoricTab(QWidget):
         self._build_ui()
         self.refresh()
 
+    def _columns(self):
+        return [
+            t("historic.col.position"),
+            t("historic.col.code"),
+            t("historic.col.material"),
+            t("historic.col.datetime"),
+            t("historic.col.movement"),
+        ]
+
+    def _kind_labels(self):
+        return {
+            "in": (t("historic.kind.in"), QColor("#1a7f37")),
+            "out": (t("historic.kind.out"), QColor("#c62828")),
+            "move_out": (t("historic.kind.move_out"), QColor("#b48c64")),
+            "move_in": (t("historic.kind.move_in"), QColor("#78460f")),
+        }
+
     def _build_ui(self):
         layout = QVBoxLayout(self)
 
         filters = QHBoxLayout()
-        filters.addWidget(QLabel("Filtrar per posició:"))
+        filters.addWidget(QLabel(t("historic.filter_label")))
         self.position_filter = QLineEdit()
-        self.position_filter.setPlaceholderText("p.ex. 12, o 'Desmagatzem'")
+        self.position_filter.setPlaceholderText(t("historic.filter_placeholder"))
         self.position_filter.textChanged.connect(self.refresh)
         filters.addWidget(self.position_filter)
 
         filters.addSpacing(16)
-        filters.addWidget(QLabel("Ordenar per:"))
-        self.sort_date_button = QPushButton("Data")
+        filters.addWidget(QLabel(t("historic.sort_label")))
+        self.sort_date_button = QPushButton(t("historic.sort_date"))
         self.sort_date_button.clicked.connect(lambda: self._set_order("date"))
-        self.sort_position_button = QPushButton("Posició")
+        self.sort_position_button = QPushButton(t("historic.sort_position"))
         self.sort_position_button.clicked.connect(lambda: self._set_order("position"))
         filters.addWidget(self.sort_date_button)
         filters.addWidget(self.sort_position_button)
 
-        self.refresh_button = QPushButton("Actualitzar")
+        self.refresh_button = QPushButton(t("historic.refresh"))
         self.refresh_button.clicked.connect(self.refresh)
         filters.addWidget(self.refresh_button)
         filters.addStretch()
         layout.addLayout(filters)
 
-        self.table = QTableWidget(0, len(COLUMNS))
+        columns = self._columns()
+        self.table = QTableWidget(0, len(columns))
         self.table.setAlternatingRowColors(True)
-        self.table.setHorizontalHeaderLabels(COLUMNS)
+        self.table.setHorizontalHeaderLabels(columns)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         layout.addWidget(self.table)
@@ -93,9 +101,10 @@ class HistoricTab(QWidget):
     def refresh(self):
         position = self.position_filter.text().strip() or None
         rows = self.repo.get_historic(limit=1000, position=position, order_by=self.order_by)
+        kind_labels = self._kind_labels()
         self.table.setRowCount(len(rows))
         for r, row in enumerate(rows):
-            label, color = KIND_LABELS.get(row["kind"], (row["kind"], QColor(Qt.black)))
+            label, color = kind_labels.get(row["kind"], (row["kind"], QColor(Qt.black)))
             values = [row["position"], row["material_code"] or "", row["material_desc"] or "", row["ts"], label]
             for c, v in enumerate(values):
                 item = QTableWidgetItem(str(v))

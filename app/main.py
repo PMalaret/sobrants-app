@@ -6,7 +6,9 @@ from pathlib import Path
 
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox
 
+from app import i18n
 from app.data.db import connect
+from app.i18n import t
 from app.logic.repository import Repository
 
 
@@ -28,15 +30,13 @@ def _ensure_database(data_dir: Path) -> Path:
 
     resp = QMessageBox.question(
         None,
-        "Primer arrencada",
-        "Encara no s'ha trobat cap base de dades.\n\n"
-        "Vols importar les dades des d'un fitxer Excel "
-        "(SobrantsV4.74.xlsm) existent?",
+        t("startup.title"),
+        t("startup.text"),
         QMessageBox.Yes | QMessageBox.No,
     )
     if resp == QMessageBox.Yes:
         excel_path, _ = QFileDialog.getOpenFileName(
-            None, "Selecciona l'Excel a importar", str(Path.home()), "Excel (*.xlsm *.xlsx)"
+            None, t("startup.pick_excel"), str(Path.home()), "Excel (*.xlsm *.xlsx)"
         )
         if excel_path:
             from app.migration.from_excel import migrate
@@ -44,8 +44,8 @@ def _ensure_database(data_dir: Path) -> Path:
             stats = migrate(excel_path, str(db_path))
             QMessageBox.information(
                 None,
-                "Importació completada",
-                "Dades importades:\n" + "\n".join(f"  {k}: {v}" for k, v in stats.items()),
+                t("startup.import_done.title"),
+                t("startup.import_done.text") + "\n".join(f"  {k}: {v}" for k, v in stats.items()),
             )
             return db_path
 
@@ -62,6 +62,7 @@ def main():
         app.setStyleSheet(style_path.read_text(encoding="utf-8"))
 
     data_dir = _data_dir()
+    i18n.init_settings_path(data_dir)
     db_path = _ensure_database(data_dir)
 
     conn = connect(db_path)
