@@ -267,7 +267,13 @@ class Repository:
             ),
         )
 
-        ts = _now()
+        # La data/hora de l'històric d'un trasllat és la de l'entrada
+        # original de la peça (piece["entered_at"]), no la del moment del
+        # trasllat: moure-la no n'ha de canviar la data d'entrada. Els
+        # materials no registrats (codi <= 1) no en guarden ("---------"),
+        # així que per a aquests es fa servir l'hora actual com a únic
+        # valor disponible.
+        ts = piece["entered_at"] or _now()
         self.conn.execute(
             "INSERT INTO historic(position, material_code, material_desc, ts, direction, kind) VALUES (?,?,?,?,?,?)",
             (str(from_position), str(piece["material_code"]), piece["material_desc"], ts, None, "move_out"),

@@ -433,7 +433,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     },
     "desmagatzem.col.material": {"ca": "Material", "es": "Material", "en": "Material", "fr": "Matériau"},
     "desmagatzem.col.dimensions": {"ca": "Mides", "es": "Medidas", "en": "Dimensions", "fr": "Dimensions"},
-    "desmagatzem.col.cart": {"ca": "Carro/lot", "es": "Carro/lote", "en": "Cart/batch", "fr": "Chariot/lot"},
+    "desmagatzem.col.cart": {"ca": "Notes", "es": "Notas", "en": "Notes", "fr": "Notes"},
     "desmagatzem.col.datetime": {"ca": "Data/hora", "es": "Fecha/hora", "en": "Date/time", "fr": "Date/heure"},
     "desmagatzem.confirm.increase": {
         "ca": "Confirmes augmentar la quantitat? Es registrarà a l'històric.",
@@ -455,7 +455,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "Le retrait sera enregistré dans l'historique.",
     },
     "desmagatzem.form_title": {
-        "ca": "Nova retirada", "es": "Nueva retirada", "en": "New removal", "fr": "Nouveau retrait",
+        "ca": "Nova entrada", "es": "Nueva entrada", "en": "New entry", "fr": "Nouvelle entrée",
     },
     "desmagatzem.code_placeholder": {
         "ca": "Núm. de material (utilitza '1' per a material no registrat)",
@@ -483,15 +483,15 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ca": "Mides:", "es": "Medidas:", "en": "Dimensions:", "fr": "Dimensions :",
     },
     "desmagatzem.field.cart": {
-        "ca": "Carro/lot:", "es": "Carro/lote:", "en": "Cart/batch:", "fr": "Chariot/lot :",
+        "ca": "Notes:", "es": "Notas:", "en": "Notes:", "fr": "Notes :",
     },
     "desmagatzem.cart_placeholder": {
-        "ca": "p.ex. carro 88000", "es": "p.ej. carro 88000",
-        "en": "e.g. cart 88000", "fr": "ex. chariot 88000",
+        "ca": "Observacions opcionals", "es": "Observaciones opcionales",
+        "en": "Optional notes", "fr": "Remarques facultatives",
     },
     "desmagatzem.add_button": {
-        "ca": "Registrar retirada", "es": "Registrar retirada",
-        "en": "Register removal", "fr": "Enregistrer le retrait",
+        "ca": "Registrar entrada", "es": "Registrar entrada",
+        "en": "Register entry", "fr": "Enregistrer l'entrée",
     },
     "desmagatzem.new_qty_label": {
         "ca": "Nova quantitat per a la línia seleccionada:",
@@ -565,7 +565,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ca": "Desmagatzem", "es": "Desmagatzem", "en": "Desmagatzem", "fr": "Desmagatzem",
     },
     "export.col.quantity": {"ca": "Quant.", "es": "Cant.", "en": "Qty.", "fr": "Qté"},
-    "export.col.cart": {"ca": "Carro/lot", "es": "Carro/lote", "en": "Cart/batch", "fr": "Chariot/lot"},
+    "export.col.cart": {"ca": "Notes", "es": "Notas", "en": "Notes", "fr": "Notes"},
     "report.covered.title": {
         "ca": "MATERIALS TAPATS", "es": "MATERIALES TAPADOS",
         "en": "HIDDEN MATERIALS", "fr": "MATÉRIAUX MASQUÉS",

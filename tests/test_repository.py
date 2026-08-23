@@ -104,6 +104,20 @@ def test_move_piece_between_positions(repo):
     assert "move_out" in kinds and "move_in" in kinds
 
 
+def test_move_piece_historic_keeps_original_entry_date(repo):
+    repo.add_piece(position=10, material_code=41011, dimensions="2600x3210")
+    entered_at = repo.get_position_detail(10)[0]["entered_at"]
+
+    repo.move_piece(from_position=10, to_position=20)
+
+    hist = repo.get_historic(limit=10)
+    move_rows = [h for h in hist if h["kind"] in ("move_out", "move_in")]
+    assert len(move_rows) == 2
+    # La data/hora de l'històric del trasllat és la de l'entrada original,
+    # no la del moment en què es mou.
+    assert all(h["ts"] == entered_at for h in move_rows)
+
+
 def test_move_piece_rejects_same_position(repo):
     repo.add_piece(position=11, material_code=41011)
     with pytest.raises(RuleViolation):
