@@ -45,7 +45,11 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.repo = repo
         self.db_path = db_path
-        self.resize(1500, 760)
+        # 700, no 760: amb el tauler (l'única pestanya d'alçada fixa, sempre
+        # 61 posicions) l'alçada extra només es traduïa en un buit en blanc
+        # sota els botons "Netejar cerca"/"Cercar". Les altres pestanyes
+        # tenen taules amb scroll, així que no en pateixen.
+        self.resize(1500, 700)
 
         self._backup_timer = QTimer(self)
         self._backup_timer.timeout.connect(self._auto_backup)

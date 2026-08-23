@@ -6,6 +6,7 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLineEdit,
     QPushButton,
@@ -81,9 +82,20 @@ class HistoricTab(QWidget):
         self.table.setHorizontalHeaderLabels(columns)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self._configure_column_widths()
         layout.addWidget(self.table)
 
         self._update_sort_buttons()
+
+    def _configure_column_widths(self):
+        # Per defecte, "Material" i "Data/hora" queden massa estrets amb
+        # l'ample automàtic de Qt i el text es talla. Interactive perquè
+        # l'usuari encara les pugui reajustar arrossegant la vora.
+        header = self.table.horizontalHeader()
+        widths = [70, 90, 320, 150, 110]  # Posició, Núm., Material, Data/hora, Moviment
+        for col, width in enumerate(widths):
+            header.setSectionResizeMode(col, QHeaderView.Interactive)
+            self.table.setColumnWidth(col, width)
 
     def _set_order(self, order_by: str):
         self.order_by = order_by

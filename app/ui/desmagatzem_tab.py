@@ -5,9 +5,13 @@ les cel·les coincidents de la fulla desmagatzem amb el mateix color del
 cercador (`BuscaCoincidenciesDesmagatzem_Q20/M22/M24`); aquí es reprodueix
 exactament igual, reutilitzant els mateixos colors que `SearchDialog`
 (`SEARCH_COLORS`) — mai es crea una paleta nova.
+
+L'ordenació es fa clicant la capçalera de cada columna (mode natiu de
+QTableWidget, alterna ascendent/descendent), no amb botons a part.
 """
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -32,10 +36,26 @@ from app.logic.repository import Repository, RuleViolation
 from app.logic.rules import quantity_change_kind
 from app.ui.search_dialog import SEARCH_COLORS
 
-# Mateix patró que a HistoricTab: el botó d'ordre actiu es queda amb
-# l'estil blau per defecte, l'inactiu s'atenua a gris.
-ACTIVE_SORT_STYLE = ""
-INACTIVE_SORT_STYLE = "background-color: #d8dae0; color: #444;"
+
+class _NumericItem(QTableWidgetItem):
+    """Perquè "Quantitat" i "Núm. material" s'ordenin numèricament en
+    clicar la capçalera, no com a text (10 abans que 2)."""
+
+    def __init__(self, text: str, sort_value: float):
+        super().__init__(text)
+        self._sort_value = sort_value
+
+    def __lt__(self, other):
+        if isinstance(other, _NumericItem):
+            return self._sort_value < other._sort_value
+        return super().__lt__(other)
+
+
+def _numeric_item(value) -> QTableWidgetItem:
+    try:
+        return _NumericItem(str(value), float(value))
+    except (TypeError, ValueError):
+        return QTableWidgetItem(str(value))
 
 
 class DesmagatzemTab(QWidget):
@@ -49,7 +69,6 @@ class DesmagatzemTab(QWidget):
         super().__init__(parent)
         self.repo = repo
         self._search_state: dict[str, str] = {}
-        self.order_by = "date"  # per defecte: per data/hora ascendent
         self._build_ui()
         self.refresh()
 
@@ -96,27 +115,15 @@ class DesmagatzemTab(QWidget):
         form.addRow(self.add_button)
         layout.addWidget(form_box)
 
-        sort_row = QHBoxLayout()
-        sort_row.addWidget(QLabel(t("historic.sort_label")))
-        self.sort_date_button = QPushButton(t("historic.sort_date"))
-        self.sort_date_button.clicked.connect(lambda: self._set_order("date"))
-        self.sort_order_button = QPushButton(t("desmagatzem.sort_order"))
-        self.sort_order_button.clicked.connect(lambda: self._set_order("order"))
-        sort_row.addWidget(self.sort_date_button)
-        sort_row.addWidget(self.sort_order_button)
-        sort_row.addStretch()
-        layout.addLayout(sort_row)
-
         columns = self._columns()
         self.table = QTableWidget(0, len(columns))
         self.table.setAlternatingRowColors(True)
         self.table.setHorizontalHeaderLabels(columns)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        self.table.horizontalHeader().setSortIndicatorShown(True)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         layout.addWidget(self.table)
-
-        self._update_sort_buttons()
 
         qty_row = QHBoxLayout()
         qty_row.addWidget(QLabel(t("desmagatzem.new_qty_label")))
@@ -129,31 +136,22 @@ class DesmagatzemTab(QWidget):
         qty_row.addStretch()
         layout.addLayout(qty_row)
 
-    def _set_order(self, order_by: str):
-        self.order_by = order_by
-        self._update_sort_buttons()
-        self.refresh()
-
-    def _update_sort_buttons(self):
-        self.sort_date_button.setStyleSheet(ACTIVE_SORT_STYLE if self.order_by == "date" else INACTIVE_SORT_STYLE)
-        self.sort_order_button.setStyleSheet(ACTIVE_SORT_STYLE if self.order_by == "order" else INACTIVE_SORT_STYLE)
-
     def refresh(self):
-        rows = self.repo.list_desmagatzem(order_by=self.order_by)
-        self._rows = rows
-        self._row_ids = [r["id"] for r in rows]
+        # Desactivem l'ordenació mentre omplim la taula (si no, Qt reordena
+        # fila a fila a cada setItem, molt lent i pot descol·locar dades).
+        self.table.setSortingEnabled(False)
+        rows = self.repo.list_desmagatzem()
         self.table.setRowCount(len(rows))
         for r, row in enumerate(rows):
-            values = [
-                row["quantity"],
-                row["material_code"],
-                row["material_desc"] or "",
-                row["dimensions"] or "",
-                row["cart_ref"] or "",
-                row["ts"] or "",
-            ]
-            for c, v in enumerate(values):
-                self.table.setItem(r, c, QTableWidgetItem(str(v)))
+            quantity_item = _numeric_item(row["quantity"])
+            quantity_item.setData(Qt.UserRole, row["id"])  # per retrobar la fila després d'ordenar
+            self.table.setItem(r, 0, quantity_item)
+            self.table.setItem(r, 1, _numeric_item(row["material_code"]))
+            self.table.setItem(r, 2, QTableWidgetItem(row["material_desc"] or ""))
+            self.table.setItem(r, 3, QTableWidgetItem(row["dimensions"] or ""))
+            self.table.setItem(r, 4, QTableWidgetItem(row["cart_ref"] or ""))
+            self.table.setItem(r, 5, QTableWidgetItem(row["ts"] or ""))
+        self.table.setSortingEnabled(True)
         self._reapply_highlights()
 
     # ------------------------------------------------------------------ #
@@ -173,21 +171,21 @@ class DesmagatzemTab(QWidget):
             self._highlight_mode(mode, text)
 
     def _highlight_mode(self, mode: str, text: str):
+        # Llegeix directament de la taula (no d'una llista a part), perquè
+        # es mantingui correcte sigui quin sigui l'ordre de files actual.
         column = self._SEARCH_COLUMN[mode]
         self._clear_column(column)
         if not text.strip():
             return
         color = QColor(SEARCH_COLORS[mode])
-        field = self._SEARCH_FIELD[mode]
-        for r, row in enumerate(getattr(self, "_rows", [])):
-            value = row[field]
-            if value is None:
+        for r in range(self.table.rowCount()):
+            item = self.table.item(r, column)
+            if item is None or not item.text():
                 continue
-            hit = rules.matches_exact(str(value), text) if mode == "code" else rules.matches_partial(str(value), text)
+            value = item.text()
+            hit = rules.matches_exact(value, text) if mode == "code" else rules.matches_partial(value, text)
             if hit:
-                item = self.table.item(r, column)
-                if item is not None:
-                    item.setBackground(color)
+                item.setBackground(color)
 
     def _clear_column(self, column: int):
         transparent = QColor(0, 0, 0, 0)
@@ -200,7 +198,9 @@ class DesmagatzemTab(QWidget):
         items = self.table.selectedItems()
         if not items:
             return None
-        return self._row_ids[items[0].row()]
+        row = items[0].row()
+        id_item = self.table.item(row, 0)
+        return id_item.data(Qt.UserRole) if id_item is not None else None
 
     def _on_add_row(self):
         code = self.code_input.text().strip()

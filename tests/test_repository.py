@@ -236,20 +236,9 @@ def test_add_material_overwrite_updates_description(repo):
     assert repo.lookup_material(41011) == "Descripció actualitzada"
 
 
-def test_list_desmagatzem_default_order_is_date_ascending(repo):
-    repo.add_desmagatzem_row(material_code="999", quantity=1, dimensions="", cart_ref="primer")
-    repo.add_desmagatzem_row(material_code="999", quantity=1, dimensions="", cart_ref="segon")
-
-    # order_by="date" per defecte; "id ASC" com a desempat quan la marca de
-    # temps coincideix (precisió de segon), així que l'ordre d'inserció
-    # (primer abans que segon) es manté sempre.
-    rows = repo.list_desmagatzem()
-    assert [r["cart_ref"] for r in rows] == ["primer", "segon"]
-
-
-def test_list_desmagatzem_order_by_row_order(repo):
+def test_list_desmagatzem_orders_by_row_order(repo):
     repo.add_desmagatzem_row(material_code="999", quantity=1, dimensions="", cart_ref="A")
     repo.add_desmagatzem_row(material_code="999", quantity=1, dimensions="", cart_ref="B")
 
-    rows = repo.list_desmagatzem(order_by="order")
+    rows = repo.list_desmagatzem()
     assert [r["cart_ref"] for r in rows] == ["A", "B"]

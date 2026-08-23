@@ -375,12 +375,8 @@ class Repository:
     # ------------------------------------------------------------------ #
     # Desmagatzem
     # ------------------------------------------------------------------ #
-    # order_by="date" (per defecte) = per data/hora ascendent (les més
-    # antigues primer). order_by="order" = l'ordre manual/de compactació
-    # (row_order, equivalent a com quedaven les files després d'"Apilar").
-    def list_desmagatzem(self, order_by: str = "date") -> list[dict]:
-        order_sql = "ts ASC, id ASC" if order_by == "date" else "row_order"
-        rows = self.conn.execute(f"SELECT * FROM desmagatzem ORDER BY {order_sql}").fetchall()  # noqa: S608
+    def list_desmagatzem(self) -> list[dict]:
+        rows = self.conn.execute("SELECT * FROM desmagatzem ORDER BY row_order").fetchall()
         return [dict(r) for r in rows]
 
     def add_desmagatzem_row(

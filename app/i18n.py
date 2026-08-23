@@ -380,7 +380,6 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     },
     "historic.sort_date": {"ca": "Data", "es": "Fecha", "en": "Date", "fr": "Date"},
     "historic.sort_position": {"ca": "Pos.", "es": "Pos.", "en": "Pos.", "fr": "Pos."},
-    "desmagatzem.sort_order": {"ca": "Ordre", "es": "Orden", "en": "Order", "fr": "Ordre"},
     "historic.refresh": {"ca": "Actualitzar", "es": "Actualizar", "en": "Refresh", "fr": "Actualiser"},
 
     # -- Materials ------------------------------------------------------------ #
