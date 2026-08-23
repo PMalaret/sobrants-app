@@ -181,7 +181,7 @@ class BoardTab(QWidget):
         # que la feia excessivament ampla i no es podia redimensionar
         # manualment; ara té un ample per defecte contingut, i és Notes
         # (l'últim camp de cada bloc) qui absorbeix l'espai sobrant.
-        initial_widths = [46, 62, 180, 80, None]
+        initial_widths = [36, 62, 230, 80, None]
         for block_idx in range(len(BLOCKS)):
             for field_idx, width in enumerate(initial_widths):
                 col = block_idx * FIELDS_PER_BLOCK + field_idx
@@ -300,7 +300,17 @@ class BoardTab(QWidget):
             return
         result = self.repo.search(text, mode=mode)
         oldest = result["oldest_position"]
-        self.search_panel.set_result(mode, result["count"], oldest if oldest else "—", result["desmagatzem_qty"])
+        # El color del camp de cerca reflecteix el color d'ocupació de la
+        # posició trobada (el mateix escalat blanc/groc/verd/blau/vermell
+        # del tauler), no un color fix per mode; sense coincidència, cap.
+        match_color = None
+        if oldest:
+            entry = next((b for b in self.repo.get_board() if b["position"] == oldest), None)
+            if entry:
+                match_color = entry["fill_color"]
+        self.search_panel.set_result(
+            mode, result["count"], oldest if oldest else "—", result["desmagatzem_qty"], match_color
+        )
         positions = {m["position"] for m in result["matches"]}
         self._highlight_field(positions, self._SEARCH_FIELD[mode], self._SEARCH_COLOR[mode])
 

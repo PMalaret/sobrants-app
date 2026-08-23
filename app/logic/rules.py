@@ -64,11 +64,15 @@ def next_free_slot(filled_slots: list[int]) -> int | None:
 
 
 def can_delete_slot(filled_slots: list[int], slot: int) -> bool:
-    """Es pot esborrar qualsevol slot ocupat (a diferència de l'Excel
-    original, que només permetia l'últim: bloqueig 'ORDRE INCORRECTE' a
-    Worksheet_Change Hoja1). Els slots posteriors es renumeren cap amunt
-    perquè no quedin forats (veure `Repository.delete_piece`)."""
-    return slot in filled_slots
+    """Només es pot esborrar l'últim slot ocupat (de baix cap amunt).
+
+    Correspon al bloqueig 'ORDRE INCORRECTE' en esborrar a Worksheet_Change Hoja1
+    (comprova que la fila inferior no tingui valor > 1) i a la lògica anàloga
+    de desmagatzem (esborrat de fila = buidar quantitat a 0).
+    """
+    if not filled_slots:
+        return False
+    return slot == max(filled_slots)
 
 
 @dataclass

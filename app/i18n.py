@@ -571,10 +571,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "IMPOSSIBLE MOVE: POSITION FULL", "fr": "DÉPLACEMENT IMPOSSIBLE : POSITION PLEINE",
     },
     "err.wrong_delete_order": {
-        "ca": "No hi ha cap peça en aquest slot per esborrar.",
-        "es": "No hay ninguna pieza en este slot para borrar.",
-        "en": "There is no piece in this slot to delete.",
-        "fr": "Il n'y a aucune pièce dans cet emplacement à supprimer.",
+        "ca": "ORDRE INCORRECTE: només es pot esborrar l'última peça de la posició.",
+        "es": "ORDEN INCORRECTO: solo se puede borrar la última pieza de la posición.",
+        "en": "WRONG ORDER: only the last piece of the position can be deleted.",
+        "fr": "ORDRE INCORRECT : seule la dernière pièce de la position peut être supprimée.",
     },
     "err.cannot_move_to_self": {
         "ca": "NO ES POT MOURE ELL MATEIX", "es": "NO SE PUEDE MOVER A SÍ MISMA",

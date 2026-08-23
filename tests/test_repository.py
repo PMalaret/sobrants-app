@@ -68,24 +68,17 @@ def test_add_piece_duplicate_requires_confirmation(repo):
     assert result["position"] == 9
 
 
-def test_delete_piece_allows_any_slot_and_renumbers_the_rest(repo):
-    repo.add_piece(position=3, material_code=41011, dimensions="a")  # slot 1
-    repo.add_piece(position=3, material_code=41952, dimensions="b", confirm_duplicate=True)  # slot 2
-    repo.add_piece(position=3, material_code=999, dimensions="c", confirm_duplicate=True)  # slot 3
-    repo.add_piece(position=3, material_code=999, dimensions="d", confirm_duplicate=True)  # slot 4
-
-    repo.delete_piece(position=3, slot=2)  # esborra el del mig, no l'últim
-
-    detail = repo.get_position_detail(3)
-    assert [p["slot"] for p in detail] == [1, 2, 3]
-    # slot 3 -> 2 i slot 4 -> 3 (pugen), slot 1 no es toca
-    assert [p["dimensions"] for p in detail] == ["a", "c", "d"]
-
-
-def test_delete_piece_rejects_unoccupied_slot(repo):
+def test_delete_piece_only_allows_last_slot(repo):
     repo.add_piece(position=3, material_code=41011)
+    repo.add_piece(position=3, material_code=41952, confirm_duplicate=True)
+
     with pytest.raises(RuleViolation):
-        repo.delete_piece(position=3, slot=5)
+        repo.delete_piece(position=3, slot=1)  # no és l'últim
+
+    repo.delete_piece(position=3, slot=2)  # sí és l'últim, permès
+    detail = repo.get_position_detail(3)
+    assert len(detail) == 1
+    assert detail[0]["slot"] == 1
 
 
 def test_delete_piece_logs_historic_out(repo):

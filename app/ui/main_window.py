@@ -7,6 +7,7 @@ from pathlib import Path
 from PySide6.QtCore import QTimer, QUrl
 from PySide6.QtGui import QAction, QActionGroup, QDesktopServices
 from PySide6.QtWidgets import (
+    QApplication,
     QFileDialog,
     QHBoxLayout,
     QMainWindow,
@@ -221,12 +222,29 @@ class MainWindow(QMainWindow):
         except OSError:
             pass  # backup silenciós; no s'interromp la feina si falla
 
+    def _ensure_tab_laid_out(self, tab_widget: QWidget):
+        """Els botons d'exportar es poden clicar des de qualsevol pestanya
+        (viuen a la fila d'accions, no dins de cap pestanya): si
+        `tab_widget` no és la pestanya activa del `QStackedWidget`, Qt mai
+        li ha donat una mida real (es queda amb el pedaç per defecte de
+        640x480, molt petit) i l'exportació sortiria retallada. Fent-la
+        "current" un instant es disposa correctament; en tornar a la
+        pestanya original, la mida ja apresa es manté."""
+        index = self._stack.indexOf(tab_widget)
+        if index == -1 or self._stack.currentIndex() == index:
+            return
+        original = self._stack.currentIndex()
+        self._stack.setCurrentIndex(index)
+        QApplication.processEvents()
+        self._stack.setCurrentIndex(original)
+
     def _export_board(self):
         path, _ = QFileDialog.getSaveFileName(
             self, t("dialog.export_board.title"), t("dialog.export_board.filename"), "PDF (*.pdf)"
         )
         if not path:
             return
+        self._ensure_tab_laid_out(self.board_tab)
         export_board_pdf(self.board_tab, path)
         QMessageBox.information(self, t("dialog.exported.title"), t("dialog.export_board.done", path=path))
 
@@ -236,7 +254,8 @@ class MainWindow(QMainWindow):
         )
         if not path:
             return
-        export_desmagatzem_pdf(self.desmagatzem_tab, path)
+        self._ensure_tab_laid_out(self.desmagatzem_tab)
+        export_desmagatzem_pdf(self.desmagatzem_tab.table, path)
         QMessageBox.information(self, t("dialog.exported.title"), t("dialog.export_desmagatzem.done", path=path))
 
     def _show_covered_report(self):

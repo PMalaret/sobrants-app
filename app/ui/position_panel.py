@@ -24,10 +24,12 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QLineEdit,
     QMessageBox,
     QPushButton,
     QSpinBox,
     QStackedWidget,
+    QStyledItemDelegate,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -45,6 +47,20 @@ QFrame#positionPanel {
     border-radius: 8px;
 }
 """
+
+
+class _MaxLengthDelegate(QStyledItemDelegate):
+    """Limita el text que s'hi pot escriure (Notes: màxim 8 caràcters)."""
+
+    def __init__(self, max_length: int, parent=None):
+        super().__init__(parent)
+        self._max_length = max_length
+
+    def createEditor(self, parent, option, index):
+        editor = super().createEditor(parent, option, index)
+        if isinstance(editor, QLineEdit):
+            editor.setMaxLength(self._max_length)
+        return editor
 
 
 class PositionPanel(QFrame):
@@ -103,6 +119,7 @@ class PositionPanel(QFrame):
 
         self.title_label = QLabel()
         self.title_label.setStyleSheet("font-weight: 700; font-size: 15px; color: #1a1a1a;")
+        self.title_label.setAlignment(Qt.AlignCenter)
         self.title_label.setWordWrap(True)
         layout.addWidget(self.title_label)
 
@@ -120,16 +137,20 @@ class PositionPanel(QFrame):
         self.detail_table = QTableWidget(5, len(detail_columns))
         self.detail_table.setHorizontalHeaderLabels(detail_columns)
         # Només Mides i Notes són editables (i només quan l'slot té un
-        # material), i només amb doble clic / tecla d'edició — mai en
-        # viu-clic simple, per no editar per error en seleccionar la fila.
-        self.detail_table.setEditTriggers(
-            QAbstractItemView.DoubleClicked | QAbstractItemView.EditKeyPressed
-        )
+        # material). Un sol clic ja obre l'editor (via `cellClicked`, més
+        # avall) — `EditKeyPressed` es manté per poder-hi entrar també amb
+        # el teclat (F2/Retorn) sense haver de clicar.
+        self.detail_table.setEditTriggers(QAbstractItemView.EditKeyPressed)
+        self.detail_table.cellClicked.connect(self._on_detail_cell_clicked)
         self.detail_table.itemChanged.connect(self._on_detail_item_changed)
         self.detail_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.detail_table.verticalHeader().setVisible(False)
         self.detail_table.verticalHeader().setDefaultSectionSize(18)
         self.detail_table.setStyleSheet("font-size: 10px;")
+        # Notes: màxim 8 caràcters.
+        self.detail_table.setItemDelegateForColumn(
+            self._DETAIL_NOTES_COL, _MaxLengthDelegate(8, self.detail_table)
+        )
         # Núm./Mides/Notes: ample inicial ajustat, però "Interactive"
         # (l'usuari els pot canviar i es queden fixats). Material: s'estira
         # perquè les columnes aprofitin tot l'ample que té el panell (que
@@ -186,6 +207,23 @@ class PositionPanel(QFrame):
         self.title_label.setText(t("position.subtitle", position=position))
         self.refresh()
         self._stack.setCurrentIndex(1)
+        # En canviar de posició, s'arma directament per escriure-hi el
+        # següent núm. de material (si n'hi ha, cap fila buida si és plena):
+        # amb 2 peces ja fetes, s'arma la 3a; amb 4, la 5a.
+        next_free_row = len(self.repo.get_position_detail(position))
+        if next_free_row < 5:
+            self._start_editing(next_free_row, self._DETAIL_CODE_COL)
+
+    def _start_editing(self, row: int, col: int):
+        item = self.detail_table.item(row, col)
+        if item is not None and (item.flags() & Qt.ItemIsEditable):
+            self.detail_table.setCurrentCell(row, col)
+            self.detail_table.editItem(item)
+
+    def _on_detail_cell_clicked(self, row: int, col: int):
+        # Un sol clic ja obre l'editor (Mides/Notes d'una peça existent, o
+        # el núm. de material de la primera fila buida).
+        self._start_editing(row, col)
 
     def clear_selection(self):
         self.position = None
@@ -288,6 +326,9 @@ class PositionPanel(QFrame):
 
         self.refresh()
         self.changed.emit()
+        # Un cop escrit el núm. i fet Retorn, salta directament a Mides de
+        # la mateixa fila per poder-les editar tot seguit.
+        self._start_editing(row, self._DETAIL_DIMS_COL)
 
     def _on_delete_shortcut(self):
         # La tecla Delete no ha d'esborrar la peça mentre s'està editant el
@@ -295,45 +336,35 @@ class PositionPanel(QFrame):
         # aquest cas Delete s'ha d'aplicar al text, no a la peça sencera.
         if self.detail_table.state() == QAbstractItemView.EditingState:
             return
-        self._on_delete_selected_piece()
+        self._on_delete_last_piece()
 
-    def _selected_occupied_row(self, occupied_count: int) -> int | None:
-        """Fila seleccionada que tingui una peça (qualsevol, no només
-        l'última): permet esborrar la línia que es vulgui, no només la
-        que hi ha més avall."""
-        rows = sorted({idx.row() for idx in self.detail_table.selectedIndexes()})
-        occupied = [r for r in rows if r < occupied_count]
-        return occupied[0] if occupied else None
-
-    def _on_delete_selected_piece(self):
+    def _on_delete_last_piece(self):
+        # Sempre l'última peça (el slot ocupat més alt): és l'única que es
+        # pot esborrar, igual que a l'Excel original.
         detail = self.repo.get_position_detail(self.position)
         if not detail:
             QMessageBox.information(self, t("position.no_pieces.title"), t("position.no_pieces.text"))
             return
-        # Si no hi ha cap fila amb peça seleccionada, per defecte l'última
-        # (mateix comportament d'abans, quan només es podia esborrar aquesta).
-        row = self._selected_occupied_row(len(detail))
-        piece = detail[row] if row is not None else max(detail, key=lambda p: p["slot"])
+        last = max(detail, key=lambda p: p["slot"])
         resp = QMessageBox.question(
             self,
             t("position.confirm_delete.title"),
             t(
                 "position.confirm_delete.text",
                 position=self.position,
-                code=piece["material_code"],
-                desc=piece["material_desc"],
+                code=last["material_code"],
+                desc=last["material_desc"],
             ),
             QMessageBox.Yes | QMessageBox.No,
         )
         if resp != QMessageBox.Yes:
             return
         try:
-            self.repo.delete_piece(self.position, piece["slot"])
+            self.repo.delete_piece(self.position, last["slot"])
         except RuleViolation as exc:
             QMessageBox.critical(self, t("position.cannot_delete"), str(exc))
             return
         self.refresh()
-        self.changed.emit()
         self.changed.emit()
 
     def _on_move_piece(self):

@@ -42,11 +42,10 @@ def test_next_free_slot_rejects_gaps():
         rules.next_free_slot([1, 3])
 
 
-def test_can_delete_slot_any_occupied():
+def test_can_delete_slot_only_last_occupied():
     assert rules.can_delete_slot([1, 2, 3], 3) is True
-    assert rules.can_delete_slot([1, 2, 3], 2) is True
-    assert rules.can_delete_slot([1, 2, 3], 1) is True
-    assert rules.can_delete_slot([1, 2, 3], 4) is False
+    assert rules.can_delete_slot([1, 2, 3], 2) is False
+    assert rules.can_delete_slot([1, 2, 3], 1) is False
     assert rules.can_delete_slot([], 1) is False
 
 

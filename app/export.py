@@ -6,13 +6,15 @@ de materials tapats s'obria al Bloc de notes. A l'app nova s'exporta a PDF
 mostra en un diàleg dins de la mateixa aplicació.
 
 Els PDF del Tauler i de Desmagatzem no es construeixen com una taula a
-part: es captura la pestanya tal com es veu en pantalla (colors inclosos:
-l'escala d'ocupació i el text vermell d'inconsistència al Tauler, els
-ressaltats de cerca a Desmagatzem...) i es col·loca en una pàgina A4
-apaïsada. Així s'exporta exactament "tot el que hi ha" a la pestanya
-(taula, panell de detall, panell de cerca), sense les pestanyes ni els
-botons d'acció (Exportar, Materials tapats, Còpia de seguretat), que viuen
-fora del widget de la pestanya i per tant no s'hi capturen mai.
+part: es captura el widget corresponent tal com es veu en pantalla (colors
+inclosos: l'escala d'ocupació i el text vermell d'inconsistència al
+Tauler, els ressaltats de cerca a Desmagatzem...) i es col·loca en una
+pàgina A4 apaïsada. El Tauler exporta la pestanya sencera (taula, panell
+de detall, panell de cerca); Desmagatzem exporta només la seva taula
+(sense el formulari "Nova entrada" de sobre, perquè hi càpiga més ampla i
+es llegeixi bé). Cap dels dos inclou mai les pestanyes ni els botons
+d'acció (Exportar, Materials tapats, Còpia de seguretat), que viuen fora
+d'aquests widgets.
 """
 from __future__ import annotations
 
@@ -27,12 +29,16 @@ from app.i18n import t
 from app.logic.repository import Repository
 
 
-def export_board_pdf(widget: QWidget, dest_path: str) -> None:
-    _print_widget_to_pdf(widget, dest_path)
+def export_board_pdf(board_tab_widget: QWidget, dest_path: str) -> None:
+    """`widget` és tota la pestanya Tauler (taula + panell de detall +
+    panell de cerca)."""
+    _print_widget_to_pdf(board_tab_widget, dest_path)
 
 
-def export_desmagatzem_pdf(widget: QWidget, dest_path: str) -> None:
-    _print_widget_to_pdf(widget, dest_path)
+def export_desmagatzem_pdf(table_widget: QWidget, dest_path: str) -> None:
+    """`widget` és només la taula de Desmagatzem (sense el formulari "Nova
+    entrada" de sobre), perquè hi càpiga més ampla i es llegeixi bé."""
+    _print_widget_to_pdf(table_widget, dest_path)
 
 
 def _print_widget_to_pdf(widget: QWidget, dest_path: str) -> None:

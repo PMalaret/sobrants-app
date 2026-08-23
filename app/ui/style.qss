@@ -92,6 +92,13 @@ QLineEdit:focus, QSpinBox:focus {
     border: 1px solid #2f6fed;
 }
 
+/* Sense fletxes amunt/avall als camps numèrics: el valor es continua
+   podent canviar escrivint-lo o amb les fletxes del teclat. */
+QSpinBox::up-button, QSpinBox::down-button {
+    width: 0px;
+    border: none;
+}
+
 QStatusBar {
     background: #eef0f3;
     border-top: 1px solid #d0d3d9;
