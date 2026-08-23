@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QHBoxLayout,
+    QHeaderView,
     QInputDialog,
     QLabel,
     QLineEdit,
@@ -88,6 +89,17 @@ class MaterialsTab(QWidget):
         self.table.setHorizontalHeaderLabels(columns)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        # Núm. material: estret, ajustat al contingut (són números curts).
+        # Descripció: no hi ha més columnes, així que pot aprofitar tot
+        # l'ample sobrant — però només l'ample just que calgui perquè es
+        # vegi el text (no cal forçar-la al 100% de l'ample de la taula).
+        # NOTA: fem servir Interactive + un sol resizeColumnToContents()
+        # després d'omplir la taula (a refresh()), no el mode
+        # ResizeToContents "en viu": amb ~4.000 files, recalcular l'ample
+        # a cada fila inserida penja la interfície (és O(files²)).
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Interactive)
+        header.setSectionResizeMode(1, QHeaderView.Interactive)
         layout.addWidget(self.table)
 
         self.count_label = QLabel("")
@@ -103,6 +115,10 @@ class MaterialsTab(QWidget):
         for r, row in enumerate(rows):
             self.table.setItem(r, 0, QTableWidgetItem(str(row["code"])))
             self.table.setItem(r, 1, QTableWidgetItem(row["description"]))
+        # Un sol càlcul d'ample "a mida" en acabar d'omplir (no en mode
+        # ResizeToContents en viu, que amb milers de files penja la UI).
+        self.table.resizeColumnToContents(0)
+        self.table.resizeColumnToContents(1)
         self.count_label.setText(t("materials.count", count=len(rows)))
 
     # ------------------------------------------------------------------ #

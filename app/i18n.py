@@ -201,7 +201,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "tab.materials": {"ca": "Materials", "es": "Materiales", "en": "Materials", "fr": "Matériaux"},
 
     # -- Tauler ------------------------------------------------------------ #
-    "board.field.position": {"ca": "Posició", "es": "Posición", "en": "Position", "fr": "Position"},
+    "board.field.position": {"ca": "Pos.", "es": "Pos.", "en": "Pos.", "fr": "Pos."},
     "board.field.code": {
         "ca": "Núm. material", "es": "Núm. material", "en": "Material no.", "fr": "N° matériau",
     },
@@ -350,7 +350,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     },
 
     # -- Històric ------------------------------------------------------------ #
-    "historic.col.position": {"ca": "Posició", "es": "Posición", "en": "Position", "fr": "Position"},
+    "historic.col.position": {"ca": "Pos.", "es": "Pos.", "en": "Pos.", "fr": "Pos."},
     "historic.col.code": {
         "ca": "Núm. material", "es": "Núm. material", "en": "Material no.", "fr": "N° matériau",
     },
@@ -379,7 +379,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ca": "Ordenar per:", "es": "Ordenar por:", "en": "Sort by:", "fr": "Trier par :",
     },
     "historic.sort_date": {"ca": "Data", "es": "Fecha", "en": "Date", "fr": "Date"},
-    "historic.sort_position": {"ca": "Posició", "es": "Posición", "en": "Position", "fr": "Position"},
+    "historic.sort_position": {"ca": "Pos.", "es": "Pos.", "en": "Pos.", "fr": "Pos."},
     "historic.refresh": {"ca": "Actualitzar", "es": "Actualizar", "en": "Refresh", "fr": "Actualiser"},
 
     # -- Materials ------------------------------------------------------------ #
@@ -529,7 +529,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ca": "Tauler de sobrants", "es": "Tablero de sobrants",
         "en": "Sobrants board", "fr": "Tableau de sobrants",
     },
-    "export.col.position": {"ca": "Posició", "es": "Posición", "en": "Position", "fr": "Position"},
+    "export.col.position": {"ca": "Pos.", "es": "Pos.", "en": "Pos.", "fr": "Pos."},
     "export.col.code": {"ca": "Núm.", "es": "Núm.", "en": "No.", "fr": "N°"},
     "export.col.material": {"ca": "Material", "es": "Material", "en": "Material", "fr": "Matériau"},
     "export.col.dimensions": {"ca": "Mides", "es": "Medidas", "en": "Dimensions", "fr": "Dimensions"},

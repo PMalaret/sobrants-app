@@ -1,9 +1,12 @@
 """Panell de detall d'una posició: fins a 5 peces, alta, baixa i trasllat.
 
 Abans (`PositionDialog`) era una finestra emergent que s'obria en fer doble
-clic; ara és un `QWidget` incrustat de manera permanent sota la taula del
-Tauler (el tauler sempre té exactament 61 posicions, així que sempre queda
-un espai fix per sota de l'última fila útil per a aquest panell).
+clic. Ara és un `QWidget` incrustat de manera permanent DINS de la pròpia
+taula del Tauler: el 3r bloc de columnes (posicions 55-61) només fa servir
+7 de les 27 files, així que la resta de l'espai d'aquell bloc (a la dreta
+de tot) es fusiona amb `QTableWidget.setSpan` i s'hi incrusta aquest
+panell amb `setCellWidget` (veure `BoardTab._build_ui`). Com que no s'afegeix
+cap fila nova enlloc, la taula de 61 posicions mai canvia de mida.
 """
 from __future__ import annotations
 
@@ -55,29 +58,33 @@ class PositionPanel(QFrame):
 
     def _build_ui(self):
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(14, 10, 14, 10)
+        outer.setContentsMargins(8, 6, 8, 6)
+        outer.setSpacing(4)
 
         self._stack = QStackedWidget()
         outer.addWidget(self._stack)
 
         placeholder = QLabel(t("position.panel.placeholder"))
         placeholder.setAlignment(Qt.AlignCenter)
-        placeholder.setStyleSheet("color: #8a8f98; font-size: 14px;")
+        placeholder.setWordWrap(True)
+        placeholder.setStyleSheet("color: #8a8f98; font-size: 11px;")
         self._stack.addWidget(placeholder)  # índex 0
 
         self._stack.addWidget(self._build_detail_page())  # índex 1
 
     def _build_detail_page(self) -> QWidget:
+        # Disposició vertical i compacta: aquest panell viu incrustat dins
+        # l'ample d'un sol bloc de columnes del tauler (el 3r, posicions
+        # 55-61), no dins tot l'ample de la finestra.
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
 
         self.title_label = QLabel()
-        self.title_label.setStyleSheet("font-weight: 700; font-size: 14px; color: #1a1a1a;")
+        self.title_label.setStyleSheet("font-weight: 700; font-size: 11px; color: #1a1a1a;")
+        self.title_label.setWordWrap(True)
         layout.addWidget(self.title_label)
-
-        content = QHBoxLayout()
-        content.setSpacing(16)
 
         detail_columns = [
             t("position.detail.order"),
@@ -91,15 +98,18 @@ class PositionPanel(QFrame):
         self.detail_table.setHorizontalHeaderLabels(detail_columns)
         self.detail_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.detail_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.detail_table.verticalHeader().setDefaultSectionSize(22)
-        self.detail_table.setStyleSheet("font-size: 12px;")
-        content.addWidget(self.detail_table, 3)
-
-        forms = QVBoxLayout()
-        forms.setSpacing(6)
+        self.detail_table.verticalHeader().setVisible(False)
+        self.detail_table.verticalHeader().setDefaultSectionSize(18)
+        self.detail_table.horizontalHeader().setDefaultSectionSize(46)
+        self.detail_table.setStyleSheet("font-size: 10px;")
+        self.detail_table.setFixedHeight(18 * 5 + 24)  # capçalera + fins a 5 files, mai més
+        layout.addWidget(self.detail_table)
 
         add_box = QGroupBox(t("position.add_box"))
+        add_box.setStyleSheet("QGroupBox { font-size: 10px; }")
         add_layout = QFormLayout(add_box)
+        add_layout.setSpacing(3)
+        add_layout.setContentsMargins(6, 10, 6, 6)
         self.add_code = QSpinBox()
         self.add_code.setRange(0, 99999)
         self.add_dims = QLineEdit()
@@ -110,26 +120,23 @@ class PositionPanel(QFrame):
         self.add_button = QPushButton(t("position.add_button"))
         self.add_button.clicked.connect(self._on_add_piece)
         add_layout.addRow(self.add_button)
-        forms.addWidget(add_box)
+        layout.addWidget(add_box)
 
-        actions = QHBoxLayout()
         self.delete_button = QPushButton(t("position.delete_button"))
         self.delete_button.clicked.connect(self._on_delete_last_piece)
-        actions.addWidget(self.delete_button)
+        layout.addWidget(self.delete_button)
 
+        move_row = QHBoxLayout()
+        move_row.setSpacing(3)
         self.move_target = QSpinBox()
         self.move_target.setRange(1, 61)
         self.move_button = QPushButton(t("position.move_button"))
         self.move_button.clicked.connect(self._on_move_piece)
-        actions.addWidget(self.move_button)
-        actions.addWidget(self.move_target)
-        forms.addLayout(actions)
+        move_row.addWidget(self.move_button, 1)
+        move_row.addWidget(self.move_target)
+        layout.addLayout(move_row)
 
-        forms_widget = QWidget()
-        forms_widget.setLayout(forms)
-        content.addWidget(forms_widget, 2)
-
-        layout.addLayout(content)
+        layout.addStretch()
         return page
 
     # ------------------------------------------------------------------ #

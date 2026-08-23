@@ -5,12 +5,15 @@ El tauler es reparteix en 3 blocs de columnes un al costat de l'altre
 K:O), perquè les 61 posicions es vegin totes alhora sense fer scroll i
 la taula ocupi tot l'ample disponible.
 
-El tauler SEMPRE té exactament 61 posicions (mai més, mai menys), així
-que l'alçada de la taula és fixa i l'espai que queda per sota (que abans
-quedava en blanc) s'aprofita per al panell de detall de la posició
-seleccionada (`PositionPanel`), incrustat de manera permanent — ja no és
-un diàleg emergent. La llegenda de colors viu a la barra d'estat de la
-finestra (`build_legend_widget`), per no robar espai vertical a la taula.
+El tauler SEMPRE té exactament 61 posicions (mai més, mai menys): el 3r
+bloc (posicions 55-61) només fa servir 7 de les 27 files, així que la
+resta d'aquell bloc (a la dreta de tot) queda en blanc. Aquest espai és
+on s'incrusta el panell de detall de la posició seleccionada
+(`PositionPanel`), amb `setSpan`/`setCellWidget` — DINS de la pròpia
+taula, no en una fila a part. Així la taula no canvia mai de mida (no
+guanya files buides) i les 61 posicions sempre es veuen senceres. La
+llegenda de colors viu a la barra d'estat de la finestra
+(`build_legend_widget`), per no robar espai vertical a la taula.
 """
 from __future__ import annotations
 
@@ -39,6 +42,13 @@ from app.ui.search_dialog import SearchDialog
 BLOCKS = [(1, 27), (28, 27), (55, 7)]
 FIELDS_PER_BLOCK = 5
 TABLE_ROWS = max(count for _start, count in BLOCKS)
+
+# El panell de detall de posició s'incrusta dins l'espai en blanc del 3r
+# bloc (posicions 55-61: només 7 de les 27 files fan servei).
+PANEL_BLOCK_IDX = 2
+PANEL_COL0 = PANEL_BLOCK_IDX * FIELDS_PER_BLOCK
+PANEL_ROW0 = BLOCKS[PANEL_BLOCK_IDX][1]  # primera fila lliure d'aquell bloc (7)
+PANEL_ROW_COUNT = TABLE_ROWS - PANEL_ROW0
 
 
 def _position_to_cell(position: int) -> tuple[int, int]:
@@ -88,11 +98,18 @@ class BoardTab(QWidget):
         self.table.setMaximumHeight(exact_height)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self._configure_column_widths()
-        layout.addWidget(self.table)
 
+        # Panell de detall incrustat DINS de la taula, a l'espai en blanc
+        # del 3r bloc (sota la posició 61, a la dreta de tot). setSpan fon
+        # les cel·les buides en una de sola; setCellWidget hi incrusta el
+        # panell. No s'afegeix cap fila nova: la taula segueix tenint
+        # exactament TABLE_ROWS files sempre.
         self.position_panel = PositionPanel(self.repo)
         self.position_panel.changed.connect(self._on_position_changed)
-        layout.addWidget(self.position_panel, 1)
+        self.table.setSpan(PANEL_ROW0, PANEL_COL0, PANEL_ROW_COUNT, FIELDS_PER_BLOCK)
+        self.table.setCellWidget(PANEL_ROW0, PANEL_COL0, self.position_panel)
+
+        layout.addWidget(self.table)
 
         # Buscador abaix a la dreta, igual que el bloc de cerca (M19:O24)
         # de Hoja1, que quedava a sota i a la dreta del tauler de posicions.
@@ -106,6 +123,10 @@ class BoardTab(QWidget):
         self.search_button.clicked.connect(self._open_search_dialog)
         search_row.addWidget(self.search_button)
         layout.addLayout(search_row)
+        # Sense el panell com a fila a part, sobra espai vertical: que
+        # quedi tot avall (fora de la vista útil) i no com un buit entre
+        # la taula i el buscador.
+        layout.addStretch()
 
         # Públic (no "_search_dialog"): MainWindow hi connecta el ressaltat
         # creuat de Desmagatzem (mateixos colors de cerca que el tauler).
@@ -158,9 +179,13 @@ class BoardTab(QWidget):
     # ------------------------------------------------------------------ #
     def refresh_board(self):
         # Primer deixa totes les cel·les en blanc i no seleccionables (el
-        # bloc de posicions 55-61 només arriba fins a la fila 7).
+        # bloc de posicions 55-61 només arriba fins a la fila 7), EXCEPTE
+        # la regió del panell incrustat (setSpan/setCellWidget): no s'hi
+        # torna a tocar mai, per no trencar el span ni el widget incrustat.
         for r in range(TABLE_ROWS):
             for c in range(self.table.columnCount()):
+                if r >= PANEL_ROW0 and PANEL_COL0 <= c < PANEL_COL0 + FIELDS_PER_BLOCK:
+                    continue
                 item = QTableWidgetItem("")
                 item.setFlags(Qt.NoItemFlags)
                 self.table.setItem(r, c, item)
