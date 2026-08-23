@@ -235,18 +235,6 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "This position has more than one different material among its pieces.",
         "fr": "Cette position contient plus d'un matériau différent parmi ses pièces.",
     },
-    "board.search_button": {
-        "ca": "🔍  Cercar…", "es": "🔍  Buscar…", "en": "🔍  Search…", "fr": "🔍  Rechercher…",
-    },
-    "board.clear_search": {
-        "ca": "🧹 Netejar cerca", "es": "🧹 Limpiar búsqueda", "en": "🧹 Clear search", "fr": "🧹 Effacer la recherche",
-    },
-    "board.search_result": {
-        "ca": "{count} coincidència(es) · més antiga: posc. {oldest}",
-        "es": "{count} coincidencia(s) · más antigua: posc. {oldest}",
-        "en": "{count} match(es) · oldest: pos. {oldest}",
-        "fr": "{count} correspondance(s) · plus ancienne : pos. {oldest}",
-    },
     "board.search_result_desmagatzem": {
         "ca": " · {qty} ud(s) a Desmagatzem",
         "es": " · {qty} ud(s) en Desmagatzem",
@@ -255,10 +243,6 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     },
 
     # -- Diàleg de cerca ---------------------------------------------------- #
-    "search.title": {
-        "ca": "Cercar al tauler", "es": "Buscar en el tablero",
-        "en": "Search the board", "fr": "Rechercher dans le tableau",
-    },
     "search.code_label": {
         "ca": "Per núm. (exacte):", "es": "Por núm. (exacto):",
         "en": "By no. (exact):", "fr": "Par n° (exact) :",
@@ -283,8 +267,6 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ca": "Text parcial a les notes", "es": "Texto parcial en las notas",
         "en": "Partial text in the notes", "fr": "Texte partiel dans les notes",
     },
-    "common.clear": {"ca": "Netejar", "es": "Limpiar", "en": "Clear", "fr": "Effacer"},
-    "common.close": {"ca": "Tancar", "es": "Cerrar", "en": "Close", "fr": "Fermer"},
 
     # -- Panell de posició --------------------------------------------------- #
     "position.title": {
@@ -296,17 +278,6 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "es": "Posición {position}",
         "en": "Position {position}",
         "fr": "Position {position}",
-    },
-    "position.add_box": {
-        "ca": "Afegir peça a aquesta posició", "es": "Añadir pieza a esta posición",
-        "en": "Add a piece to this position", "fr": "Ajouter une pièce à cette position",
-    },
-    "position.add_button": {
-        "ca": "➕ Afegir peça", "es": "➕ Añadir pieza", "en": "➕ Add piece", "fr": "➕ Ajouter une pièce",
-    },
-    "position.delete_button": {
-        "ca": "🗑️ Esborrar última peça", "es": "🗑️ Borrar última pieza",
-        "en": "🗑️ Delete last piece", "fr": "🗑️ Supprimer la dernière pièce",
     },
     "position.move_button": {
         "ca": "📤 Moure peça visible a posició →", "es": "📤 Mover pieza visible a posición →",
@@ -660,17 +631,6 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     },
 
     # -- Targetes de resultats de cerca ---------------------------------------- #
-    "search.stat.matches": {
-        "ca": "Coincidències", "es": "Coincidencias", "en": "Matches", "fr": "Correspondances",
-    },
-    "search.stat.oldest": {
-        "ca": "Posició més antiga", "es": "Posición más antigua",
-        "en": "Oldest position", "fr": "Position la plus ancienne",
-    },
-    "search.stat.desmagatzem": {
-        "ca": "Unitats a Desmagatzem", "es": "Unidades en Desmagatzem",
-        "en": "Units in Desmagatzem", "fr": "Unités dans Desmagatzem",
-    },
 
     # -- Materials: alta protegida amb contrasenya ------------------------------ #
     "common.cancel": {"ca": "Cancel·lar", "es": "Cancelar", "en": "Cancel", "fr": "Annuler"},

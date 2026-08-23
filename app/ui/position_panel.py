@@ -7,19 +7,23 @@ taula del Tauler: el 3r bloc de columnes (posicions 55-61) només fa servir
 de tot) es fusiona amb `QTableWidget.setSpan` i s'hi incrusta aquest
 panell amb `setCellWidget` (veure `BoardTab._build_ui`). Com que no s'afegeix
 cap fila nova enlloc, la taula de 61 posicions mai canvia de mida.
+
+L'alta d'una peça ja no es fa amb un formulari a part: s'escriu el núm.
+de material directament a la primera fila buida de la taula de detall
+(la resta de camps s'omplen sols/s'editen després en línia); la baixa
+és la tecla Delete (sempre l'última peça, com abans); el trasllat
+continua tenint el seu propi botó.
 """
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QFormLayout,
     QFrame,
-    QGroupBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QLineEdit,
     QMessageBox,
     QPushButton,
     QSpinBox,
@@ -74,15 +78,19 @@ class PositionPanel(QFrame):
 
         self._stack.addWidget(self._build_detail_page())  # índex 1
 
-    def add_footer(self, layout):
-        """Afegeix una fila de botons a sota de tot, separada amb una línia
-        divisòria. Fora de l'`_stack`, així es veu sempre (hi hagi o no una
-        posició seleccionada) — s'hi reubica el buscador del Tauler."""
+    def add_footer(self, widget: QWidget):
+        """Afegeix un widget a sota de tot, separat amb una línia divisòria.
+        Fora de l'`_stack`, així es veu sempre (hi hagi o no una posició
+        seleccionada) — s'hi incrusta el panell de cerca del Tauler."""
         separator = QFrame()
         separator.setFrameShape(QFrame.HLine)
         separator.setFrameShadow(QFrame.Sunken)
         self._outer.addWidget(separator)
-        self._outer.addLayout(layout)
+        self._outer.addWidget(widget)
+        # Que l'espai sobrant (si el bloc del tauler és més alt del que cal)
+        # quedi tot avall de tot, sota el panell de cerca — no com un buit
+        # entre el detall de la posició i el panell de cerca.
+        self._outer.addStretch()
 
     def _build_detail_page(self) -> QWidget:
         # Disposició vertical i compacta: aquest panell viu incrustat dins
@@ -140,47 +148,15 @@ class PositionPanel(QFrame):
         # perquè l'alçada real de la lletra varia segons la plataforma.
         self._fit_detail_table_height()
 
+        # Tecla Delete = esborrar l'última peça (igual que abans el botó
+        # "Esborrar última peça"). Només quan la taula NO està editant una
+        # cel·la (si no, Delete s'hauria d'aplicar al text que s'edita).
+        self._delete_shortcut = QShortcut(QKeySequence(Qt.Key_Delete), self.detail_table)
+        self._delete_shortcut.setContext(Qt.WidgetShortcut)
+        self._delete_shortcut.activated.connect(self._on_delete_shortcut)
+
         # Botons compactes: menys padding que el QPushButton global.
         compact_button_style = "padding: 2px 8px; font-size: 10px;"
-        # Afegir peça / Esborrar última peça: lletra una mica més gran que
-        # la resta de botons compactes d'aquest panell.
-        add_delete_style = "padding: 3px 8px; font-size: 11px;"
-
-        add_box = QGroupBox(t("position.add_box"))
-        add_box.setStyleSheet("QGroupBox { font-size: 10px; }")
-        add_layout = QFormLayout(add_box)
-        add_layout.setSpacing(3)
-        add_layout.setContentsMargins(6, 10, 6, 6)
-        self.add_code = QSpinBox()
-        self.add_code.setRange(0, 99999)
-        self.add_code.valueChanged.connect(self._update_material_preview)
-        # Material: només lectura, mai s'hi escriu a mà — es busca sola al
-        # catàleg segons el núm. material de sobre i es mostra aquí.
-        self.add_material_preview = QLineEdit()
-        self.add_material_preview.setReadOnly(True)
-        self.add_material_preview.setFocusPolicy(Qt.NoFocus)
-        self.add_material_preview.setStyleSheet("background-color: #eef0f3; color: #444;")
-        self.add_dims = QLineEdit()
-        self.add_notes = QLineEdit()
-        add_layout.addRow(t("desmagatzem.field.code"), self.add_code)
-        add_layout.addRow(t("board.field.material") + ":", self.add_material_preview)
-        add_layout.addRow(t("desmagatzem.field.dimensions"), self.add_dims)
-        add_layout.addRow(t("board.field.notes") + ":", self.add_notes)
-        layout.addWidget(add_box)
-        self._update_material_preview()
-
-        # Afegir peça i Esborrar última peça en dues línies, una sota l'altra.
-        add_delete_col = QVBoxLayout()
-        add_delete_col.setSpacing(3)
-        self.add_button = QPushButton(t("position.add_button"))
-        self.add_button.setStyleSheet(add_delete_style)
-        self.add_button.clicked.connect(self._on_add_piece)
-        add_delete_col.addWidget(self.add_button)
-        self.delete_button = QPushButton(t("position.delete_button"))
-        self.delete_button.setStyleSheet(add_delete_style)
-        self.delete_button.clicked.connect(self._on_delete_last_piece)
-        add_delete_col.addWidget(self.delete_button)
-        layout.addLayout(add_delete_col)
 
         move_row = QHBoxLayout()
         move_row.setSpacing(3)
@@ -192,17 +168,9 @@ class PositionPanel(QFrame):
         move_row.addWidget(self.move_button, 1)
         move_row.addWidget(self.move_target)
         layout.addLayout(move_row)
-
-        layout.addStretch()
+        # Sense stretch aquí: l'espai sobrant s'ha de quedar tot avall de
+        # tot el panell (sota el de cerca), no just després del trasllat.
         return page
-
-    def _update_material_preview(self):
-        """Cerca el núm. material introduït al catàleg i mostra la seva
-        descripció al camp de només lectura "Material". Si no hi ha cap
-        coincidència, es deixen 5 espais en blanc (l'avís de "no trobat"
-        només es mostra en clicar Afegir peça, no mentre s'escriu)."""
-        desc = self.repo.lookup_material(self.add_code.value())
-        self.add_material_preview.setText("     " if desc == rules.EMPTY_MATERIAL_MARK else desc)
 
     def _fit_detail_table_height(self):
         """Alçada exacta per a capçalera + 5 files, sense marge de seguretat
@@ -235,6 +203,7 @@ class PositionPanel(QFrame):
         # editat (a més de ser innecessari, petaria a les files buides).
         self.detail_table.blockSignals(True)
         self.detail_table.setRowCount(5)
+        next_free_row = len(detail)  # primera fila buida: hi accepta un núm. nou
         for r in range(5):
             occupied = r < len(detail)
             if occupied:
@@ -244,11 +213,14 @@ class PositionPanel(QFrame):
                 values = [""] * self.detail_table.columnCount()
             for c, v in enumerate(values):
                 item = QTableWidgetItem(str(v))
-                # Mides i Notes són editables només si l'slot té material;
-                # Núm./Material no s'editen mai des d'aquí.
-                editable = occupied and c in (self._DETAIL_DIMS_COL, self._DETAIL_NOTES_COL)
                 flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
-                if editable:
+                if occupied and c in (self._DETAIL_DIMS_COL, self._DETAIL_NOTES_COL):
+                    # Mides i Notes són editables sempre que l'slot tingui
+                    # material; Núm./Material no s'editen mai un cop assignats.
+                    flags |= Qt.ItemIsEditable
+                elif not occupied and c == self._DETAIL_CODE_COL and r == next_free_row:
+                    # Alta d'una peça nova: només la primera fila buida
+                    # accepta escriure-hi un núm. de material directament.
                     flags |= Qt.ItemIsEditable
                 item.setFlags(flags)
                 self.detail_table.setItem(r, c, item)
@@ -259,9 +231,12 @@ class PositionPanel(QFrame):
         if self.position is None:
             return
         col = item.column()
+        row = item.row()
+        if col == self._DETAIL_CODE_COL:
+            self._on_code_cell_edited(row, item.text().strip())
+            return
         if col not in (self._DETAIL_DIMS_COL, self._DETAIL_NOTES_COL):
             return
-        row = item.row()
         code_item = self.detail_table.item(row, self._DETAIL_CODE_COL)
         if code_item is None or not code_item.text():
             return  # slot buit: mai s'hauria de poder arribar aquí
@@ -269,22 +244,26 @@ class PositionPanel(QFrame):
         self.repo.update_piece_field(self.position, slot=row + 1, field=field, value=item.text().strip())
         self.changed.emit()
 
-    def _on_add_piece(self):
-        code = self.add_code.value()
-        dims = self.add_dims.text().strip()
-        notes = self.add_notes.text().strip()
+    def _on_code_cell_edited(self, row: int, code: str):
+        """Alta d'una peça nova: s'escriu el núm. de material directament a
+        la primera fila buida de la taula (Mides/Notes es poden omplir
+        després, editant-les en línia un cop la peça ja existeix)."""
+        if not code:
+            return  # s'ha buidat la cel·la sense escriure-hi res
+        detail = self.repo.get_position_detail(self.position)
+        if row != len(detail):
+            self.refresh()  # per seguretat: només la primera fila buida hi val
+            return
 
         # Avís (no bloquejant) si el número no existeix al catàleg: es pot
         # continuar igualment, la peça s'afegeix amb el material en blanc.
         if self.repo.lookup_material(code) == rules.EMPTY_MATERIAL_MARK:
             QMessageBox.warning(
-                self,
-                t("position.material_not_found.title"),
-                t("position.material_not_found.text", code=code),
+                self, t("position.material_not_found.title"), t("position.material_not_found.text", code=code)
             )
 
         try:
-            self.repo.add_piece(self.position, code, dims, notes)
+            self.repo.add_piece(self.position, code, dimensions="", notes="")
         except DuplicateMaterialError as exc:
             resp = QMessageBox.question(
                 self,
@@ -294,21 +273,29 @@ class PositionPanel(QFrame):
             )
             if resp == QMessageBox.Yes:
                 try:
-                    self.repo.add_piece(self.position, code, dims, notes, confirm_duplicate=True)
+                    self.repo.add_piece(self.position, code, dimensions="", notes="", confirm_duplicate=True)
                 except RuleViolation as exc2:
                     QMessageBox.critical(self, t("common.error"), str(exc2))
+                    self.refresh()
                     return
             else:
+                self.refresh()
                 return
         except (PositionFullError, RuleViolation) as exc:
             QMessageBox.critical(self, t("position.cannot_add"), str(exc))
+            self.refresh()
             return
 
-        self.add_code.setValue(0)
-        self.add_dims.clear()
-        self.add_notes.clear()
         self.refresh()
         self.changed.emit()
+
+    def _on_delete_shortcut(self):
+        # La tecla Delete no ha d'esborrar la peça mentre s'està editant el
+        # text d'una cel·la (Mides/Notes, o el núm. d'una peça nova): en
+        # aquest cas Delete s'ha d'aplicar al text, no a la peça sencera.
+        if self.detail_table.state() == QAbstractItemView.EditingState:
+            return
+        self._on_delete_last_piece()
 
     def _on_delete_last_piece(self):
         detail = self.repo.get_position_detail(self.position)

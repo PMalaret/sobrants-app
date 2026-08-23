@@ -3,7 +3,7 @@
 Els cercadors del Tauler (M20/M22/M24 a l'Excel original) també pintaven
 les cel·les coincidents de la fulla desmagatzem amb el mateix color del
 cercador (`BuscaCoincidenciesDesmagatzem_Q20/M22/M24`); aquí es reprodueix
-exactament igual, reutilitzant els mateixos colors que `SearchDialog`
+exactament igual, reutilitzant els mateixos colors que `SearchPanel`
 (`SEARCH_COLORS`) — mai es crea una paleta nova.
 
 L'ordenació es fa clicant la capçalera de cada columna (mode natiu de
@@ -35,7 +35,7 @@ from app.i18n import t
 from app.logic import rules
 from app.logic.repository import Repository, RuleViolation
 from app.logic.rules import quantity_change_kind
-from app.ui.search_dialog import SEARCH_COLORS
+from app.ui.search_panel import SEARCH_COLORS
 
 
 class _NumericItem(QTableWidgetItem):

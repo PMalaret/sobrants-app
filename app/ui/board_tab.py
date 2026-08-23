@@ -24,7 +24,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QPushButton,
     QSizePolicy,
     QStyledItemDelegate,
     QTableWidget,
@@ -36,7 +35,7 @@ from PySide6.QtWidgets import (
 from app.i18n import t
 from app.logic.repository import Repository
 from app.ui.position_panel import PositionPanel
-from app.ui.search_dialog import SearchDialog
+from app.ui.search_panel import SearchPanel
 
 # (posició inicial, nombre de posicions) de cada bloc de columnes, igual que
 # els blocs A/F/K de Hoja1.
@@ -161,31 +160,16 @@ class BoardTab(QWidget):
         # Únic widget d'aquesta pestanya: s'estén (Expanding) fins a la
         # barra d'estat de sota, sense cap fila de botons pel mig.
 
-        # Botons de cerca reubicats dins del panell de detall (a sota de
-        # tot, separats amb una línia divisòria), no en una fila a part
-        # sota la taula — així la taula arriba fins a la barra d'estat.
-        # Text una mica més gran que abans, però sense eixamplar la
-        # secció: el padding horitzontal es queda igual de contingut.
-        _compact_button_style = "padding: 3px 10px; font-size: 14px;"
-        search_row = QHBoxLayout()
-        search_row.setContentsMargins(0, 0, 0, 0)
-        search_row.addStretch()
-        self.clear_search_button = QPushButton(t("board.clear_search"))
-        self.clear_search_button.setStyleSheet(_compact_button_style)
-        self.clear_search_button.clicked.connect(self._clear_search)
-        self.clear_search_button.setEnabled(False)
-        search_row.addWidget(self.clear_search_button)
-        self.search_button = QPushButton(t("board.search_button"))
-        self.search_button.setStyleSheet(_compact_button_style)
-        self.search_button.clicked.connect(self._open_search_dialog)
-        search_row.addWidget(self.search_button)
-        self.position_panel.add_footer(search_row)
-
-        # Públic (no "_search_dialog"): MainWindow hi connecta el ressaltat
+        # Panell de cerca incrustat dins del panell de detall (a sota de
+        # tot, separat amb una línia divisòria): abans calia obrir un
+        # diàleg amb un botó "Cercar...", ara els 3 camps sempre hi són,
+        # ocupant l'espai que ha deixat lliure treure el formulari d'alta
+        # de peça (l'alta es fa ara directament a la taula de detall).
+        # Públic (no "_search_panel"): MainWindow hi connecta el ressaltat
         # creuat de Desmagatzem (mateixos colors de cerca que el tauler).
-        self.search_dialog = SearchDialog(self)
-        self.search_dialog.search_changed.connect(self._on_search_changed)
-        self.search_dialog.cleared.connect(self._on_search_cleared)
+        self.search_panel = SearchPanel()
+        self.search_panel.search_changed.connect(self._on_search_changed)
+        self.position_panel.add_footer(self.search_panel)
         self._search_state: dict[str, str] = {}
 
     def _configure_column_widths(self):
@@ -298,41 +282,22 @@ class BoardTab(QWidget):
         self.data_changed.emit()
 
     # ------------------------------------------------------------------ #
-    # Cerca (diàleg)
+    # Cerca (panell incrustat)
     # ------------------------------------------------------------------ #
-    def _open_search_dialog(self):
-        self.search_dialog.show_and_focus()
-
     def _on_search_changed(self, mode: str, text: str):
         self._search_state[mode] = text
-        self.clear_search_button.setEnabled(any(v.strip() for v in self._search_state.values()))
         self._run_search(mode, text)
-
-    def _on_search_cleared(self):
-        self._search_state = {}
-        self.clear_search_button.setEnabled(False)
-        self._reapply_all_highlights()
-
-    def _clear_search(self):
-        self.search_dialog.clear_all()
 
     def _reapply_all_highlights(self):
         self._clear_highlight()
         for mode, text in self._search_state.items():
-            self._run_search(mode, text, update_label=False)
+            self._run_search(mode, text)
 
-    def _run_search(self, mode: str, text: str, update_label: bool = True):
+    def _run_search(self, mode: str, text: str):
         self._clear_field_highlight(mode)
         if not text.strip():
-            if update_label:
-                self.search_dialog.set_result(mode, "—", "—", 0)
             return
         result = self.repo.search(text, mode=mode)
-        oldest = result["oldest_position"]
-        if update_label:
-            self.search_dialog.set_result(
-                mode, result["count"], oldest if oldest else "—", result["desmagatzem_qty"]
-            )
         positions = {m["position"] for m in result["matches"]}
         self._highlight_field(positions, self._SEARCH_FIELD[mode], self._SEARCH_COLOR[mode])
 

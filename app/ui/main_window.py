@@ -74,9 +74,10 @@ class MainWindow(QMainWindow):
         self.desmagatzem_tab = DesmagatzemTab(self.repo)
         self.board_tab.data_changed.connect(self.historic_tab.refresh)
         # Els cercadors del Tauler també ressalten coincidències a
-        # Desmagatzem amb el mateix color (igual que l'original).
-        self.board_tab.search_dialog.search_changed.connect(self.desmagatzem_tab.apply_search_highlight)
-        self.board_tab.search_dialog.cleared.connect(self.desmagatzem_tab.clear_search_highlight)
+        # Desmagatzem amb el mateix color (igual que l'original). Netejar
+        # un camp de cerca (text buit) ja neteja el ressaltat corresponent
+        # via apply_search_highlight, no cal cap senyal "cleared" a part.
+        self.board_tab.search_panel.search_changed.connect(self.desmagatzem_tab.apply_search_highlight)
 
         # Pestanyes (QTabBar sol, no QTabWidget) i botons d'acció en una
         # sola fila: amb `QTabWidget.setCornerWidget` Qt força l'alçada
