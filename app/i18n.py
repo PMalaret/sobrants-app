@@ -303,4 +303,47 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ca": "Els forats de la posició estan corromputs (han de ser consecutius des d'1)",
         "es": "Los huecos de la posición están corruptos (deben ser consecutivos desde 1)",
     },
+    "err.material_exists": {
+        "ca": "Ja existeix un material amb el número {code}: «{description}».",
+        "es": "Ya existe un material con el número {code}: «{description}».",
+    },
+
+    # -- Panell de detall de posició (incrustat sota el tauler) --------------- #
+    "position.panel.placeholder": {
+        "ca": "👆 Selecciona una posició a la taula per veure'n i editar-ne el detall.",
+        "es": "👆 Selecciona una posición en la tabla para ver y editar su detalle.",
+    },
+
+    # -- Targetes de resultats de cerca ---------------------------------------- #
+    "search.stat.matches": {"ca": "Coincidències", "es": "Coincidencias"},
+    "search.stat.oldest": {"ca": "Posició més antiga", "es": "Posición más antigua"},
+    "search.stat.desmagatzem": {"ca": "Unitats a Desmagatzem", "es": "Unidades en Desmagatzem"},
+
+    # -- Materials: alta protegida amb contrasenya ------------------------------ #
+    "common.cancel": {"ca": "Cancel·lar", "es": "Cancelar"},
+    "common.done": {"ca": "Fet", "es": "Hecho"},
+    "common.add": {"ca": "Afegir", "es": "Añadir"},
+    "materials.add_button": {"ca": "➕ Afegir material", "es": "➕ Añadir material"},
+    "materials.password.title": {"ca": "Contrasenya", "es": "Contraseña"},
+    "materials.password.label": {
+        "ca": "Introdueix la contrasenya per afegir un material nou:",
+        "es": "Introduce la contraseña para añadir un material nuevo:",
+    },
+    "materials.password.wrong.title": {"ca": "Contrasenya incorrecta", "es": "Contraseña incorrecta"},
+    "materials.password.wrong.text": {
+        "ca": "La contrasenya introduïda no és correcta. No s'ha afegit cap material.",
+        "es": "La contraseña introducida no es correcta. No se ha añadido ningún material.",
+    },
+    "materials.add_dialog.title": {"ca": "Afegir material nou", "es": "Añadir material nuevo"},
+    "materials.add_dialog.code": {"ca": "Núm. material:", "es": "Núm. material:"},
+    "materials.add_dialog.description": {"ca": "Descripció:", "es": "Descripción:"},
+    "materials.add.missing_fields": {
+        "ca": "Cal indicar un número de material i una descripció.",
+        "es": "Hay que indicar un número de material y una descripción.",
+    },
+    "materials.add.success": {"ca": "Material afegit correctament.", "es": "Material añadido correctamente."},
+    "materials.add.confirm_overwrite": {
+        "ca": "Ja existeix un material amb el número {code} («{description}»). Vols actualitzar-ne la descripció?",
+        "es": "Ya existe un material con el número {code} («{description}»). ¿Quieres actualizar su descripción?",
+    },
 }

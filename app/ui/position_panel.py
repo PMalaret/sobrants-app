@@ -1,15 +1,17 @@
-"""Diàleg de detall d'una posició: fins a 5 peces, alta, baixa i trasllat.
+"""Panell de detall d'una posició: fins a 5 peces, alta, baixa i trasllat.
 
-Abans era un panell fix a la dreta del Tauler; ara s'obre en fer doble clic
-sobre una posició, perquè la taula del Tauler pugui ocupar tot l'ample.
+Abans (`PositionDialog`) era una finestra emergent que s'obria en fer doble
+clic; ara és un `QWidget` incrustat de manera permanent sota la taula del
+Tauler (el tauler sempre té exactament 61 posicions, així que sempre queda
+un espai fix per sota de l'última fila útil per a aquest panell).
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QDialog,
     QFormLayout,
+    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -17,36 +19,65 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSpinBox,
+    QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
+    QWidget,
 )
 
 from app.i18n import t
 from app.logic.repository import DuplicateMaterialError, PositionFullError, Repository, RuleViolation
 
+_PANEL_STYLE = """
+QFrame#positionPanel {
+    background-color: #ffffff;
+    border: 1px solid #d0d3d9;
+    border-radius: 8px;
+}
+"""
 
-class PositionDialog(QDialog):
+
+class PositionPanel(QFrame):
     """Emet `changed()` cada vegada que es modifiquen dades, perquè el Tauler
     refresqui la taula principal."""
 
     changed = Signal()
 
-    def __init__(self, repo: Repository, position: int, parent=None):
+    def __init__(self, repo: Repository, parent=None):
         super().__init__(parent)
         self.repo = repo
-        self.position = position
-        self.setWindowTitle(t("position.title", position=position))
-        self.setMinimumWidth(560)
+        self.position: int | None = None
+        self.setObjectName("positionPanel")
+        self.setStyleSheet(_PANEL_STYLE)
+        self.setFrameShape(QFrame.NoFrame)
         self._build_ui()
-        self.refresh()
 
     def _build_ui(self):
-        layout = QVBoxLayout(self)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(14, 10, 14, 10)
 
-        self.title_label = QLabel(t("position.subtitle", position=self.position))
-        self.title_label.setStyleSheet("font-weight: 600; font-size: 14px;")
+        self._stack = QStackedWidget()
+        outer.addWidget(self._stack)
+
+        placeholder = QLabel(t("position.panel.placeholder"))
+        placeholder.setAlignment(Qt.AlignCenter)
+        placeholder.setStyleSheet("color: #8a8f98; font-size: 14px;")
+        self._stack.addWidget(placeholder)  # índex 0
+
+        self._stack.addWidget(self._build_detail_page())  # índex 1
+
+    def _build_detail_page(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.title_label = QLabel()
+        self.title_label.setStyleSheet("font-weight: 700; font-size: 14px; color: #1a1a1a;")
         layout.addWidget(self.title_label)
+
+        content = QHBoxLayout()
+        content.setSpacing(16)
 
         detail_columns = [
             t("position.detail.order"),
@@ -60,7 +91,12 @@ class PositionDialog(QDialog):
         self.detail_table.setHorizontalHeaderLabels(detail_columns)
         self.detail_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.detail_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        layout.addWidget(self.detail_table)
+        self.detail_table.verticalHeader().setDefaultSectionSize(22)
+        self.detail_table.setStyleSheet("font-size: 12px;")
+        content.addWidget(self.detail_table, 3)
+
+        forms = QVBoxLayout()
+        forms.setSpacing(6)
 
         add_box = QGroupBox(t("position.add_box"))
         add_layout = QFormLayout(add_box)
@@ -74,7 +110,7 @@ class PositionDialog(QDialog):
         self.add_button = QPushButton(t("position.add_button"))
         self.add_button.clicked.connect(self._on_add_piece)
         add_layout.addRow(self.add_button)
-        layout.addWidget(add_box)
+        forms.addWidget(add_box)
 
         actions = QHBoxLayout()
         self.delete_button = QPushButton(t("position.delete_button"))
@@ -87,16 +123,29 @@ class PositionDialog(QDialog):
         self.move_button.clicked.connect(self._on_move_piece)
         actions.addWidget(self.move_button)
         actions.addWidget(self.move_target)
-        layout.addLayout(actions)
+        forms.addLayout(actions)
 
-        close_row = QHBoxLayout()
-        close_row.addStretch()
-        close_button = QPushButton(t("common.close"))
-        close_button.clicked.connect(self.close)
-        close_row.addWidget(close_button)
-        layout.addLayout(close_row)
+        forms_widget = QWidget()
+        forms_widget.setLayout(forms)
+        content.addWidget(forms_widget, 2)
+
+        layout.addLayout(content)
+        return page
+
+    # ------------------------------------------------------------------ #
+    def load_position(self, position: int):
+        self.position = position
+        self.title_label.setText(t("position.subtitle", position=position))
+        self.refresh()
+        self._stack.setCurrentIndex(1)
+
+    def clear_selection(self):
+        self.position = None
+        self._stack.setCurrentIndex(0)
 
     def refresh(self):
+        if self.position is None:
+            return
         detail = self.repo.get_position_detail(self.position)
         self.detail_table.setRowCount(len(detail))
         for r, p in enumerate(detail):
@@ -122,10 +171,7 @@ class PositionDialog(QDialog):
             resp = QMessageBox.question(
                 self,
                 t("position.duplicate.title"),
-                t(
-                    "position.duplicate.text",
-                    positions=", ".join(str(p) for p in exc.positions),
-                ),
+                t("position.duplicate.text", positions=", ".join(str(p) for p in exc.positions)),
                 QMessageBox.Yes | QMessageBox.No,
             )
             if resp == QMessageBox.Yes:

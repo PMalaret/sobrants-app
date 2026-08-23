@@ -1,6 +1,14 @@
-"""Pestanya 'Desmagatzem': retirada de peces per carro/lot."""
+"""Pestanya 'Desmagatzem': retirada de peces per carro/lot.
+
+Els cercadors del Tauler (M20/M22/M24 a l'Excel original) també pintaven
+les cel·les coincidents de la fulla desmagatzem amb el mateix color del
+cercador (`BuscaCoincidenciesDesmagatzem_Q20/M22/M24`); aquí es reprodueix
+exactament igual, reutilitzant els mateixos colors que `SearchDialog`
+(`SEARCH_COLORS`) — mai es crea una paleta nova.
+"""
 from __future__ import annotations
 
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFormLayout,
@@ -19,14 +27,23 @@ from PySide6.QtWidgets import (
 )
 
 from app.i18n import t
+from app.logic import rules
 from app.logic.repository import Repository, RuleViolation
 from app.logic.rules import quantity_change_kind
+from app.ui.search_dialog import SEARCH_COLORS
 
 
 class DesmagatzemTab(QWidget):
+    # Columna de la taula (Quantitat, Núm., Material, Mides, Carro/lot, Data)
+    # que ressalta cada cercador — igual que B/C/E a la fulla desmagatzem
+    # original per a M20/M22/M24 respectivament.
+    _SEARCH_COLUMN = {"code": 1, "description": 2, "notes": 4}
+    _SEARCH_FIELD = {"code": "material_code", "description": "material_desc", "notes": "cart_ref"}
+
     def __init__(self, repo: Repository, parent=None):
         super().__init__(parent)
         self.repo = repo
+        self._search_state: dict[str, str] = {}
         self._build_ui()
         self.refresh()
 
@@ -95,6 +112,7 @@ class DesmagatzemTab(QWidget):
 
     def refresh(self):
         rows = self.repo.list_desmagatzem()
+        self._rows = rows
         self._row_ids = [r["id"] for r in rows]
         self.table.setRowCount(len(rows))
         for r, row in enumerate(rows):
@@ -108,6 +126,47 @@ class DesmagatzemTab(QWidget):
             ]
             for c, v in enumerate(values):
                 self.table.setItem(r, c, QTableWidgetItem(str(v)))
+        self._reapply_highlights()
+
+    # ------------------------------------------------------------------ #
+    # Ressaltat creuat amb els cercadors del Tauler (mateixos colors)
+    # ------------------------------------------------------------------ #
+    def apply_search_highlight(self, mode: str, text: str):
+        self._search_state[mode] = text
+        self._highlight_mode(mode, text)
+
+    def clear_search_highlight(self):
+        self._search_state = {}
+        for mode in self._SEARCH_COLUMN:
+            self._clear_column(self._SEARCH_COLUMN[mode])
+
+    def _reapply_highlights(self):
+        for mode, text in self._search_state.items():
+            self._highlight_mode(mode, text)
+
+    def _highlight_mode(self, mode: str, text: str):
+        column = self._SEARCH_COLUMN[mode]
+        self._clear_column(column)
+        if not text.strip():
+            return
+        color = QColor(SEARCH_COLORS[mode])
+        field = self._SEARCH_FIELD[mode]
+        for r, row in enumerate(getattr(self, "_rows", [])):
+            value = row[field]
+            if value is None:
+                continue
+            hit = rules.matches_exact(str(value), text) if mode == "code" else rules.matches_partial(str(value), text)
+            if hit:
+                item = self.table.item(r, column)
+                if item is not None:
+                    item.setBackground(color)
+
+    def _clear_column(self, column: int):
+        transparent = QColor(0, 0, 0, 0)
+        for r in range(self.table.rowCount()):
+            item = self.table.item(r, column)
+            if item is not None:
+                item.setBackground(transparent)
 
     def _selected_row_id(self) -> int | None:
         items = self.table.selectedItems()

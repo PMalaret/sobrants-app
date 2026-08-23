@@ -217,3 +217,20 @@ def test_get_historic_order_by_position_is_numeric_not_lexicographic(repo):
 def test_desmagatzem_rejects_invalid_quantity(repo):
     with pytest.raises(RuleViolation):
         repo.add_desmagatzem_row(material_code="41011", quantity=21, dimensions="", cart_ref="")
+
+
+def test_add_material_new_code(repo):
+    repo.add_material(50000, "Vidre nou de prova")
+    assert repo.lookup_material(50000) == "Vidre nou de prova"
+
+
+def test_add_material_rejects_existing_code_without_overwrite(repo):
+    with pytest.raises(RuleViolation):
+        repo.add_material(41011, "Descripció diferent")
+    # no s'ha tocat l'original
+    assert repo.lookup_material(41011) == "L1010.2 HS"
+
+
+def test_add_material_overwrite_updates_description(repo):
+    repo.add_material(41011, "Descripció actualitzada", overwrite=True)
+    assert repo.lookup_material(41011) == "Descripció actualitzada"

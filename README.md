@@ -26,10 +26,31 @@ Ver `docs/ANALISIS_VBA.md` para el mapeo detallado macro por macro.
 
 Las 61 posiciones se muestran en 3 bloques de columnas lado a lado (1-27,
 28-54, 55-61) para que quepan todas a la vista sin scroll — igual que
-hacía Hoja1 con sus bloques A:E / F:J / K:O. La búsqueda (antes 3 cajas
-fijas) y el detalle de una posición (antes un panel fijo) son ahora un
-botón + diálogo cada uno, para que la tabla principal use todo el ancho
-de la pantalla.
+hacía Hoja1 con sus bloques A:E / F:J / K:O. El tauler **siempre** tiene
+exactamente esas 61 posiciones (no hay lógica para un número variable), así
+que la tabla tiene una altura fija y el espacio que queda justo debajo se
+aprovecha para el **panel de detalle de la posición seleccionada**
+(`app/ui/position_panel.py`): alta/baja/traslado de piezas, incrustado de
+forma permanente (ya no es una ventana emergente). La búsqueda sigue siendo
+un botón + diálogo no modal, abajo a la derecha; sus resultados (coincidencias,
+posición más antigua, unidades en Desmagatzem) se muestran como tarjetas con
+número grande, no como texto plano.
+
+### Desmagatzem: mismos colores de búsqueda que el Tauler
+
+Los 3 buscadores del Tauler también resaltan, con el mismo color, las filas
+de Desmagatzem que coinciden (igual que `BuscaCoincidenciesDesmagatzem_Q20/
+M22/M24` en el VBA original, que pintaba las celdas de la fulla desmagatzem
+con el color de la propia celda de búsqueda M20/M22/M24). Los colores están
+centralizados en `SEARCH_COLORS` (`app/ui/search_dialog.py`) y los reutilizan
+tanto el Tauler como Desmagatzem — no hay una paleta duplicada.
+
+### Materiales: alta protegida por contraseña
+
+`Materials` permite dar de alta un material nuevo (funcionalidad que no
+existía en el Excel original, donde el catálogo se editaba libremente en la
+hoja). Pide una contraseña antes de continuar; el valor vive en un único
+sitio, `app/security.py` (`ADMIN_PASSWORD`), fácil de cambiar más adelante.
 
 ## Uso en desarrollo
 

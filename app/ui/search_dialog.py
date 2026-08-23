@@ -2,30 +2,72 @@
 
 Cada camp té el mateix color que fa servir per ressaltar les coincidències
 al tauler (igual que a l'Excel original, on el color de la pròpia cel·la
-de cerca M20/M22/M24 era el que s'usava per pintar les coincidències).
+de cerca M20/M22/M24 era el que s'usava per pintar les coincidències), i
+mostra els resultats (coincidències, posició més antiga, unitats a
+Desmagatzem) en targetes clares en lloc d'una línia de text.
 """
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QDialog,
-    QFormLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
     QVBoxLayout,
+    QWidget,
 )
 
 from app.i18n import t
 
-# Mateixos colors que BoardTab._SEARCH_COLOR, perquè es vegi d'un cop d'ull
-# quin cercador pinta quin color al tauler.
+# Mateixos colors que BoardTab._SEARCH_COLOR i DesmagatzemTab, perquè es
+# vegi d'un cop d'ull quin cercador pinta quin color a cada banda.
 SEARCH_COLORS = {
     "code": "#ffe08a",
     "description": "#a8e6a1",
     "notes": "#9fd3ff",
 }
+
+
+class SearchStatsCard(QWidget):
+    """Targeta amb els 3 resultats d'un cercador (coincidències, posició més
+    antiga, unitats a Desmagatzem), amb número gran i etiqueta petita."""
+
+    def __init__(self, accent_color: str, parent=None):
+        super().__init__(parent)
+        self.setStyleSheet(
+            "background-color: #fafbfc; border: 1px solid #d8dae0; "
+            f"border-left: 5px solid {accent_color}; border-radius: 6px;"
+        )
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setSpacing(22)
+
+        self.count_value = self._add_tile(layout, t("search.stat.matches"))
+        self.oldest_value = self._add_tile(layout, t("search.stat.oldest"))
+        self.qty_value = self._add_tile(layout, t("search.stat.desmagatzem"))
+
+    @staticmethod
+    def _add_tile(layout: QHBoxLayout, caption: str) -> QLabel:
+        box = QVBoxLayout()
+        box.setSpacing(2)
+        cap = QLabel(caption)
+        cap.setStyleSheet("color: #6b7280; font-size: 10px; font-weight: 600;")
+        cap.setWordWrap(True)
+        value = QLabel("—")
+        value.setStyleSheet("color: #1a1a1a; font-size: 21px; font-weight: 700;")
+        box.addWidget(cap)
+        box.addWidget(value)
+        wrap = QWidget()
+        wrap.setLayout(box)
+        layout.addWidget(wrap)
+        return value
+
+    def set_values(self, count, oldest, qty):
+        self.count_value.setText(str(count))
+        self.oldest_value.setText(str(oldest) if oldest not in (None, "") else "—")
+        self.qty_value.setText(str(qty))
 
 
 class SearchDialog(QDialog):
@@ -39,42 +81,23 @@ class SearchDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(t("search.title"))
-        self.setMinimumWidth(520)
+        self.setMinimumWidth(620)
         self.setModal(False)
 
         layout = QVBoxLayout(self)
-        form = QFormLayout()
-        form.setVerticalSpacing(12)
+        layout.setSpacing(14)
 
-        self.code_edit = QLineEdit()
-        self.code_edit.setPlaceholderText(t("search.code_placeholder"))
-        self.code_result = QLabel("")
-        form.addRow(
-            t("search.code_label"),
-            self._with_result(self.code_edit, self.code_result, SEARCH_COLORS["code"]),
+        self.code_edit, self.code_card = self._build_field(
+            layout, t("search.code_label"), t("search.code_placeholder"), "code"
+        )
+        self.desc_edit, self.desc_card = self._build_field(
+            layout, t("search.desc_label"), t("search.desc_placeholder"), "description"
+        )
+        self.notes_edit, self.notes_card = self._build_field(
+            layout, t("search.notes_label"), t("search.notes_placeholder"), "notes"
         )
 
-        self.desc_edit = QLineEdit()
-        self.desc_edit.setPlaceholderText(t("search.desc_placeholder"))
-        self.desc_result = QLabel("")
-        form.addRow(
-            t("search.desc_label"),
-            self._with_result(self.desc_edit, self.desc_result, SEARCH_COLORS["description"]),
-        )
-
-        self.notes_edit = QLineEdit()
-        self.notes_edit.setPlaceholderText(t("search.notes_placeholder"))
-        self.notes_result = QLabel("")
-        form.addRow(
-            t("search.notes_label"),
-            self._with_result(self.notes_edit, self.notes_result, SEARCH_COLORS["notes"]),
-        )
-
-        layout.addLayout(form)
-
-        self.code_edit.textChanged.connect(lambda t_: self.search_changed.emit("code", t_))
-        self.desc_edit.textChanged.connect(lambda t_: self.search_changed.emit("description", t_))
-        self.notes_edit.textChanged.connect(lambda t_: self.search_changed.emit("notes", t_))
+        layout.addStretch()
 
         buttons = QHBoxLayout()
         clear_button = QPushButton(t("common.clear"))
@@ -86,29 +109,39 @@ class SearchDialog(QDialog):
         buttons.addWidget(close_button)
         layout.addLayout(buttons)
 
-    @staticmethod
-    def _with_result(edit: QLineEdit, result: QLabel, color: str) -> QHBoxLayout:
+    def _build_field(self, layout: QVBoxLayout, label_text: str, placeholder: str, mode: str):
+        color = SEARCH_COLORS[mode]
+
+        title = QLabel(label_text)
+        title.setStyleSheet("font-weight: 600; color: #1a1a1a;")
+        layout.addWidget(title)
+
+        edit = QLineEdit()
+        edit.setPlaceholderText(placeholder)
         edit.setStyleSheet(
             f"background-color: {color}; color: #1a1a1a; border: 1px solid #999; "
-            "border-radius: 4px; padding: 5px 7px;"
+            "border-radius: 4px; padding: 6px 8px; font-size: 13px;"
         )
-        row = QHBoxLayout()
-        row.addWidget(edit)
-        row.addWidget(result)
-        return row
+        edit.textChanged.connect(lambda text, m=mode: self.search_changed.emit(m, text))
+        layout.addWidget(edit)
+
+        card = SearchStatsCard(color)
+        layout.addWidget(card)
+
+        return edit, card
 
     def clear_all(self):
         for edit in (self.code_edit, self.desc_edit, self.notes_edit):
             edit.blockSignals(True)
             edit.clear()
             edit.blockSignals(False)
-        for label in (self.code_result, self.desc_result, self.notes_result):
-            label.setText("")
+        for card in (self.code_card, self.desc_card, self.notes_card):
+            card.set_values("—", "—", "—")
         self.cleared.emit()
 
-    def set_result_text(self, mode: str, text: str):
-        label = {"code": self.code_result, "description": self.desc_result, "notes": self.notes_result}[mode]
-        label.setText(text)
+    def set_result(self, mode: str, count, oldest, qty):
+        card = {"code": self.code_card, "description": self.desc_card, "notes": self.notes_card}[mode]
+        card.set_values(count, oldest, qty)
 
     def show_and_focus(self):
         self.show()

@@ -66,6 +66,10 @@ class MainWindow(QMainWindow):
         self.materials_tab = MaterialsTab(self.repo)
         self.desmagatzem_tab = DesmagatzemTab(self.repo)
         self.board_tab.data_changed.connect(self.historic_tab.refresh)
+        # Els cercadors del Tauler també ressalten coincidències a
+        # Desmagatzem amb el mateix color (igual que l'original).
+        self.board_tab.search_dialog.search_changed.connect(self.desmagatzem_tab.apply_search_highlight)
+        self.board_tab.search_dialog.cleared.connect(self.desmagatzem_tab.clear_search_highlight)
 
         tabs = QTabWidget()
         tabs.addTab(self.board_tab, t("tab.board"))

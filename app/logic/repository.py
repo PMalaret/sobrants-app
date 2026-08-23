@@ -59,6 +59,27 @@ class Repository:
             (q, q, limit),
         ).fetchall()
 
+    def add_material(self, code: int, description: str, overwrite: bool = False) -> None:
+        """Alta (o actualització) d'un material al catàleg.
+
+        No existia al VBA original (el catàleg Materials s'editava
+        directament a la fulla, sense cap validació); és una funcionalitat
+        nova, protegida per contrasenya des de la UI (veure app/security.py).
+        Si el codi ja existeix i overwrite=False, llança RuleViolation amb
+        la descripció actual perquè la UI pugui oferir sobreescriure-la.
+        """
+        existing = self.conn.execute(
+            "SELECT description FROM materials WHERE code = ?", (code,)
+        ).fetchone()
+        if existing is not None and not overwrite:
+            raise RuleViolation(t("err.material_exists", code=code, description=existing["description"]))
+        self.conn.execute(
+            "INSERT INTO materials(code, description) VALUES (?, ?) "
+            "ON CONFLICT(code) DO UPDATE SET description = excluded.description",
+            (code, description),
+        )
+        self.conn.commit()
+
     # ------------------------------------------------------------------ #
     # Panell principal (fulla "Hoja1" + "llista")
     # ------------------------------------------------------------------ #

@@ -5,10 +5,12 @@ El tauler es reparteix en 3 blocs de columnes un al costat de l'altre
 K:O), perquè les 61 posicions es vegin totes alhora sense fer scroll i
 la taula ocupi tot l'ample disponible.
 
-La cerca i el detall d'una posició (abans panells fixos) ara són un botó
-+ diàleg, per deixar tot l'ample per a la taula. La llegenda de colors
-viu a la barra d'estat de la finestra (`build_legend_widget`), per no
-robar espai vertical a la taula.
+El tauler SEMPRE té exactament 61 posicions (mai més, mai menys), així
+que l'alçada de la taula és fixa i l'espai que queda per sota (que abans
+quedava en blanc) s'aprofita per al panell de detall de la posició
+seleccionada (`PositionPanel`), incrustat de manera permanent — ja no és
+un diàleg emergent. La llegenda de colors viu a la barra d'estat de la
+finestra (`build_legend_widget`), per no robar espai vertical a la taula.
 """
 from __future__ import annotations
 
@@ -20,6 +22,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -28,7 +31,7 @@ from PySide6.QtWidgets import (
 
 from app.i18n import t
 from app.logic.repository import Repository
-from app.ui.position_dialog import PositionDialog
+from app.ui.position_panel import PositionPanel
 from app.ui.search_dialog import SearchDialog
 
 # (posició inicial, nombre de posicions) de cada bloc de columnes, igual que
@@ -71,15 +74,25 @@ class BoardTab(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table.cellDoubleClicked.connect(self._on_cell_double_clicked)
+        self.table.cellClicked.connect(self._on_cell_clicked)
         # Files compactes i sense numeració de fila (ja hi ha la columna
         # "Posició") perquè les 61 posicions càpiguen sense fer scroll.
         self.table.verticalHeader().setVisible(False)
         self.table.verticalHeader().setDefaultSectionSize(20)
         self.table.setStyleSheet("QTableWidget { font-size: 12px; }")
-        self.table.setMinimumHeight(TABLE_ROWS * 20 + 30)
+        exact_height = TABLE_ROWS * 20 + 40
+        self.table.setMinimumHeight(exact_height)
+        # El tauler sempre té exactament 61 posicions: l'alçada de la taula
+        # es fixa (no "Expanding"), perquè l'espai sobrant vagi sempre al
+        # panell de detall de sota, no a files buides dins la taula.
+        self.table.setMaximumHeight(exact_height)
+        self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self._configure_column_widths()
         layout.addWidget(self.table)
+
+        self.position_panel = PositionPanel(self.repo)
+        self.position_panel.changed.connect(self._on_position_changed)
+        layout.addWidget(self.position_panel, 1)
 
         # Buscador abaix a la dreta, igual que el bloc de cerca (M19:O24)
         # de Hoja1, que quedava a sota i a la dreta del tauler de posicions.
@@ -94,9 +107,11 @@ class BoardTab(QWidget):
         search_row.addWidget(self.search_button)
         layout.addLayout(search_row)
 
-        self._search_dialog = SearchDialog(self)
-        self._search_dialog.search_changed.connect(self._on_search_changed)
-        self._search_dialog.cleared.connect(self._on_search_cleared)
+        # Públic (no "_search_dialog"): MainWindow hi connecta el ressaltat
+        # creuat de Desmagatzem (mateixos colors de cerca que el tauler).
+        self.search_dialog = SearchDialog(self)
+        self.search_dialog.search_changed.connect(self._on_search_changed)
+        self.search_dialog.cleared.connect(self._on_search_cleared)
         self._search_state: dict[str, str] = {}
 
     def _configure_column_widths(self):
@@ -181,16 +196,19 @@ class BoardTab(QWidget):
 
         self._reapply_all_highlights()
 
-    def _on_cell_double_clicked(self, row: int, column: int):
+        # Si hi ha una posició carregada al panell, la refresquem (p. ex.
+        # després de moure-hi una peça des d'una altra posició).
+        if self.position_panel.position is not None:
+            self.position_panel.refresh()
+
+    def _on_cell_clicked(self, row: int, column: int):
         item = self.table.item(row, column)
         if item is None:
             return
         position = item.data(Qt.UserRole)
         if position is None:
             return
-        dialog = PositionDialog(self.repo, position, self)
-        dialog.changed.connect(self._on_position_changed)
-        dialog.exec()
+        self.position_panel.load_position(position)
 
     def _on_position_changed(self):
         self.refresh_board()
@@ -200,7 +218,7 @@ class BoardTab(QWidget):
     # Cerca (diàleg)
     # ------------------------------------------------------------------ #
     def _open_search_dialog(self):
-        self._search_dialog.show_and_focus()
+        self.search_dialog.show_and_focus()
 
     def _on_search_changed(self, mode: str, text: str):
         self._search_state[mode] = text
@@ -213,7 +231,7 @@ class BoardTab(QWidget):
         self._reapply_all_highlights()
 
     def _clear_search(self):
-        self._search_dialog.clear_all()
+        self.search_dialog.clear_all()
 
     def _reapply_all_highlights(self):
         self._clear_highlight()
@@ -224,15 +242,14 @@ class BoardTab(QWidget):
         self._clear_field_highlight(mode)
         if not text.strip():
             if update_label:
-                self._search_dialog.set_result_text(mode, "")
+                self.search_dialog.set_result(mode, "—", "—", 0)
             return
         result = self.repo.search(text, mode=mode)
         oldest = result["oldest_position"]
-        label = t("board.search_result", count=result["count"], oldest=oldest if oldest else "—")
-        if result["desmagatzem_qty"]:
-            label += t("board.search_result_desmagatzem", qty=result["desmagatzem_qty"])
         if update_label:
-            self._search_dialog.set_result_text(mode, label)
+            self.search_dialog.set_result(
+                mode, result["count"], oldest if oldest else "—", result["desmagatzem_qty"]
+            )
         positions = {m["position"] for m in result["matches"]}
         self._highlight_field(positions, self._SEARCH_FIELD[mode], self._SEARCH_COLOR[mode])
 
