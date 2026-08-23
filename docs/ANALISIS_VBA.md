@@ -24,6 +24,10 @@ código, 2 formularios, ~4.800 líneas) y dónde vive su equivalente aquí.
 | `ComprovarIMostrarTapats_Correcte` (materiales tapados) | Módulo13 | `rules.find_covered_materials`, `Repository.covered_materials_report` |
 | `CrearBackup` / `IniciarBackupAutomatic` | Módulo12 | `app/backup.py` (`create_backup`, temporizador de 4h en `MainWindow`) |
 | `ImprimirHoja1` / `ImprimirDesmagatzem` | Módulo13 | `app/export.py` (exporta a PDF en vez de imprimir directamente) |
+| `AplicarColorsPerCoincidencies` / `AplicarColorSegonsFilaIValorK12` (color de ocupación K12:K16) | Hoja1/Módulo2 | `rules.fill_color_for_count`, columna "Posición" del Tablero (con leyenda) |
+| `MarcarInconsistencies` (texto rojo si hay material mezclado) | Hoja1/Módulo1 | `rules.has_material_inconsistency`, fila en rojo + tooltip en el Tablero |
+| `BuscaCoincidenciesDesmagatzem_Q20/M22/M24` (los buscadores de Hoja1 también cuentan unidades en desmagatzem) | Módulo9 | `Repository._search_desmagatzem_quantity`, se añade al texto de cada buscador del Tablero |
+| `AlternarOrdre` / `ActualitzaColorOrdre` (indicador de orden en històric) | Módulo6/Hoja4 | botones "Fecha"/"Posición" en la pestaña Histórico, con el activo resaltado |
 
 ## Deliberadamente no portado (mecánica de Excel, sin efecto en el negocio)
 
@@ -53,6 +57,30 @@ arriba), pero el truco de interfaz desaparece:
 | `Shell "notepad.exe" ...` (informe de materiales tapados) | Depende del Bloc de notas de Windows | Diálogo con el mismo contenido dentro de la propia app (`MainWindow._show_covered_report`) |
 | `=SI.ERROR(BUSCARV(...))` | Fórmula de hoja | `Repository.lookup_material` (consulta SQL directa, mismo fallback `"---------"`) |
 | `Application.OnTime` (temporizadores) | API de Excel | `QTimer` de Qt |
+
+## Otras utilidades del original, no portadas conscientemente
+
+Revisadas y descartadas por ser herramientas puntuales de un desarrollador/administrador,
+no parte del flujo de trabajo diario de los operarios:
+
+- `BuscarNumeroDesmagatzem`, `BuscarMaterial`, `BuscarColumnaE`, `BuscarRefMaterials`,
+  `BuscarParcialB_Materials` (Módulo9): ventanas emergentes (`InputBox`) para buscar
+  puntualmente en Desmagatzem/Materials. Sustituidas por algo mejor ya presente en la
+  app: los cuadros de búsqueda en vivo del Tablero y el filtro de la pestaña Materiales.
+- `NetejarHistoricAmbContrasenya` (Módulo6): borra todo el histórico con una
+  contraseña. No se ha portado — es una acción destructiva e irreversible; si la
+  necesitáis decídmelo y la añado con una confirmación explícita en vez de una
+  contraseña fija sin valor real de seguridad.
+- `desprotegirTot`, `ProtegirHistoric`, `ProtegirFulladesmagatzem`,
+  `ProtegerHoja1ConUserInterfaceOnly` (protección de hoja con contraseña `"1234"`):
+  no aplica — la app nueva no permite editar las tablas directamente, así que no
+  hace falta un candado de hoja.
+- `CopiarFullaDesmagatzem` (Módulo10): utilidad de migración con rutas de disco
+  del desarrollador (`C:\des\...`) de una versión anterior del archivo. No aplica.
+- `PampallugueigText` (parpadeo rojo/negro del texto al buscar): mecánica de
+  selección de celda de Excel sin equivalente directo; el `QLineEdit` de cada
+  buscador ya cambia de borde al tener el foco, que cumple la misma función de
+  "estás buscando aquí".
 
 ## Bug identificado y corregido
 

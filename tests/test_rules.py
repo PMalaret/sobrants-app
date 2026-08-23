@@ -111,6 +111,24 @@ def test_oldest_matching_position_none_when_no_dates():
     assert rules.oldest_matching_position([{"position": 1, "entered_at": None}]) is None
 
 
+def test_fill_color_for_count_matches_original_scale():
+    assert rules.fill_color_for_count(0) == "#FFFFFF"
+    assert rules.fill_color_for_count(1) == "#FFFFFF"
+    assert rules.fill_color_for_count(2) == "#FFF2CC"
+    assert rules.fill_color_for_count(3) == "#C6E0B4"
+    assert rules.fill_color_for_count(4) == "#B4C6E7"
+    assert rules.fill_color_for_count(5) == "#FF0000"
+    assert rules.fill_color_for_count(9) == "#FF0000"
+
+
+def test_has_material_inconsistency_multiple_distinct_codes():
+    assert rules.has_material_inconsistency([41011, 41011, 41952]) is True
+    assert rules.has_material_inconsistency([41011, 41011, 41011]) is False
+    assert rules.has_material_inconsistency([41011]) is False
+    assert rules.has_material_inconsistency([]) is False
+    assert rules.has_material_inconsistency([None, 41011]) is False
+
+
 def test_quantity_change_kind():
     assert rules.quantity_change_kind(0, 3) == "increase"
     assert rules.quantity_change_kind(3, 1) == "decrease"

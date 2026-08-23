@@ -40,6 +40,26 @@ por la app nueva contra los que mostraba el Excel:
 | M22 (descripción parcial) | `CLARITY` | 4 → 4 | 19 → 19 |
 | M24 (notas parcial) | `OPT` | 4 → 4 | `"--"` (bug, ver README) → 43 (real) |
 
+## 3bis. Ayudas visuales (color de ocupación, inconsistencias, cruce con Desmagatzem)
+
+Añadidas en una segunda pasada tras revisar de nuevo el VBA a petición del
+usuario. Comparadas contra el color de relleno/fuente real guardado en las
+celdas de `Hoja1` para las **61 posiciones**:
+
+```
+Discrepancias de color de ocupación: 0
+Discrepancias de marca de inconsistencia (texto rojo): 0
+```
+
+Y contra los valores reales guardados en `Q20`/`Q22`/`Q24` de `Hoja1`
+(unidades encontradas en desmagatzem para la misma búsqueda):
+
+| Buscador | Q20/Q22/Q24 real | Calculado por la app |
+|---|---|---|
+| M20 = `32946` | (vacío) | 0 |
+| M22 = `CLARITY` | 6 | 6 |
+| M24 = `OPT` | 1 | 1 |
+
 ## 4. Reglas de negocio — pruebas unitarias/integración
 
 `tests/test_rules.py` (16 casos) y `tests/test_repository.py` (18 casos)
@@ -62,7 +82,7 @@ cubren, con aserciones exactas:
 `tests/test_backup.py` (2 casos) cubre la rotación de copias de
 seguridad (máximo 10, se eliminan las más antiguas).
 
-**Total: 34 pruebas, 34 correctas.**
+**Total: 41 pruebas, 41 correctas.**
 
 ## 5. Empaquetado
 

@@ -136,6 +136,30 @@ def oldest_matching_position(matches: list[dict]) -> int | str | None:
     return best["position"]
 
 
+# Escala de color por ocupación de una posición (AplicarColorsPerCoincidencies /
+# AplicarColorSegonsFilaIValorK12): el color de referencia se tomaba de las
+# celdas K12:K16 del propio Excel. Valores extraídos del archivo original:
+# 0-1 pieza=blanco, 2=amarillo claro, 3=verde claro, 4=azul claro, 5+=rojo.
+FILL_COLOR_SCALE = ["#FFFFFF", "#FFF2CC", "#C6E0B4", "#B4C6E7", "#FF0000"]
+
+
+def fill_color_for_count(piece_count: int) -> str:
+    """Color de "cuánto ocupa" una posición, igual que la referencia K12:K16."""
+    if piece_count <= 1:
+        return FILL_COLOR_SCALE[0]
+    if piece_count >= 5:
+        return FILL_COLOR_SCALE[4]
+    return FILL_COLOR_SCALE[piece_count - 1]
+
+
+def has_material_inconsistency(material_codes: list) -> bool:
+    """MarcarInconsistencies: una posición se marca en rojo si contiene más de
+    un material distinto entre sus piezas (aviso de posible error de ubicación).
+    """
+    distinct = {c for c in material_codes if c not in (None, "")}
+    return len(distinct) > 1
+
+
 def quantity_change_kind(old_qty: int, new_qty: int) -> str | None:
     """ActualitzaHistorialQuantitat: determina si es un aumento, disminución o borrado."""
     if new_qty == 0 and old_qty > 0:

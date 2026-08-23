@@ -133,6 +133,42 @@ def test_search_by_description_partial_and_oldest(repo):
     assert res["oldest_position"] in (1, 2)  # ambas tienen entered_at casi simultáneo
 
 
+def test_board_fill_color_reflects_piece_count(repo):
+    repo.add_piece(position=6, material_code=999)
+    board = repo.get_board()
+    row6 = next(b for b in board if b["position"] == 6)
+    assert row6["fill_color"] == "#FFFFFF"  # 1 pieza
+
+    repo.add_piece(position=6, material_code=999)
+    row6 = next(b for b in repo.get_board() if b["position"] == 6)
+    assert row6["fill_color"] == "#FFF2CC"  # 2 piezas
+
+
+def test_board_marks_inconsistent_when_mixed_materials(repo):
+    repo.add_piece(position=7, material_code=41011)
+    repo.add_piece(position=7, material_code=41952, confirm_duplicate=True)
+    board = repo.get_board()
+    row7 = next(b for b in board if b["position"] == 7)
+    assert row7["inconsistent"] is True
+
+
+def test_board_not_inconsistent_when_same_material_repeated(repo):
+    repo.add_piece(position=7, material_code=41011)
+    repo.add_piece(position=7, material_code=41011, confirm_duplicate=True)
+    board = repo.get_board()
+    row7 = next(b for b in board if b["position"] == 7)
+    assert row7["inconsistent"] is False
+
+
+def test_search_reports_desmagatzem_quantity(repo):
+    repo.add_piece(position=1, material_code=41011)
+    repo.add_desmagatzem_row(material_code="41011", quantity=3, dimensions="", cart_ref="carro1")
+    repo.add_desmagatzem_row(material_code="41011", quantity=2, dimensions="", cart_ref="carro2")
+
+    res = repo.search("41011", mode="code")
+    assert res["desmagatzem_qty"] == 5
+
+
 def test_search_empty_query_returns_nothing(repo):
     res = repo.search("", mode="description")
     assert res["count"] == 0
@@ -166,6 +202,16 @@ def test_desmagatzem_custom_material_sentinel(repo):
         material_code="1", quantity=1, dimensions="", cart_ref="", custom_text="Vidrio sin catalogar"
     )
     assert row["material_desc"] == "Vidrio sin catalogar"
+
+
+def test_get_historic_order_by_position_is_numeric_not_lexicographic(repo):
+    repo.add_piece(position=2, material_code=41011)
+    repo.add_piece(position=10, material_code=999)
+    repo.add_piece(position=3, material_code=41952)
+
+    rows = repo.get_historic(order_by="position")
+    positions = [r["position"] for r in rows]
+    assert positions == ["2", "3", "10"]  # no ["10", "2", "3"] (orden de texto)
 
 
 def test_desmagatzem_rejects_invalid_quantity(repo):

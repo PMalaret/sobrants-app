@@ -66,7 +66,8 @@ class Repository:
         all_pieces = self._all_pieces_by_position()
         board = []
         for pos in BOARD_POSITIONS:
-            piece = rules.board_summary_piece(all_pieces.get(pos, []))
+            pieces = all_pieces.get(pos, [])
+            piece = rules.board_summary_piece(pieces)
             board.append(
                 {
                     "position": pos,
@@ -74,7 +75,9 @@ class Repository:
                     "material_desc": piece["material_desc"] if piece else None,
                     "dimensions": piece["dimensions"] if piece else None,
                     "notes": piece["notes"] if piece else None,
-                    "piece_count": len(all_pieces.get(pos, [])),
+                    "piece_count": len(pieces),
+                    "fill_color": rules.fill_color_for_count(len(pieces)),
+                    "inconsistent": rules.has_material_inconsistency([p["material_code"] for p in pieces]),
                 }
             )
         return board
@@ -241,7 +244,7 @@ class Repository:
         if mode not in ("code", "description", "notes"):
             raise ValueError("mode debe ser 'code', 'description' o 'notes'")
         if not str(query).strip():
-            return {"matches": [], "count": 0, "oldest_position": None}
+            return {"matches": [], "count": 0, "oldest_position": None, "desmagatzem_qty": 0}
 
         field_by_mode = {
             "code": "material_code",
@@ -263,7 +266,34 @@ class Repository:
                 matches.append(dict(r))
 
         oldest = rules.oldest_matching_position(matches)
-        return {"matches": matches, "count": len(matches), "oldest_position": oldest}
+        desmagatzem_qty = self._search_desmagatzem_quantity(query, mode)
+        return {
+            "matches": matches,
+            "count": len(matches),
+            "oldest_position": oldest,
+            "desmagatzem_qty": desmagatzem_qty,
+        }
+
+    # Columna de "desmagatzem" que corresponde a cada modo de búsqueda del
+    # Tablero (BuscaCoincidenciesDesmagatzem_Q20/M22/M24): código exacto,
+    # descripción parcial, o el campo de carro/lote (equivalente a "notas").
+    _DESMAGATZEM_FIELD = {"code": "material_code", "description": "material_desc", "notes": "cart_ref"}
+
+    def _search_desmagatzem_quantity(self, query: str, mode: str) -> int:
+        """Suma de unidades que hay en Desmagatzem para la misma búsqueda del
+        Tablero (los buscadores M20/M22/M24 del original también recorrían la
+        hoja desmagatzem y mostraban el total en Q20/Q22/Q24)."""
+        field = self._DESMAGATZEM_FIELD[mode]
+        rows = self.conn.execute(f"SELECT quantity, {field} AS value FROM desmagatzem").fetchall()  # noqa: S608
+        total = 0
+        for r in rows:
+            value = r["value"]
+            if value is None:
+                continue
+            hit = rules.matches_exact(str(value), query) if mode == "code" else rules.matches_partial(str(value), query)
+            if hit:
+                total += r["quantity"] or 0
+        return total
 
     # ------------------------------------------------------------------ #
     # Histórico (hoja "històric")
@@ -274,15 +304,28 @@ class Repository:
             (position, str(material_code) if material_code is not None else None, material_desc, _now(), direction, kind),
         )
 
-    def get_historic(self, limit: int = 500, position: str | None = None) -> list[dict]:
+    # order_by="date" = más recientes primero (por defecto). order_by="position"
+    # = orden por posición ascendente, equivalente al toggle AlternarOrdre del
+    # original (que alternaba entre ordenar la hoja històric por columna A o D).
+    def get_historic(self, limit: int = 500, position: str | None = None, order_by: str = "date") -> list[dict]:
+        if order_by == "date":
+            order_sql = "ts DESC, id DESC"
+        else:
+            # "position" puede ser un nº (texto) o "Desmagatzem"; se ordena
+            # numéricamente cuando es posible y el resto al final, como hacía
+            # el ordenado ascendente por columna A en el Excel original.
+            order_sql = (
+                "CASE WHEN position GLOB '[0-9]*' THEN CAST(position AS INTEGER) ELSE 999999 END, "
+                "position, ts DESC, id DESC"
+            )
         if position:
             rows = self.conn.execute(
-                "SELECT * FROM historic WHERE position = ? ORDER BY ts DESC, id DESC LIMIT ?",
+                f"SELECT * FROM historic WHERE position = ? ORDER BY {order_sql} LIMIT ?",  # noqa: S608
                 (position, limit),
             ).fetchall()
         else:
             rows = self.conn.execute(
-                "SELECT * FROM historic ORDER BY ts DESC, id DESC LIMIT ?", (limit,)
+                f"SELECT * FROM historic ORDER BY {order_sql} LIMIT ?", (limit,)  # noqa: S608
             ).fetchall()
         return [dict(r) for r in rows]
 

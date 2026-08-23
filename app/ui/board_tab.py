@@ -86,6 +86,7 @@ class BoardTab(QWidget):
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.itemSelectionChanged.connect(self._on_row_selected)
         left_layout.addWidget(self.table)
+        left_layout.addWidget(self._build_legend())
 
         splitter.addWidget(left)
 
@@ -136,6 +137,33 @@ class BoardTab(QWidget):
         layout = QVBoxLayout(self)
         layout.addWidget(splitter)
 
+    def _build_legend(self) -> QWidget:
+        """Leyenda de la escala de color por ocupación (columna 'Posición')."""
+        legend = QWidget()
+        row = QHBoxLayout(legend)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.addWidget(QLabel("Ocupación:"))
+        steps = [
+            ("#FFFFFF", "1 pieza"),
+            ("#FFF2CC", "2"),
+            ("#C6E0B4", "3"),
+            ("#B4C6E7", "4"),
+            ("#FF0000", "5 (llena)"),
+        ]
+        for color, text in steps:
+            swatch = QLabel(f"  {text}  ")
+            swatch.setStyleSheet(
+                f"background-color: {color}; border: 1px solid #999; border-radius: 3px;"
+                + ("color: white;" if color == "#FF0000" else "color: black;")
+            )
+            row.addWidget(swatch)
+        row.addSpacing(16)
+        warn = QLabel("Texto rojo = material distinto mezclado en la posición")
+        warn.setStyleSheet("color: #c62828;")
+        row.addWidget(warn)
+        row.addStretch()
+        return legend
+
     # ------------------------------------------------------------------ #
     def refresh_board(self):
         board = self.repo.get_board()
@@ -149,9 +177,20 @@ class BoardTab(QWidget):
                 row["notes"] or "",
                 row["piece_count"],
             ]
+            fill = QColor(row["fill_color"])
+            # El fondo rojo de la escala de ocupación (posición llena) necesita
+            # texto blanco encima para seguir siendo legible.
+            fill_text_color = QColor(Qt.white) if row["fill_color"] == "#FF0000" else QColor(Qt.black)
             for c, v in enumerate(values):
                 item = QTableWidgetItem(str(v))
                 item.setData(Qt.UserRole, row["position"])
+                if c == 0:
+                    item.setBackground(fill)
+                    item.setForeground(fill_text_color)
+                if row["inconsistent"]:
+                    if c != 0:
+                        item.setForeground(QColor("#c62828"))
+                    item.setToolTip("Esta posición tiene más de un material distinto entre sus piezas.")
                 self.table.setItem(r, c, item)
         self._run_searches()
         if self.selected_position:
@@ -293,14 +332,19 @@ class BoardTab(QWidget):
             return
         result = self.repo.search(query, mode=mode)
         oldest = result["oldest_position"]
-        label.setText(f"{result['count']} coincidencia(s) · más antigua: pos. {oldest if oldest else '—'}")
+        text = f"{result['count']} coincidencia(s) · más antigua: pos. {oldest if oldest else '—'}"
+        if result["desmagatzem_qty"]:
+            text += f" · {result['desmagatzem_qty']} ud(s) en Desmagatzem"
+        label.setText(text)
         positions = {m["position"] for m in result["matches"]}
         self._highlight_column(positions, self._SEARCH_COLUMN[mode], self._SEARCH_COLOR[mode])
 
     def _clear_highlight(self):
+        # La columna 0 (posición) mantiene el color fijo de ocupación; no es
+        # un resaltado de búsqueda, así que no se toca aquí.
         transparent = QColor(Qt.transparent)
         for r in range(self.table.rowCount()):
-            for c in range(self.table.columnCount()):
+            for c in range(1, self.table.columnCount()):
                 self.table.item(r, c).setBackground(transparent)
 
     def _highlight_column(self, positions: set[int], column: int, color: QColor):
