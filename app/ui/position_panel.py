@@ -295,33 +295,45 @@ class PositionPanel(QFrame):
         # aquest cas Delete s'ha d'aplicar al text, no a la peça sencera.
         if self.detail_table.state() == QAbstractItemView.EditingState:
             return
-        self._on_delete_last_piece()
+        self._on_delete_selected_piece()
 
-    def _on_delete_last_piece(self):
+    def _selected_occupied_row(self, occupied_count: int) -> int | None:
+        """Fila seleccionada que tingui una peça (qualsevol, no només
+        l'última): permet esborrar la línia que es vulgui, no només la
+        que hi ha més avall."""
+        rows = sorted({idx.row() for idx in self.detail_table.selectedIndexes()})
+        occupied = [r for r in rows if r < occupied_count]
+        return occupied[0] if occupied else None
+
+    def _on_delete_selected_piece(self):
         detail = self.repo.get_position_detail(self.position)
         if not detail:
             QMessageBox.information(self, t("position.no_pieces.title"), t("position.no_pieces.text"))
             return
-        last = max(detail, key=lambda p: p["slot"])
+        # Si no hi ha cap fila amb peça seleccionada, per defecte l'última
+        # (mateix comportament d'abans, quan només es podia esborrar aquesta).
+        row = self._selected_occupied_row(len(detail))
+        piece = detail[row] if row is not None else max(detail, key=lambda p: p["slot"])
         resp = QMessageBox.question(
             self,
             t("position.confirm_delete.title"),
             t(
                 "position.confirm_delete.text",
                 position=self.position,
-                code=last["material_code"],
-                desc=last["material_desc"],
+                code=piece["material_code"],
+                desc=piece["material_desc"],
             ),
             QMessageBox.Yes | QMessageBox.No,
         )
         if resp != QMessageBox.Yes:
             return
         try:
-            self.repo.delete_piece(self.position, last["slot"])
+            self.repo.delete_piece(self.position, piece["slot"])
         except RuleViolation as exc:
             QMessageBox.critical(self, t("position.cannot_delete"), str(exc))
             return
         self.refresh()
+        self.changed.emit()
         self.changed.emit()
 
     def _on_move_piece(self):

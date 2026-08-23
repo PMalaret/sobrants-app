@@ -201,8 +201,10 @@ class Repository:
     def delete_piece(self, position: int, slot: int) -> None:
         """Baixa d'una peça (confirmació 'Estàs segur que vols esborrar la posició?').
 
-        Només permet esborrar l'últim slot ocupat (de baix a dalt), igual
-        que el control 'ORDRE INCORRECTE' de l'original.
+        Es pot esborrar qualsevol slot ocupat (a diferència de l'Excel
+        original, que només permetia l'últim): les peces amb un slot més
+        alt es renumeren cap amunt perquè no quedin forats (igual que ja
+        feia `move_piece` en treure una peça d'una posició).
         """
         existing = self.get_position_detail(position)
         filled_slots = [p["slot"] for p in existing]
@@ -211,6 +213,15 @@ class Repository:
 
         piece = next(p for p in existing if p["slot"] == slot)
         self.conn.execute("DELETE FROM pieces WHERE position = ? AND slot = ?", (position, slot))
+
+        remaining = [p for p in existing if p["slot"] != slot]
+        for new_slot, p in enumerate(sorted(remaining, key=lambda x: x["slot"]), start=1):
+            if new_slot != p["slot"]:
+                self.conn.execute(
+                    "UPDATE pieces SET slot = ? WHERE position = ? AND slot = ?",
+                    (new_slot, position, p["slot"]),
+                )
+
         self._log_historic(
             str(position), str(piece["material_code"]), piece["material_desc"], -1, "out"
         )

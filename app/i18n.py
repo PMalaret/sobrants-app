@@ -267,6 +267,17 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ca": "Text parcial a les notes", "es": "Texto parcial en las notas",
         "en": "Partial text in the notes", "fr": "Texte partiel dans les notes",
     },
+    "search.stat.matches": {
+        "ca": "Coincidències", "es": "Coincidencias", "en": "Matches", "fr": "Correspondances",
+    },
+    "search.stat.oldest": {
+        "ca": "Posició més antiga", "es": "Posición más antigua",
+        "en": "Oldest position", "fr": "Position la plus ancienne",
+    },
+    "search.stat.desmagatzem": {
+        "ca": "Unitats a Desmagatzem", "es": "Unidades en Desmagatzem",
+        "en": "Units in Desmagatzem", "fr": "Unités dans Desmagatzem",
+    },
 
     # -- Panell de posició --------------------------------------------------- #
     "position.title": {
@@ -560,10 +571,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "IMPOSSIBLE MOVE: POSITION FULL", "fr": "DÉPLACEMENT IMPOSSIBLE : POSITION PLEINE",
     },
     "err.wrong_delete_order": {
-        "ca": "ORDRE INCORRECTE: només es pot esborrar l'última peça de la posició.",
-        "es": "ORDEN INCORRECTO: solo se puede borrar la última pieza de la posición.",
-        "en": "WRONG ORDER: only the last piece of the position can be deleted.",
-        "fr": "ORDRE INCORRECT : seule la dernière pièce de la position peut être supprimée.",
+        "ca": "No hi ha cap peça en aquest slot per esborrar.",
+        "es": "No hay ninguna pieza en este slot para borrar.",
+        "en": "There is no piece in this slot to delete.",
+        "fr": "Il n'y a aucune pièce dans cet emplacement à supprimer.",
     },
     "err.cannot_move_to_self": {
         "ca": "NO ES POT MOURE ELL MATEIX", "es": "NO SE PUEDE MOVER A SÍ MISMA",

@@ -296,8 +296,11 @@ class BoardTab(QWidget):
     def _run_search(self, mode: str, text: str):
         self._clear_field_highlight(mode)
         if not text.strip():
+            self.search_panel.set_result(mode, "—", "—", 0)
             return
         result = self.repo.search(text, mode=mode)
+        oldest = result["oldest_position"]
+        self.search_panel.set_result(mode, result["count"], oldest if oldest else "—", result["desmagatzem_qty"])
         positions = {m["position"] for m in result["matches"]}
         self._highlight_field(positions, self._SEARCH_FIELD[mode], self._SEARCH_COLOR[mode])
 
