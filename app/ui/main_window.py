@@ -32,7 +32,7 @@ class MainWindow(QMainWindow):
         self.repo = repo
         self.db_path = db_path
         self.setWindowTitle("Sobrants — control de inventario")
-        self.resize(1200, 750)
+        self.resize(1650, 900)
 
         self.board_tab = BoardTab(repo)
         self.historic_tab = HistoricTab(repo)
