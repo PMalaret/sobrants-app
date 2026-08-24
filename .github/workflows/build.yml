@@ -28,13 +28,10 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            artifact_name: Sobrants.exe
-            asset_name: Sobrants-Windows.exe
+            asset_name: Sobrants-Windows
           - os: macos-latest
-            artifact_name: Sobrants
             asset_name: Sobrants-macOS
           - os: ubuntu-latest
-            artifact_name: Sobrants
             asset_name: Sobrants-Linux
     runs-on: ${{ matrix.os }}
     steps:
@@ -44,10 +41,13 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: pyinstaller sobrants.spec --noconfirm
+      # En Windows dist/Sobrants es una carpeta (modo onedir); en
+      # macOS/Linux es el binario suelto (modo onefile). En ambos casos
+      # el path de salida es el mismo.
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}
-          path: dist/${{ matrix.artifact_name }}
+          path: dist/Sobrants
 
   release:
     # Sólo al empujar un tag "vX.Y.Z": publica los tres binarios como
@@ -58,6 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      issues: write
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -65,7 +66,10 @@ jobs:
       - name: Preparar assets
         run: |
           mkdir -p release
-          cp artifacts/Sobrants-Windows.exe/Sobrants.exe release/Sobrants-Windows.exe
+          # Windows: carpeta onedir (Sobrants.exe + _internal/). Una
+          # Release sólo admite ficheros sueltos, así que se comprime;
+          # el .exe de dentro sigue sin autoextraerse a %TEMP%.
+          (cd artifacts/Sobrants-Windows && zip -rq ../../release/Sobrants-Windows.zip .)
           cp artifacts/Sobrants-macOS/Sobrants release/Sobrants-macOS
           cp artifacts/Sobrants-Linux/Sobrants release/Sobrants-Linux
           chmod +x release/Sobrants-macOS release/Sobrants-Linux
@@ -77,3 +81,21 @@ jobs:
             --repo "${{ github.repository }}" \
             --title "Sobrants ${{ github.ref_name }}" \
             --generate-notes
+      - name: Recordatorio de envío a Microsoft si Defender sigue avisando
+        # No hay API pública para automatizar el envío a Microsoft (el
+        # formulario web pide login/captcha). Si tras pasar a onedir
+        # Defender sigue marcando el .exe, este issue deja los pasos
+        # manuales a mano en vez de tener que recordarlos.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "Si Defender avisa en ${{ github.ref_name }}: enviar Sobrants.exe como falso positivo" \
+            --body "No hay API pública para automatizar esto, hay que hacerlo a mano solo si hace falta:
+
+          1. Baja \`Sobrants-Windows.zip\` de https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }} y extrae \`Sobrants.exe\`.
+          2. Ve a https://www.microsoft.com/en-us/wdsi/filesubmission, súbelo y marca \"I believe this file is incorrectly detected as malware\" (falso positivo).
+          3. Suele resolverse en 24-72h. Cierra este issue cuando se confirme.
+
+          Si nadie ha reportado el aviso de Defender, cierra este issue sin más."

@@ -1,7 +1,17 @@
 # -*- mode: python ; coding: utf-8 -*-
 # Compilación con PyInstaller: pyinstaller sobrants.spec
-# Genera un ejecutable de un solo archivo, sin dependencias externas.
-# En Windows produce Sobrants.exe; en macOS/Linux, el binario "Sobrants".
+#
+# En macOS/Linux genera un binario de un solo archivo ("Sobrants").
+#
+# En Windows genera modo "onedir" (carpeta dist/Sobrants/ con Sobrants.exe
+# + _internal/), en vez de onefile. El onefile de PyInstaller se
+# autoextrae a %TEMP% en cada arranque, un patrón que Windows Defender
+# marca como falso positivo de troyano/dropper en binarios sin firmar.
+# El onedir no se autoextrae y evita ese aviso.
+
+import sys
+
+is_windows = sys.platform.startswith("win")
 
 a = Analysis(
     ['run_app.py'],
@@ -26,9 +36,10 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
+    [] if is_windows else a.binaries,
+    [] if is_windows else a.datas,
     [],
+    exclude_binaries=is_windows,
     name='Sobrants',
     debug=False,
     bootloader_ignore_signals=False,
@@ -44,3 +55,15 @@ exe = EXE(
     entitlements_file=None,
     icon='app/assets/app_icon.ico',
 )
+
+if is_windows:
+    # dist/Sobrants/Sobrants.exe + dist/Sobrants/_internal/
+    coll = COLLECT(
+        exe,
+        a.binaries,
+        a.datas,
+        strip=False,
+        upx=False,
+        upx_exclude=[],
+        name='Sobrants',
+    )
