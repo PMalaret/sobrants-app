@@ -136,6 +136,12 @@ class PositionPanel(QFrame):
         self._DETAIL_CODE_COL, self._DETAIL_MATERIAL_COL, self._DETAIL_DIMS_COL, self._DETAIL_NOTES_COL = range(4)
         self.detail_table = QTableWidget(5, len(detail_columns))
         self.detail_table.setHorizontalHeaderLabels(detail_columns)
+        # Sempre les 5 files senceres i sense scroll: l'alçada ja es fixa
+        # exactament a `_fit_detail_table_height`, però sense això Qt hi
+        # podia mostrar una barra vertical/horitzontal per un arrodoniment
+        # d'un parell de píxels.
+        self.detail_table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.detail_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         # Només Mides i Notes són editables (i només quan l'slot té un
         # material). Un sol clic ja obre l'editor (via `cellClicked`, més
         # avall) — `EditKeyPressed` es manté per poder-hi entrar també amb
