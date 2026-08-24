@@ -147,7 +147,11 @@ class PositionPanel(QFrame):
         self.detail_table.verticalHeader().setVisible(False)
         self.detail_table.verticalHeader().setDefaultSectionSize(18)
         self.detail_table.setStyleSheet("font-size: 10px;")
-        # Notes: màxim 8 caràcters.
+        # Núm.: màxim 6 xifres (rules.MATERIAL_CODE_MAX = 999999). Notes:
+        # màxim 8 caràcters.
+        self.detail_table.setItemDelegateForColumn(
+            self._DETAIL_CODE_COL, _MaxLengthDelegate(6, self.detail_table)
+        )
         self.detail_table.setItemDelegateForColumn(
             self._DETAIL_NOTES_COL, _MaxLengthDelegate(8, self.detail_table)
         )

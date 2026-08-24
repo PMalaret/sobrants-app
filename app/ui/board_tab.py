@@ -174,14 +174,16 @@ class BoardTab(QWidget):
 
     def _configure_column_widths(self):
         header = self.table.horizontalHeader()
-        # Totes les columnes són "Interactive": l'usuari pot eixamplar o
-        # estrènyer qualsevol arrossegant la vora, i l'ample que triï es
-        # queda fixat (Qt no el reinicia sol; refresh_board() no torna a
-        # cridar aquest mètode). Material tenia abans un ample "Stretch"
-        # que la feia excessivament ampla i no es podia redimensionar
-        # manualment; ara té un ample per defecte contingut, i és Notes
-        # (l'últim camp de cada bloc) qui absorbeix l'espai sobrant.
-        initial_widths = [36, 62, 230, 80, None]
+        # Totes les columnes són "Interactive" excepte Material, que és
+        # "Stretch" i absorbeix tot l'espai sobrant: Posició (2 xifres,
+        # centrada), Núm. (6 xifres) i Notes (8 caràcters) tenen un màxim
+        # de caràcters petit i fix, així que no els cal créixer — és
+        # Material, sense límit de longitud, qui aprofita l'ample que
+        # deixen lliure. L'usuari pot igualment eixamplar o estrènyer
+        # qualsevol columna "Interactive" arrossegant la vora, i l'ample
+        # que triï es queda fixat (Qt no el reinicia sol; refresh_board()
+        # no torna a cridar aquest mètode).
+        initial_widths = [30, 62, None, 80, 70]
         for block_idx in range(len(BLOCKS)):
             for field_idx, width in enumerate(initial_widths):
                 col = block_idx * FIELDS_PER_BLOCK + field_idx
@@ -253,6 +255,8 @@ class BoardTab(QWidget):
                 if field_idx == 0:
                     item.setBackground(fill)
                     item.setForeground(fill_text_color)
+                    # Posició: com a màxim 2 xifres (1-61), centrada.
+                    item.setTextAlignment(Qt.AlignCenter)
                 if entry["inconsistent"]:
                     if field_idx != 0:
                         item.setForeground(QColor("#c62828"))

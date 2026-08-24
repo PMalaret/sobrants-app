@@ -44,7 +44,7 @@ def test_add_piece_unknown_code_falls_back_to_dashes(repo):
 
 def test_add_piece_rejects_invalid_code(repo):
     with pytest.raises(RuleViolation):
-        repo.add_piece(position=1, material_code=100000)
+        repo.add_piece(position=1, material_code=1000000)
     with pytest.raises(RuleViolation):
         repo.add_piece(position=1, material_code=-5)
 

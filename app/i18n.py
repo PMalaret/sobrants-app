@@ -561,10 +561,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "fr": "Matériau en double dans les positions : {positions}",
     },
     "err.invalid_material_code": {
-        "ca": "Entrada incorrecta. Només s'admeten números entre 0 i 99999.",
-        "es": "Entrada incorrecta. Solo se admiten números entre 0 y 99999.",
-        "en": "Invalid entry. Only numbers between 0 and 99999 are allowed.",
-        "fr": "Saisie incorrecte. Seuls les nombres entre 0 et 99999 sont autorisés.",
+        "ca": "Entrada incorrecta. Només s'admeten números entre 0 i 999999.",
+        "es": "Entrada incorrecta. Solo se admiten números entre 0 y 999999.",
+        "en": "Invalid entry. Only numbers between 0 and 999999 are allowed.",
+        "fr": "Saisie incorrecte. Seuls les nombres entre 0 et 999999 sont autorisés.",
     },
     "err.position_full": {
         "ca": "MOVIMENT IMPOSIBLE: POSICIÓ PLENA", "es": "MOVIMIENTO IMPOSIBLE: POSICIÓN LLENA",

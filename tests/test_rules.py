@@ -15,8 +15,8 @@ def test_normalize_text_strips_accents_and_case():
 
 def test_is_valid_material_code_range():
     assert rules.is_valid_material_code(0) is True
-    assert rules.is_valid_material_code(99999) is True
-    assert rules.is_valid_material_code(100000) is False
+    assert rules.is_valid_material_code(999999) is True
+    assert rules.is_valid_material_code(1000000) is False
     assert rules.is_valid_material_code(-1) is False
     assert rules.is_valid_material_code("abc") is False
 

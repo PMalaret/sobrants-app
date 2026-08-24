@@ -13,7 +13,7 @@ from datetime import datetime
 from app.i18n import t
 
 MAX_SLOTS = 5
-MATERIAL_CODE_MIN, MATERIAL_CODE_MAX = 0, 99999
+MATERIAL_CODE_MIN, MATERIAL_CODE_MAX = 0, 999999
 DESMAGATZEM_QTY_MIN, DESMAGATZEM_QTY_MAX = 0, 20
 CUSTOM_MATERIAL_SENTINEL = 1  # codi "1" = material no registrat (text lliure)
 EMPTY_MATERIAL_MARK = "---------"
@@ -31,7 +31,9 @@ def normalize_text(text) -> str:
 
 
 def is_valid_material_code(value) -> bool:
-    """Worksheet_Change Hoja1: només números 0..99999 a L12:L16."""
+    """Worksheet_Change Hoja1: només números 0..999999 a L12:L16 (l'original
+    admetia fins a 99999, però l'alta de materials nous ja permet codis de
+    6 xifres — cal que aquí també s'hi puguin col·locar peces)."""
     try:
         n = float(value)
     except (TypeError, ValueError):
