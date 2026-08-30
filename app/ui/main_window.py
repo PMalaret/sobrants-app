@@ -52,13 +52,10 @@ BACKUP_INTERVAL_SETTING = "backup_interval_hours"
 # llegir un menú de text pla. (clau de traducció, emoji, color, mètode a cridar)
 # La còpia de seguretat ja no hi és: ara demana contrasenya i viu només al
 # menú Fitxer; al seu lloc, a la fila, hi ha l'indicador d'USB.
-# Els dos botons d'imprimir ja no són aquí: cadascun viu dins de la seva
-# pestanya (sota el cercador del Tauler i a la fila d'accions de
-# Desmagatzem), que és on l'usuari els busca.
-ACTION_BUTTONS = [
-    # Ull: "materials tapats" és veure els que queden amagats darrere d'un altre.
-    ("action.covered", "👁️", "#c62828", "_show_covered_report"),
-]
+# La fila de dalt ja no té cap botó: imprimir i materials tapats viuen dins
+# del Tauler (sota el cercador) i imprimir desmagatzem, a la seva pestanya,
+# que és on l'usuari els busca. Només hi queda l'indicador d'USB.
+ACTION_BUTTONS = []
 
 
 class MainWindow(QMainWindow):
@@ -95,6 +92,7 @@ class MainWindow(QMainWindow):
         # Els botons d'imprimir viuen dins de les pestanyes, però el flux
         # d'impressió segueix sent el mateix d'aquí.
         self.board_tab.print_requested.connect(self._print_board)
+        self.board_tab.covered_requested.connect(self._show_covered_report)
         self.desmagatzem_tab.print_requested.connect(self._print_desmagatzem)
         # Els cercadors del Tauler també ressalten coincidències a
         # Desmagatzem amb el mateix color (igual que l'original). Netejar

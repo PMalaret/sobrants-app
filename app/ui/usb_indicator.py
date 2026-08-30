@@ -87,7 +87,9 @@ class UsbIndicator(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedSize(28, 28)
+        # Petita: el dibuix és relatiu a la mida, així que es veu igual
+        # de nítida però ocupa molt menys a la fila d'accions.
+        self.setFixedSize(20, 20)
         self._drives: list[str] = []
 
         self._timer = QTimer(self)

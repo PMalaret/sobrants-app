@@ -42,6 +42,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMenu,
     QPushButton,
+    QSizePolicy,
     QSpinBox,
     QStackedWidget,
     QStyledItemDelegate,
@@ -64,6 +65,11 @@ QFrame#moveGroup {
     border-radius: 6px;
 }
 """
+
+# Alçada de cada fila de la taula de detall. Amb lletra de 10 px, 20 px hi
+# van sobrats, i deixar-la fixa és el que fa que el panell càpiga sencer
+# (amb els botons de sota) sense haver de fer scroll.
+DETAIL_ROW_HEIGHT = 20
 
 _PANEL_STYLE = """
 QFrame#positionPanel {
@@ -203,7 +209,12 @@ class PositionPanel(QFrame):
         self.detail_table.itemChanged.connect(self._on_detail_item_changed)
         self.detail_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.detail_table.verticalHeader().setVisible(False)
-        self.detail_table.verticalHeader().setDefaultSectionSize(18)
+        # Files d'alçada fixa: si es deixa que creixin amb el contingut,
+        # cada fila es menja uns quants píxels de més i el panell no arriba
+        # a encabir els botons de sota. Amb lletra de 10 px, 20 px de fila
+        # van sobrats.
+        self.detail_table.verticalHeader().setDefaultSectionSize(DETAIL_ROW_HEIGHT)
+        self.detail_table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
         self.detail_table.setStyleSheet("font-size: 10px;")
         # Un delegat per columna editable: Núm. màxim 6 xifres
         # (rules.MATERIAL_CODE_MAX = 999999), Notes màxim 8 caràcters,
@@ -290,25 +301,35 @@ class PositionPanel(QFrame):
         self.move_button.clicked.connect(self._on_move_piece)
         self.move_target = QSpinBox()
         self.move_target.setRange(1, 61)
-        move_group_row.addWidget(self.move_button, 1)
+        # L'ample del botó s'ajusta al seu text, no s'estira.
+        self.move_button.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
+        move_group_row.addWidget(self.move_button, 0)
         move_group_row.addWidget(self.move_target)
 
+        # Esborrar a una banda i el trasllat a l'altra, amb tot l'espai
+        # sobrant entremig: són dues accions molt diferents i enganxades es
+        # podien confondre en clicar.
         move_row.addWidget(self.delete_button, 0)
-        # Una mica d'aire entre Esborrar i Moure: són dues accions molt
-        # diferents i enganxades es podien confondre en clicar.
-        move_row.addSpacing(12)
-        move_row.addWidget(self.move_group, 1)
+        move_row.addStretch(1)
+        move_row.addWidget(self.move_group, 0)
         layout.addLayout(move_row)
         # Sense stretch aquí: l'espai sobrant s'ha de quedar tot avall de
         # tot el panell (sota el de cerca), no just després del trasllat.
         return page
 
     def _fit_detail_table_height(self):
-        """Alçada exacta per a capçalera + 5 files, sense marge de seguretat
-        arbitrari: es mesura l'alçada real (depèn de la lletra de cada
-        plataforma), no s'assumeix un valor fix en pixels."""
+        """Alçada exacta per a capçalera + 5 files.
+
+        Les files es fixen a `DETAIL_ROW_HEIGHT`: si es deixa que creixin
+        amb el contingut, cada fila s'endú uns quants píxels de més i el
+        panell ja no arriba a encabir els botons que van a sota. De la
+        capçalera sí que se'n mesura l'alçada real, que depèn de la lletra
+        de cada plataforma.
+        """
+        row_h = DETAIL_ROW_HEIGHT
+        for row in range(self.detail_table.rowCount()):
+            self.detail_table.setRowHeight(row, row_h)
         header_h = self.detail_table.horizontalHeader().height()
-        row_h = self.detail_table.rowHeight(0)
         self.detail_table.setFixedHeight(header_h + row_h * 5 + 2)
 
     # ------------------------------------------------------------------ #
@@ -344,14 +365,24 @@ class PositionPanel(QFrame):
             QTimer.singleShot(0, lambda: self._go_to_next_notes_row(row))
 
     def _go_to_next_notes_row(self, row: int):
-        """Notes + Enter: salta a les Notes de la línia següent. Si aquella
-        línia encara no té peça (les seves Notes no són editables), només
-        s'hi deixa el cursor i no s'obre cap editor."""
+        """Enter des de Notes: on va el cursor depèn de si la línia següent
+        ja existeix o no.
+
+          - Si ja hi ha una peça a la línia de sota, el cursor va a les
+            seves MIDES: la peça ja té núm. i material, el que toca és
+            continuar-la d'omplir.
+          - Si encara no n'hi ha cap, la línia següent és la que està a
+            punt de crear-se: el cursor va al seu NÚM., que és per on
+            comença una peça nova (i no es crea res fins que s'hi escriu,
+            amb les mateixes validacions de sempre).
+        """
         next_row = row + 1
         if next_row >= self.detail_table.rowCount():
-            return
-        self.detail_table.setCurrentCell(next_row, self._DETAIL_NOTES_COL)
-        self._start_editing(next_row, self._DETAIL_NOTES_COL)
+            return  # ja s'és a l'última línia de la posició
+        pieces = len(self.repo.get_position_detail(self.position)) if self.position else 0
+        column = self._DETAIL_DIMS_COL if next_row < pieces else self._DETAIL_CODE_COL
+        self.detail_table.setCurrentCell(next_row, column)
+        self._start_editing(next_row, column)
 
     def _on_current_cell_changed(self, row, column, previous_row, previous_column):
         self._update_delete_button()

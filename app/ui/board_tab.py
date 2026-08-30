@@ -111,12 +111,18 @@ class _BoardGridDelegate(QStyledItemDelegate):
         painter.restore()
 
 
+# Els dos botons de sota del cercador comparteixen mida (ample, alçada i
+# padding) perquè quedin alineats; cadascun manté el seu color.
+FOOTER_BUTTON_STYLE = "padding: 5px 14px; font-size: 12px;"
+
+
 class BoardTab(QWidget):
     data_changed = Signal()
-    # El botó d'imprimir viu en aquesta pestanya, però qui imprimeix
-    # segueix sent la finestra (`MainWindow._print_board`), que ja té el
-    # flux comú d'impressió: aquí només s'avisa.
+    # Els botons viuen en aquesta pestanya, però qui imprimeix o obre
+    # l'informe segueix sent la finestra (que ja té aquests fluxos): aquí
+    # només s'avisa.
     print_requested = Signal()
+    covered_requested = Signal()
 
     def __init__(self, repo: Repository, parent=None):
         super().__init__(parent)
@@ -197,13 +203,27 @@ class BoardTab(QWidget):
         footer_layout.setContentsMargins(0, 0, 0, 0)
         footer_layout.setSpacing(2)
         footer_layout.addWidget(self.search_panel)
+        # Compactes: l'ample just per al seu contingut (amb una mica de
+        # marge) i una mica més alts per poder-los clicar còmodament.
         self.print_button = QPushButton(f"\U0001f5a8\ufe0f  {t('action.print_board')}")
-        # Compacte: l'ample just per a la icona i el text (amb una mica de
-        # marge), i una mica més alt per poder-lo clicar còmodament.
-        self.print_button.setStyleSheet("padding: 5px 14px; font-size: 12px;")
-        self.print_button.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
+        self.print_button.setStyleSheet(FOOTER_BUTTON_STYLE)
         self.print_button.clicked.connect(self.print_requested.emit)
-        footer_layout.addWidget(self.print_button, 0, Qt.AlignLeft)
+
+        # "Materials tapats" a sota, amb la MATEIXA mida (perquè quedin
+        # alineats) però conservant el seu color vermell i el seu ull.
+        self.covered_button = QPushButton(f"\U0001f441\ufe0f  {t('action.covered').replace(chr(10), ' ')}")
+        self.covered_button.setStyleSheet(
+            f"QPushButton {{ {FOOTER_BUTTON_STYLE} background-color: #c62828; color: white; }}"
+        )
+        self.covered_button.clicked.connect(self.covered_requested.emit)
+
+        for button in (self.print_button, self.covered_button):
+            button.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
+            footer_layout.addWidget(button, 0, Qt.AlignLeft)
+        # Mateix ample per als dos: el del més ample dels dos continguts.
+        shared_width = max(b.sizeHint().width() for b in (self.print_button, self.covered_button))
+        for button in (self.print_button, self.covered_button):
+            button.setFixedWidth(shared_width)
         self.position_panel.add_footer(footer)
         self._search_state: dict[str, str] = {}
 

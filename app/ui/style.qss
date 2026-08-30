@@ -89,6 +89,55 @@ QPushButton:disabled {
     color: #7e838b;
 }
 
+/* Radios i caselles: a alguns temes de Windows la marca de seleccionat
+   gairebé no es veu (i encara menys amb un full d'estil pel mig), de manera
+   que es pinta aquí, explícitament, en comptes de dependre del sistema.
+   Segueixen sent radios i caselles de veritat: només se'n canvia l'aspecte,
+   no el comportament ni l'accessibilitat. */
+QRadioButton, QCheckBox {
+    spacing: 8px;
+    color: #1a1a1a;
+}
+
+QRadioButton::indicator, QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+    background-color: #ffffff;
+    border: 2px solid #8a8f98;
+}
+
+QRadioButton::indicator {
+    border-radius: 9px;
+}
+
+QCheckBox::indicator {
+    border-radius: 3px;
+}
+
+QRadioButton::indicator:hover, QCheckBox::indicator:hover {
+    border-color: #2f6fed;
+}
+
+/* Seleccionat: vora blava i un punt blau ben visible a dins. */
+QRadioButton::indicator:checked {
+    border: 2px solid #2f6fed;
+    background-color: qradialgradient(cx:0.5, cy:0.5, radius:0.5,
+                                      fx:0.5, fy:0.5,
+                                      stop:0 #2f6fed, stop:0.5 #2f6fed,
+                                      stop:0.55 #ffffff, stop:1 #ffffff);
+}
+
+QCheckBox::indicator:checked {
+    border: 2px solid #2f6fed;
+    background-color: #2f6fed;
+    image: none;
+}
+
+QRadioButton::indicator:disabled, QCheckBox::indicator:disabled {
+    border-color: #c9cdd4;
+    background-color: #eef0f3;
+}
+
 QLineEdit, QSpinBox {
     border: 1px solid #c7cad1;
     border-radius: 4px;

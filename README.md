@@ -244,8 +244,10 @@ Menú **Importar** (entre Archivo y Copias de seguridad),
 
 ## Imprimir
 
-Cada botón vive en su pestaña: **Imprimir tauler** debajo del buscador del
-Tauler, e **Imprimir desmagatzem** en la fila de acciones de Desmagatzem.
+Cada botón vive en su pestaña: **Imprimir tauler** y **Materials tapats**
+debajo del buscador del Tauler (los dos del mismo tamaño, cada uno con su
+color), e **Imprimir desmagatzem** en la fila de acciones de Desmagatzem.
+La fila superior ya solo tiene el indicador de USB.
 Los dos abren el diálogo de impresión **nativo** del sistema
 (`QPrintDialog`) —donde se puede elegir "imprimir a PDF"— y ninguno crea
 ficheros temporales. Cancelar no hace nada; un fallo de la impresora se
