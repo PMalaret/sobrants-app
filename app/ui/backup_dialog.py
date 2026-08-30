@@ -2,7 +2,8 @@
 
 Abans només es podia canviar cada quantes hores es feien (amb un quadre de
 demanar un número). Ara, al mateix lloc, s'hi tria també on van, com es
-diuen i s'hi veu si hi ha un USB connectat per fer-ne la segona còpia.
+diuen, quantes se'n guarden, i s'hi veu si hi ha un USB connectat per
+fer-ne la segona còpia.
 
 Tot el que s'hi tria es recorda a `settings.json` (`app.settings`), que ja
 és on viuen la resta de preferències.
@@ -25,7 +26,15 @@ from PySide6.QtWidgets import (
 )
 
 from app import settings
-from app.backup import DEFAULT_PREFIX, backup_name, sanitize_prefix
+from app.backup import (
+    DEFAULT_KEEP_BACKUPS,
+    DEFAULT_PREFIX,
+    MAX_KEEP_BACKUPS,
+    MIN_KEEP_BACKUPS,
+    backup_name,
+    list_backups,
+    sanitize_prefix,
+)
 from app.i18n import t
 from app.ui import dialogs
 from app.ui.usb_indicator import removable_drives
@@ -34,6 +43,7 @@ from app.ui.usb_indicator import removable_drives
 FOLDER_SETTING = "backup_folder"
 PREFIX_SETTING = "backup_prefix"
 INTERVAL_SETTING = "backup_interval_hours"
+KEEP_SETTING = "backup_keep"
 
 
 def backup_folder(db_path: str | Path, default: Path) -> Path:
@@ -46,8 +56,26 @@ def backup_prefix() -> str:
     return sanitize_prefix(settings.get(PREFIX_SETTING) or DEFAULT_PREFIX)
 
 
+def backup_keep() -> int:
+    """Quantes còpies es conserven a cada destí. Si el valor desat no és
+    utilitzable (tocat a mà, buit, fora de rang), val el de per defecte."""
+    try:
+        value = int(settings.get(KEEP_SETTING, DEFAULT_KEEP_BACKUPS))
+    except (TypeError, ValueError):
+        return DEFAULT_KEEP_BACKUPS
+    if not MIN_KEEP_BACKUPS <= value <= MAX_KEEP_BACKUPS:
+        return DEFAULT_KEEP_BACKUPS
+    return value
+
+
+def count_backups(folder: Path) -> int:
+    """Quantes còpies de l'aplicació hi ha ara mateix en una carpeta."""
+    return len(list_backups(folder))
+
+
 class BackupSettingsDialog(QDialog):
-    """Carpeta de destí, nom de les còpies i cada quantes hores es fan."""
+    """Carpeta de destí, nom de les còpies, cada quantes hores es fan i
+    quantes se'n conserven."""
 
     def __init__(self, default_folder: Path, interval_hours: int, min_hours: int, max_hours: int, parent=None):
         super().__init__(parent)
@@ -79,6 +107,14 @@ class BackupSettingsDialog(QDialog):
         self.interval_input.setValue(interval_hours)
         self.interval_input.setSuffix(" h")
         form.addRow(t("backup.settings.interval"), self.interval_input)
+
+        # Quantes se'n guarden. Un QSpinBox ja només deixa escriure-hi
+        # enters dins del rang, així que no s'hi pot posar cap valor
+        # invàlid ni desproporcionat.
+        self.keep_input = QSpinBox()
+        self.keep_input.setRange(MIN_KEEP_BACKUPS, MAX_KEEP_BACKUPS)
+        self.keep_input.setValue(backup_keep())
+        form.addRow(t("backup.settings.keep"), self.keep_input)
 
         # Estat del USB: informatiu, per saber si la còpia sortirà duplicada.
         drives = removable_drives()
@@ -122,7 +158,19 @@ class BackupSettingsDialog(QDialog):
             dialogs.error(self, t("backup.settings.folder_error.title"),
                           t("backup.settings.folder_error.text", folder=folder, error=exc))
             return
+        # Si es baixa el límit i ara hi ha més còpies de les que hi cabran,
+        # no se n'esborra cap ara mateix: només s'avisa que les més antigues
+        # aniran caient a mesura que se'n facin de noves.
+        keep = self.keep_input.value()
+        existing = count_backups(folder)
+        if existing > keep:
+            dialogs.info(
+                self,
+                t("backup.settings.keep_warning.title"),
+                t("backup.settings.keep_warning.text", existing=existing, keep=keep),
+            )
         settings.set_value(FOLDER_SETTING, str(folder))
         settings.set_value(PREFIX_SETTING, sanitize_prefix(self.prefix_input.text()))
         settings.set_value(INTERVAL_SETTING, self.interval_input.value())
+        settings.set_value(KEEP_SETTING, keep)
         self.accept()

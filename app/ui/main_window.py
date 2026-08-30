@@ -27,7 +27,7 @@ from app.logic.repository import Repository
 from app.security import ADMIN
 from app.ui import dialogs
 from app.ui.about_dialog import AboutDialog
-from app.ui.backup_dialog import BackupSettingsDialog, backup_folder, backup_prefix
+from app.ui.backup_dialog import BackupSettingsDialog, backup_folder, backup_keep, backup_prefix
 from app.ui.import_actions import import_from_database, import_from_excel
 from app.ui.usb_indicator import removable_drives
 from app.ui.board_tab import BoardTab
@@ -300,6 +300,7 @@ class MainWindow(QMainWindow):
             backups_dir=self._backup_folder(),
             prefix=backup_prefix(),
             usb_root=self._usb_root(ask=ask_usb),
+            keep=backup_keep(),
         )
 
     def _manual_backup(self):

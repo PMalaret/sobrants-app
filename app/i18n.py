@@ -776,6 +776,21 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ca": "Cada quantes hores:", "es": "Cada cuántas horas:",
         "en": "How often:", "fr": "Fréquence :",
     },
+    "backup.settings.keep": {
+        "ca": "Còpies que es guarden:", "es": "Copias que se guardan:",
+        "en": "Backups to keep:", "fr": "Sauvegardes à conserver :",
+    },
+    "backup.settings.keep_warning.title": {
+        "ca": "Hi ha més còpies que el límit", "es": "Hay más copias que el límite",
+        "en": "There are more backups than the limit",
+        "fr": "Il y a plus de sauvegardes que la limite",
+    },
+    "backup.settings.keep_warning.text": {
+        "ca": "Ara hi ha {existing} còpies i el límit nou és {keep}.\n\nNo se n'esborra cap ara: les més antigues aniran caient a mesura que se'n facin de noves.",
+        "es": "Ahora hay {existing} copias y el nuevo límite es {keep}.\n\nNo se borra ninguna ahora: las más antiguas irán cayendo a medida que se hagan nuevas.",
+        "en": "There are {existing} backups now and the new limit is {keep}.\n\nNone is deleted now: the oldest ones will be removed as new backups are made.",
+        "fr": "Il y a {existing} sauvegardes et la nouvelle limite est {keep}.\n\nAucune n'est supprimée maintenant : les plus anciennes partiront au fur et à mesure.",
+    },
     "backup.settings.usb": {
         "ca": "USB:", "es": "USB:", "en": "USB:", "fr": "USB :",
     },
@@ -841,8 +856,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "&Backups", "fr": "&Sauvegardes",
     },
     "menu.backup_interval": {
-        "ca": "Interval de còpies automàtiques...", "es": "Intervalo de copias automáticas...",
-        "en": "Automatic backup interval...", "fr": "Intervalle des sauvegardes automatiques...",
+        "ca": "Configuració...", "es": "Configuración...",
+        "en": "Settings...", "fr": "Configuration...",
     },
     "menu.change_password": {
         "ca": "Canviar contrasenya...", "es": "Cambiar contraseña...",

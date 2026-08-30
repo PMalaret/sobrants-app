@@ -7,7 +7,7 @@ Python + PySide6 (Qt), con los datos en una base de datos SQLite local
 (catalán, castellano, inglés, francés)**, con selector en el menú
 "🌐 Idioma/Language/Langue" (se recuerda entre arranques en
 `SobrantsData/settings.json`); toda la traducción vive en `app/i18n.py`,
-con las 238 claves siempre en los 4 idiomas a la vez (cualquier cadena
+con las 241 claves siempre en los 4 idiomas a la vez (cualquier cadena
 nueva que se añada debe seguir esa misma regla). Esta documentación y los
 comentarios del código quedan en castellano por continuidad con el resto
 del proyecto.
@@ -190,10 +190,17 @@ contraseña de administrador y se guarda en `settings.json`:
   `SobrantsData/Backups/`);
 - **nombre** de las copias: siempre `AAAAMMDDHHMM_<nombre>.db`, con la
   fecha delante para que ordenar por nombre sea ordenar por fecha;
-- **cada cuántas horas** se hacen (4 por defecto).
+- **cada cuántas horas** se hacen (4 por defecto);
+- **cuántas se conservan** (25 por defecto, 1–500).
 
-Se conservan las 10 más recientes —y la rotación solo borra ficheros con el
-patrón de la aplicación, nunca otros `.db` que haya en esa carpeta—. Nunca
+La copia nueva se crea **antes** de borrar ninguna vieja, así que un fallo
+al copiar nunca cuesta una copia válida; después se eliminan las más
+antiguas hasta el límite, decidiendo la antigüedad por la fecha del
+**nombre** (`AAAAMMDDHHMM`), no por la fecha del fichero. La rotación solo
+borra ficheros con el patrón de la aplicación, nunca otros `.db` que haya
+en esa carpeta, y se aplica a cada destino por separado: si el USB no está
+conectado, allí no se toca nada. Bajar el límite no borra nada en ese
+momento — avisa y el recorte se aplica en la siguiente copia. Nunca
 se sobrescribe una copia anterior (dos copias del mismo minuto quedan como
 `…-2.db`) y cada copia se verifica (existe y mide lo mismo que el original)
 antes de darla por buena.
