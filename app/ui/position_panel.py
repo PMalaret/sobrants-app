@@ -151,13 +151,10 @@ class PositionPanel(QFrame):
         self._stack.addWidget(self._build_detail_page())  # índex 1
 
     def add_footer(self, widget: QWidget):
-        """Afegeix un widget a sota de tot, separat amb una línia divisòria.
-        Fora de l'`_stack`, així es veu sempre (hi hagi o no una posició
-        seleccionada) — s'hi incrusta el panell de cerca del Tauler."""
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setFrameShadow(QFrame.Sunken)
-        self._outer.addWidget(separator)
+        """Afegeix un widget a sota de tot, fora de l'`_stack`, així es veu
+        sempre (hi hagi o no una posició seleccionada) — s'hi incrusta el
+        cercador del Tauler amb la seva zona d'accions, que ja es distingeix
+        pel seu fons i no necessita cap línia divisòria."""
         self._outer.addWidget(widget)
         # Que l'espai sobrant (si el bloc del tauler és més alt del que cal)
         # quedi tot avall de tot, sota el panell de cerca — no com un buit

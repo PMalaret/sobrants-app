@@ -22,6 +22,7 @@ from PySide6.QtGui import QColor, QPen
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
+    QFrame,
     QHeaderView,
     QLabel,
     QPushButton,
@@ -115,6 +116,17 @@ class _BoardGridDelegate(QStyledItemDelegate):
 # padding) perquè quedin alineats; cadascun manté el seu color.
 FOOTER_BUTTON_STYLE = "padding: 5px 14px; font-size: 12px;"
 
+# La zona d'accions és una franja pròpia sota el cercador, amb un fons una
+# mica diferent perquè es vegi que és una altra cosa (i no part del
+# cercador). Discret, a joc amb la resta de la interfície.
+ACTIONS_ZONE_STYLE = """
+QFrame#boardActions {
+    background-color: #eef0f3;
+    border: 1px solid #e2e4e8;
+    border-radius: 6px;
+}
+"""
+
 
 class BoardTab(QWidget):
     data_changed = Signal()
@@ -201,7 +213,7 @@ class BoardTab(QWidget):
         footer = QWidget()
         footer_layout = QVBoxLayout(footer)
         footer_layout.setContentsMargins(0, 0, 0, 0)
-        footer_layout.setSpacing(2)
+        footer_layout.setSpacing(4)
         footer_layout.addWidget(self.search_panel)
         # Compactes: l'ample just per al seu contingut (amb una mica de
         # marge) i una mica més alts per poder-los clicar còmodament.
@@ -217,9 +229,17 @@ class BoardTab(QWidget):
         )
         self.covered_button.clicked.connect(self.covered_requested.emit)
 
+        # Tots dos dins d'una zona pròpia, arrambats a la dreta.
+        self.actions_zone = QFrame()
+        self.actions_zone.setObjectName("boardActions")
+        self.actions_zone.setStyleSheet(ACTIONS_ZONE_STYLE)
+        actions_layout = QVBoxLayout(self.actions_zone)
+        actions_layout.setContentsMargins(6, 4, 6, 4)
+        actions_layout.setSpacing(4)
         for button in (self.print_button, self.covered_button):
             button.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
-            footer_layout.addWidget(button, 0, Qt.AlignLeft)
+            actions_layout.addWidget(button, 0, Qt.AlignRight)
+        footer_layout.addWidget(self.actions_zone)
         # Mateix ample per als dos: el del més ample dels dos continguts.
         shared_width = max(b.sizeHint().width() for b in (self.print_button, self.covered_button))
         for button in (self.print_button, self.covered_button):

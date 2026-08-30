@@ -51,7 +51,7 @@ _EDIT_WIDTH = 105
 # Nom de cada resultat a dalt, amb el mateix estil que el títol del
 # cercador ("Per núm.:"), i el valor a sota molt més gran.
 _STAT_TITLE_STYLE = "font-size: 12px; font-weight: 600; color: #1a1a1a;"
-_STAT_VALUE_STYLE = "font-size: 20px; font-weight: 700; color: {color};"
+_STAT_VALUE_STYLE = "font-size: 17px; font-weight: 700; color: {color};"
 # Coincidències i unitats a Desmagatzem, en vermell (són els dos números
 # que interessen més); la posició més antiga, en el color del text normal.
 _STATS = (

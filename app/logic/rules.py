@@ -16,6 +16,10 @@ MAX_SLOTS = 5
 # Només números positius: el 0 no és cap material (i els negatius, menys).
 MATERIAL_CODE_MIN, MATERIAL_CODE_MAX = 1, 999999
 DESMAGATZEM_QTY_MIN, DESMAGATZEM_QTY_MAX = 0, 999
+# Màxim de caràcters de les notes d'una línia de desmagatzem. Es defineix
+# aquí perquè el camp del formulari, l'edició dins de la taula i el que
+# desa el repositori facin servir tots el mateix límit.
+DESMAGATZEM_NOTES_MAX_CHARS = 15
 CUSTOM_MATERIAL_SENTINEL = 1  # codi "1" = material no registrat (text lliure)
 EMPTY_MATERIAL_MARK = "---------"
 
@@ -45,6 +49,13 @@ def is_valid_material_code(value) -> bool:
     if n != int(n):
         return False  # un codi de material és un enter, no 12,5
     return MATERIAL_CODE_MIN <= n <= MATERIAL_CODE_MAX
+
+
+def truncate_desmagatzem_notes(value: str) -> str | None:
+    """Les notes d'una línia de desmagatzem, retallades al màxim permès.
+    Retorna None si no en queda res (la base de dades hi vol NULL)."""
+    text = (value or "").strip()[:DESMAGATZEM_NOTES_MAX_CHARS]
+    return text or None
 
 
 def is_valid_desmagatzem_qty(value) -> bool:

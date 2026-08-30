@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QSpinBox,
+    QStyledItemDelegate,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -47,8 +48,22 @@ _CODE_MAX_CHARS = 6
 _CODE_WIDTH = 70
 _QTY_WIDTH = 60
 _DIMS_WIDTH = 95
-_NOTES_MAX_CHARS = 8
-_NOTES_WIDTH = 70
+_NOTES_WIDTH = 110
+
+
+class _MaxLengthDelegate(QStyledItemDelegate):
+    """Limita el text que s'hi pot escriure en editar la cel·la (Notes: el
+    mateix màxim que el camp del formulari)."""
+
+    def __init__(self, max_length: int, parent=None):
+        super().__init__(parent)
+        self._max_length = max_length
+
+    def createEditor(self, parent, option, index):
+        editor = super().createEditor(parent, option, index)
+        if isinstance(editor, QLineEdit):
+            editor.setMaxLength(self._max_length)
+        return editor
 
 
 class _NumericItem(QTableWidgetItem):
@@ -173,9 +188,16 @@ class DesmagatzemTab(QWidget):
         self.dims_input.setFixedWidth(_DIMS_WIDTH)
 
         self.cart_input = QLineEdit()
-        self.cart_input.setMaxLength(_NOTES_MAX_CHARS)
+        # 15 caràcters com a màxim: el propi camp ja no en deixa escriure ni
+        # enganxar més, i el repositori hi torna a aplicar el mateix límit
+        # (`rules.truncate_desmagatzem_notes`) abans de desar.
+        self.cart_input.setMaxLength(rules.DESMAGATZEM_NOTES_MAX_CHARS)
         self.cart_input.setFixedWidth(_NOTES_WIDTH)
         self.cart_input.setToolTip(t("desmagatzem.cart_placeholder"))
+        # Comptador discret al costat, perquè es vegi quant queda.
+        self.cart_counter = QLabel()
+        self.cart_counter.setStyleSheet("color: #8a8f98; font-size: 11px;")
+        self.cart_input.textChanged.connect(self._update_cart_counter)
 
         for label_key, widget, stretch in (
             ("desmagatzem.field.code", self.code_input, 0),
@@ -186,6 +208,8 @@ class DesmagatzemTab(QWidget):
         ):
             form.addWidget(QLabel(t(label_key)))
             form.addWidget(widget, stretch)
+            if widget is self.cart_input:
+                form.addWidget(self.cart_counter)
 
         self.add_button = QPushButton(t("desmagatzem.add_button"))
         self.add_button.clicked.connect(self._on_add_row)
@@ -195,6 +219,7 @@ class DesmagatzemTab(QWidget):
         # Enter passa al camp següent, d'esquerra a dreta, i al final de la
         # fila desa la línia (el mateix que el botó) i torna al principi:
         # es pot anar entrant material rere material sense tocar el ratolí.
+        self._update_cart_counter()
         self._enter_chain = [
             self.code_input,
             self.custom_text_input,
@@ -235,6 +260,10 @@ class DesmagatzemTab(QWidget):
         # de detall del Tauler, i Retorn/Escapada fan el de sempre.
         self.table.setEditTriggers(
             QAbstractItemView.DoubleClicked | QAbstractItemView.EditKeyPressed
+        )
+        # Editant Notes dins de la taula, el mateix límit que al formulari.
+        self.table.setItemDelegateForColumn(
+            4, _MaxLengthDelegate(rules.DESMAGATZEM_NOTES_MAX_CHARS, self.table)
         )
         self.table.cellClicked.connect(self._on_cell_clicked)
         self.table.itemChanged.connect(self._on_item_changed)
@@ -435,6 +464,11 @@ class DesmagatzemTab(QWidget):
             return
         self.refresh()
         self.data_changed.emit()
+
+    def _update_cart_counter(self):
+        self.cart_counter.setText(
+            f"{len(self.cart_input.text())}/{rules.DESMAGATZEM_NOTES_MAX_CHARS}"
+        )
 
     def _update_qty_button_state(self):
         self.update_qty_button.setEnabled(self._selected_row_id() is not None)

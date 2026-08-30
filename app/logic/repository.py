@@ -522,7 +522,10 @@ class Repository:
             self.conn.execute(
                 """INSERT INTO desmagatzem(row_order, quantity, material_code, material_desc, custom_text, dimensions, cart_ref, ts)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (next_order, quantity, code_str, desc, custom_text, dimensions or None, cart_ref or None, _now()),
+                    (
+                    next_order, quantity, code_str, desc, custom_text,
+                    dimensions or None, rules.truncate_desmagatzem_notes(cart_ref), _now(),
+                ),
             )
             for _ in range(quantity):
                 self._log_historic("Desmagatzem", code_str, desc, 1, "in")
@@ -541,6 +544,8 @@ class Repository:
         row = self.conn.execute("SELECT id FROM desmagatzem WHERE id = ?", (row_id,)).fetchone()
         if row is None:
             raise RuleViolation(t("err.desmagatzem_row_not_found"))
+        if field == "cart_ref":
+            value = rules.truncate_desmagatzem_notes(value)   # mateix límit que el formulari
         with self._transaction():
             self.conn.execute(
                 f"UPDATE desmagatzem SET {field} = ? WHERE id = ?",  # noqa: S608
