@@ -12,6 +12,8 @@ defecte surt ordenat per Data ascendent (la més antiga primer).
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
+
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
@@ -33,6 +35,7 @@ from app.i18n import t
 from app.logic import rules
 from app.logic.repository import Repository, RuleViolation
 from app.logic.rules import quantity_change_kind
+from app.export import ReportCell
 from app.ui import dialogs
 from app.ui.search_panel import SEARCH_COLORS
 
@@ -82,6 +85,11 @@ class DesmagatzemTab(QWidget):
     # que ressalta cada cercador — igual que B/C/E a la fulla desmagatzem
     # original per a M20/M22/M24 respectivament.
     _SEARCH_COLUMN = {"code": 1, "description": 2, "notes": 4}
+    # Les úniques dues columnes que es poden editar des de la taula, i el
+    # camp de la base de dades de cadascuna. La resta (quantitat, núm. de
+    # material, descripció i data) tenen les seves pròpies regles i es
+    # queden de només lectura.
+    _EDITABLE_COLUMNS = {3: "dimensions", 4: "cart_ref"}
     _SEARCH_FIELD = {"code": "material_code", "description": "material_desc", "notes": "cart_ref"}
     _DATE_COL = 5
 
@@ -89,6 +97,10 @@ class DesmagatzemTab(QWidget):
         super().__init__(parent)
         self.repo = repo
         self._search_state: dict[str, str] = {}
+        # Cert mentre és l'aplicació qui toca la taula (omplir-la, pintar-hi
+        # els ressaltats de cerca...). Sense això, cada `setBackground` es
+        # prendria per una edició de l'usuari i tornaria a desar i refrescar.
+        self._updating = False
         self._build_ui()
         self.refresh()
 
@@ -210,9 +222,22 @@ class DesmagatzemTab(QWidget):
         self.table = QTableWidget(0, len(columns))
         self.table.setAlternatingRowColors(True)
         self.table.setHorizontalHeaderLabels(columns)
+        # Pista discreta que aquestes dues es poden editar (només a la
+        # pantalla: el que s'imprimeix fa servir `_columns()`, sense marca).
+        for col in self._EDITABLE_COLUMNS:
+            header_item = self.table.horizontalHeaderItem(col)
+            header_item.setText(f"{columns[col]} \u270e")
+            header_item.setToolTip(t("desmagatzem.editable_hint"))
         self._configure_column_widths()
         self.table.horizontalHeader().setSortIndicatorShown(True)
-        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        # Només Mides i Notes són editables (els seus ítems porten el
+        # flag; la resta, no). Un sol clic ja obre l'editor, com a la taula
+        # de detall del Tauler, i Retorn/Escapada fan el de sempre.
+        self.table.setEditTriggers(
+            QAbstractItemView.DoubleClicked | QAbstractItemView.EditKeyPressed
+        )
+        self.table.cellClicked.connect(self._on_cell_clicked)
+        self.table.itemChanged.connect(self._on_item_changed)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         layout.addWidget(self.table)
 
@@ -249,7 +274,7 @@ class DesmagatzemTab(QWidget):
         qty_row.addWidget(self.print_button)
         layout.addLayout(qty_row)
 
-    def printable_rows(self) -> tuple[list[str], list[list[str]]]:
+    def printable_rows(self) -> tuple[list[str], list[list[ReportCell]]]:
         """Capçaleres i TOTES les files de la taula, en l'ordre en què es
         veuen (l'ordenació que hagi triat l'usuari clicant una capçalera).
 
@@ -259,20 +284,46 @@ class DesmagatzemTab(QWidget):
         text que es veu. Si algun dia s'hi afegís un filtre, aquest mètode
         seguiria donant el conjunt que la taula mostra.
         """
-        headers = self._columns()
+        headers = self._columns()   # sense la marca d'editable de la pantalla
         rows = []
         for r in range(self.table.rowCount()):
             if self.table.isRowHidden(r):
                 continue
-            rows.append([
-                self.table.item(r, c).text() if self.table.item(r, c) else ""
-                for c in range(self.table.columnCount())
-            ])
+            rows.append([self._printable_cell(r, c) for c in range(self.table.columnCount())])
         return headers, rows
+
+    def _printable_cell(self, row: int, column: int) -> ReportCell:
+        """El text de la cel·la i, si en té, el seu color de fons (per
+        exemple el d'un ressaltat de cerca), perquè l'informe surti igual
+        de colorit que la taula."""
+        item = self.table.item(row, column)
+        if item is None:
+            return ReportCell("")
+        brush = item.background()
+        color = brush.color()
+        background = color.name() if brush.style() != Qt.NoBrush and color.alpha() > 0 else ""
+        return ReportCell(item.text(), background)
+
+    @contextmanager
+    def _programmatic_update(self):
+        """Mentre l'aplicació omple o repinta la taula, els canvis d'ítem no
+        són edicions de l'usuari i no s'han de desar."""
+        previous = self._updating
+        self._updating = True
+        self.table.blockSignals(True)
+        try:
+            yield
+        finally:
+            self.table.blockSignals(False)
+            self._updating = previous
 
     def refresh(self):
         # Desactivem l'ordenació mentre omplim la taula (si no, Qt reordena
         # fila a fila a cada setItem, molt lent i pot descol·locar dades).
+        with self._programmatic_update():
+            self._fill_table()
+
+    def _fill_table(self):
         self.table.setSortingEnabled(False)
         rows = self.repo.list_desmagatzem()
         self.table.setRowCount(len(rows))
@@ -285,6 +336,16 @@ class DesmagatzemTab(QWidget):
             self.table.setItem(r, 3, QTableWidgetItem(row["dimensions"] or ""))
             self.table.setItem(r, 4, QTableWidgetItem(row["cart_ref"] or ""))
             self.table.setItem(r, 5, QTableWidgetItem(row["ts"] or ""))
+            # Els ítems de Qt són editables per defecte: aquí es deixa
+            # explícit que només ho són Mides i Notes, i que la resta
+            # (quantitat, núm., material i data) són de només lectura.
+            for col in range(self.table.columnCount()):
+                item = self.table.item(r, col)
+                flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+                if col in self._EDITABLE_COLUMNS:
+                    flags |= Qt.ItemIsEditable
+                    item.setToolTip(t("desmagatzem.editable_hint"))
+                item.setFlags(flags)
         self.table.setSortingEnabled(True)
         # Per defecte, ordenat per data ascendent (la més antiga primer).
         # L'usuari sempre pot canviar-ho clicant qualsevol altra capçalera.
@@ -297,12 +358,14 @@ class DesmagatzemTab(QWidget):
     # ------------------------------------------------------------------ #
     def apply_search_highlight(self, mode: str, text: str):
         self._search_state[mode] = text
-        self._highlight_mode(mode, text)
+        with self._programmatic_update():
+            self._highlight_mode(mode, text)
 
     def clear_search_highlight(self):
         self._search_state = {}
-        for mode in self._SEARCH_COLUMN:
-            self._clear_column(self._SEARCH_COLUMN[mode])
+        with self._programmatic_update():
+            for mode in self._SEARCH_COLUMN:
+                self._clear_column(self._SEARCH_COLUMN[mode])
 
     def _reapply_highlights(self):
         for mode, text in self._search_state.items():
@@ -339,6 +402,39 @@ class DesmagatzemTab(QWidget):
         row = items[0].row()
         id_item = self.table.item(row, 0)
         return id_item.data(Qt.UserRole) if id_item is not None else None
+
+    def _on_cell_clicked(self, row: int, column: int):
+        """Un sol clic ja obre l'editor de Mides i Notes (a la resta de
+        columnes no fa res, perquè els seus ítems no són editables)."""
+        item = self.table.item(row, column)
+        if item is not None and item.flags() & Qt.ItemIsEditable:
+            self.table.editItem(item)
+
+    def _on_item_changed(self, item):
+        """Desa el que s'hagi editat a Mides o Notes.
+
+        El valor va a la base de dades a l'instant (`update_desmagatzem_field`,
+        que ja fa la seva transacció) i la taula es refresca; si el desament
+        falla, es torna a llegir de la base de dades, així el que es veu és
+        sempre el que hi ha desat de debò.
+        """
+        if self._updating:
+            return  # ho està canviant l'aplicació, no l'usuari
+        field = self._EDITABLE_COLUMNS.get(item.column())
+        if field is None:
+            return
+        id_item = self.table.item(item.row(), 0)
+        row_id = id_item.data(Qt.UserRole) if id_item is not None else None
+        if row_id is None:
+            return
+        try:
+            self.repo.update_desmagatzem_field(row_id, field, item.text().strip())
+        except (RuleViolation, ValueError) as exc:
+            dialogs.error(self, t("common.error"), str(exc))
+            self.refresh()          # es recupera el valor que hi havia
+            return
+        self.refresh()
+        self.data_changed.emit()
 
     def _update_qty_button_state(self):
         self.update_qty_button.setEnabled(self._selected_row_id() is not None)

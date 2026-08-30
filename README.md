@@ -7,7 +7,7 @@ Python + PySide6 (Qt), con los datos en una base de datos SQLite local
 (catalán, castellano, inglés, francés)**, con selector en el menú
 "🌐 Idioma/Language/Langue" (se recuerda entre arranques en
 `SobrantsData/settings.json`); toda la traducción vive en `app/i18n.py`,
-con las 241 claves siempre en los 4 idiomas a la vez (cualquier cadena
+con las 242 claves siempre en los 4 idiomas a la vez (cualquier cadena
 nueva que se añada debe seguir esa misma regla). Esta documentación y los
 comentarios del código quedan en castellano por continuidad con el resto
 del proyecto.
@@ -262,7 +262,17 @@ Son dos formas distintas a propósito:
   así que Qt las reparte en páginas, repite la cabecera en cada una y no
   parte filas. No depende del scroll ni de lo que se vea: si hay 500
   registros se imprimen los 500, en horizontal y respetando el orden que
-  haya elegido el usuario en las cabeceras.
+  haya elegido el usuario en las cabeceras. Cada celda viaja como
+  `ReportCell(texto, color)`, así que **los fondos de color de la tabla**
+  (por ejemplo los resaltados de búsqueda) salen también impresos, en una
+  página o en veinte.
+
+En Desmagatzem, **Mides y Notes se editan directamente en la tabla** (un
+clic abre el editor; Enter guarda, Escape cancela). El valor va a la base
+de datos al momento con `Repository.update_desmagatzem_field`, que solo
+acepta esos dos campos; el resto de columnas son de solo lectura. Si el
+guardado falla, se avisa y la tabla vuelve a lo que hay en la base de
+datos.
 
 ## Histórico: sin límite de filas, y cómo se limpia
 

@@ -519,6 +519,25 @@ class Repository:
                 self._log_historic("Desmagatzem", code_str, desc, 1, "in")
         return {"row_order": next_order, "material_desc": desc}
 
+    def update_desmagatzem_field(self, row_id: int, field: str, value: str) -> None:
+        """Edició en línia de Mides/Notes d'una línia de desmagatzem, des de
+        la mateixa taula.
+
+        Mateix criteri que `update_piece_field` per al Tauler: només
+        s'accepten aquests dos camps, mai la quantitat, el núm. de material
+        ni la data, que tenen les seves pròpies regles.
+        """
+        if field not in ("dimensions", "cart_ref"):
+            raise ValueError(f"Camp no editable: {field}")
+        row = self.conn.execute("SELECT id FROM desmagatzem WHERE id = ?", (row_id,)).fetchone()
+        if row is None:
+            raise RuleViolation(t("err.desmagatzem_row_not_found"))
+        with self._transaction():
+            self.conn.execute(
+                f"UPDATE desmagatzem SET {field} = ? WHERE id = ?",  # noqa: S608
+                (value or None, row_id),
+            )
+
     def update_desmagatzem_quantity(self, row_id: int, new_qty: int) -> str:
         """Canvia la quantitat d'una línia (ActualitzaHistorialQuantitat).
 

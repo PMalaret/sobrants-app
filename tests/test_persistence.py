@@ -84,6 +84,38 @@ def test_desmagatzem_changes_are_on_disk_immediately(repo, db_path):
     assert reopened(db_path).list_desmagatzem() == []
 
 
+def test_desmagatzem_field_edits_are_on_disk_immediately(repo, db_path):
+    """Mides i Notes editades des de la taula es desen a l'instant, i no
+    toquen cap altre camp de la línia."""
+    repo.add_desmagatzem_row(material_code="41011", quantity=3, dimensions="1x1", cart_ref="c1")
+    row = repo.list_desmagatzem()[0]
+
+    repo.update_desmagatzem_field(row["id"], "dimensions", "2600x3210")
+    repo.update_desmagatzem_field(row["id"], "cart_ref", "carro 9")
+
+    saved = reopened(db_path).list_desmagatzem()[0]
+    assert saved["dimensions"] == "2600x3210"
+    assert saved["cart_ref"] == "carro 9"
+    # la resta de la línia, intacta
+    assert saved["quantity"] == 3
+    assert str(saved["material_code"]) == "41011"
+    assert saved["ts"] == row["ts"]
+
+
+def test_only_dimensions_and_notes_can_be_edited_that_way(repo):
+    repo.add_desmagatzem_row(material_code="41011", quantity=3, dimensions="", cart_ref="")
+    row_id = repo.list_desmagatzem()[0]["id"]
+
+    for field in ("quantity", "material_code", "material_desc", "ts"):
+        with pytest.raises(ValueError):
+            repo.update_desmagatzem_field(row_id, field, "x")
+
+
+def test_editing_a_row_that_does_not_exist_is_rejected(repo):
+    with pytest.raises(RuleViolation):
+        repo.update_desmagatzem_field(9999, "dimensions", "x")
+
+
 def test_historic_is_written_with_the_operation(repo, db_path):
     repo.add_piece(3, 41011)
     assert len(reopened(db_path).get_historic()) == 1

@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from html import escape
+from typing import NamedTuple
 
 from PySide6.QtCore import QMarginsF, Qt
 from PySide6.QtGui import QPageLayout, QPageSize, QPainter, QTextDocument
@@ -105,10 +106,18 @@ def print_widget(widget: QWidget, parent: QWidget | None = None) -> bool:
     return True
 
 
+class ReportCell(NamedTuple):
+    """Una cel·la de l'informe: el text i, si en té, el color de fons que
+    tingui a la taula (per exemple el d'un ressaltat de cerca)."""
+
+    text: str
+    background: str = ""
+
+
 def print_table_report(
     title: str,
     headers: list[str],
-    rows: list[list[str]],
+    rows: list[list[ReportCell]],
     parent: QWidget | None = None,
 ) -> bool:
     """Imprimeix una taula SENCERA com un informe, no com una captura.
@@ -150,13 +159,25 @@ td { border: 1px solid #c7cad1; padding: 2px 5px; }
 """
 
 
-def _report_html(title: str, headers: list[str], rows: list[list[str]]) -> str:
+def _cell_html(cell) -> str:
+    """Una cel·la. Si porta color, es posa al propi <td>: així el fons surt
+    imprès igual que es veu a la taula, a totes les pàgines (el motor de
+    text de Qt pinta els fons de les cel·les tal com els hi digui l'HTML,
+    no cal activar-hi res)."""
+    if isinstance(cell, ReportCell):
+        text, background = cell.text, cell.background
+    else:
+        text, background = cell, ""
+    style = f' bgcolor="{escape(background)}"' if background else ""
+    return f"<td{style}>{escape('' if text is None else str(text))}</td>"
+
+
+def _report_html(title: str, headers: list[str], rows: list[list[ReportCell]]) -> str:
     """La taula en HTML. `<thead>` és el que fa que Qt repeteixi la
     capçalera a cada pàgina."""
     head = "".join(f"<th>{escape(str(h))}</th>" for h in headers)
     body = "".join(
-        "<tr>" + "".join(f"<td>{escape('' if v is None else str(v))}</td>" for v in row) + "</tr>"
-        for row in rows
+        "<tr>" + "".join(_cell_html(cell) for cell in row) + "</tr>" for row in rows
     )
     now = datetime.now().strftime("%d/%m/%Y %H:%M")
     return (

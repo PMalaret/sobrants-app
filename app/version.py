@@ -5,4 +5,4 @@ S'ha d'actualitzar a mà en cada release, en sincronia amb el tag de git
 llegir el tag de git en temps d'execució des de l'executable empaquetat.
 """
 
-APP_VERSION = "1.29.0"
+APP_VERSION = "1.30.0"

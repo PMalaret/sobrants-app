@@ -483,6 +483,12 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ca": "Indica el núm. de material.", "es": "Indica el núm. de material.",
         "en": "Enter the material no.", "fr": "Indiquez le n° de matériau.",
     },
+    "desmagatzem.editable_hint": {
+        "ca": "Es pot editar: clica-hi i escriu (Retorn desa, Escapada cancel·la)",
+        "es": "Se puede editar: haz clic y escribe (Retorno guarda, Escape cancela)",
+        "en": "Editable: click and type (Enter saves, Escape cancels)",
+        "fr": "Modifiable : cliquez et écrivez (Entrée enregistre, Échap annule)",
+    },
     "desmagatzem.material_not_found.title": {
         "ca": "Material no trobat", "es": "Material no encontrado",
         "en": "Material not found", "fr": "Matériau introuvable",
