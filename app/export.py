@@ -24,7 +24,7 @@ from datetime import datetime
 
 from PySide6.QtCore import QMarginsF, Qt
 from PySide6.QtGui import QPageLayout, QPageSize, QPainter
-from PySide6.QtPrintSupport import QPrinter
+from PySide6.QtPrintSupport import QPrintDialog, QPrinter
 from PySide6.QtWidgets import QWidget
 
 from app.i18n import t
@@ -43,26 +43,29 @@ def export_desmagatzem_pdf(table_widget: QWidget, dest_path: str) -> None:
     _print_widget_to_pdf(table_widget, dest_path)
 
 
-def _print_widget_to_pdf(widget: QWidget, dest_path: str) -> None:
+def _paint_widget_on_printer(widget: QWidget, printer: QPrinter) -> None:
     """Captura el widget tal com es veu (colors inclosos) i l'encabeix,
     centrat i mantenint la relació d'aspecte, en una pàgina A4. L'orientació
     (vertical o apaïsada) es tria segons la forma del propi widget capturat,
     perquè ocupi el màxim possible de la pàgina en comptes de deixar
-    marges buits grans a dalt/baix o als costats."""
+    marges buits grans a dalt/baix o als costats.
+
+    És el mateix dibuix tant si la pàgina va a un PDF com si va a una
+    impressora de debò: el contingut i el format no canvien.
+    """
     pixmap = widget.grab()
 
     orientation = (
         QPageLayout.Landscape if pixmap.width() >= pixmap.height() else QPageLayout.Portrait
     )
-
-    printer = QPrinter(QPrinter.HighResolution)
-    printer.setOutputFormat(QPrinter.PdfFormat)
-    printer.setOutputFileName(dest_path)
     printer.setPageLayout(
         QPageLayout(QPageSize(QPageSize.A4), orientation, QMarginsF(10, 10, 10, 10))
     )
 
-    painter = QPainter(printer)
+    painter = QPainter()
+    if not painter.begin(printer):
+        # Impressora no disponible, sense permisos, fitxer bloquejat...
+        raise RuntimeError(t("print.error.text"))
     try:
         page_rect = printer.pageRect(QPrinter.DevicePixel)
         scaled = pixmap.scaled(
@@ -73,6 +76,32 @@ def _print_widget_to_pdf(widget: QWidget, dest_path: str) -> None:
         painter.drawPixmap(int(x), int(y), scaled)
     finally:
         painter.end()
+
+
+def _print_widget_to_pdf(widget: QWidget, dest_path: str) -> None:
+    printer = QPrinter(QPrinter.HighResolution)
+    printer.setOutputFormat(QPrinter.PdfFormat)
+    printer.setOutputFileName(dest_path)
+    _paint_widget_on_printer(widget, printer)
+
+
+def print_widget(widget: QWidget, parent: QWidget | None = None) -> bool:
+    """Obre el diàleg d'impressió NATIU del sistema i, si s'accepta, hi
+    imprimeix el widget amb el mateix format de sempre.
+
+    `QPrintDialog` és el diàleg propi de cada sistema (Windows, macOS,
+    Linux): l'usuari hi tria la impressora —o "imprimir a PDF", si en té—,
+    còpies, pàgines... No es genera cap fitxer temporal pel camí: es pinta
+    directament a la impressora que s'hagi triat, així no queda res per
+    netejar. Retorna False si s'ha cancel·lat (llavors no s'imprimeix res).
+    """
+    printer = QPrinter(QPrinter.HighResolution)
+    dialog = QPrintDialog(printer, parent)
+    dialog.setWindowTitle(t("print.dialog.title"))
+    if dialog.exec() != QPrintDialog.Accepted:
+        return False  # cancel·lat: no es fa res, i no és cap error
+    _paint_widget_on_printer(widget, printer)
+    return True
 
 
 def covered_materials_report_text(repo: Repository) -> str:

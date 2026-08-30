@@ -9,14 +9,29 @@ panell amb `setCellWidget` (veure `BoardTab._build_ui`). Com que no s'afegeix
 cap fila nova enlloc, la taula de 61 posicions mai canvia de mida.
 
 L'alta d'una peça ja no es fa amb un formulari a part: s'escriu el núm.
-de material directament a la primera fila buida de la taula de detall
-(la resta de camps s'omplen sols/s'editen després en línia); la baixa
-és la tecla Delete (sempre l'última peça, com abans); el trasllat
-continua tenint el seu propi botó.
+de material directament a la primera fila buida de la taula de detall i
+Enter va encadenant els camps de la mateixa fila (Núm. → Mides → Notes;
+des de Notes, a la línia següent); el trasllat continua tenint el seu
+propi botó.
+
+La baixa només es pot fer sobre l'ÚLTIMA peça de la posició (mateixa
+regla que `rules.can_delete_slot`, el 'ORDRE INCORRECTE' de l'original).
+Hi ha dues maneres de demanar-la i totes dues comparteixen la mateixa
+comprovació (`_last_piece_row`, rellegida sempre de la base de dades):
+
+  - Botó "Esborrar", al costat del de trasllat: desactivat mentre la fila
+    seleccionada no sigui l'última peça.
+  - Menú contextual (botó dret) sobre una fila: l'opció d'esborrar només
+    surt activada a l'última peça; a les primeres surt deshabilitada.
+  - Tecles Delete i Retrocés (la tecla "delete" dels teclats Mac), quan
+    la taula no està editant cap cel·la.
+
+Els tres criden `_on_delete_last_piece`: la confirmació, el refresc i
+l'avís al Tauler es fan en un sol lloc.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QEvent, QTimer, Qt, Signal
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -25,7 +40,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QLineEdit,
-    QMessageBox,
+    QMenu,
     QPushButton,
     QSpinBox,
     QStackedWidget,
@@ -39,6 +54,7 @@ from PySide6.QtWidgets import (
 from app.i18n import t
 from app.logic import rules
 from app.logic.repository import DuplicateMaterialError, PositionFullError, Repository, RuleViolation
+from app.ui import dialogs
 
 _PANEL_STYLE = """
 QFrame#positionPanel {
@@ -49,18 +65,43 @@ QFrame#positionPanel {
 """
 
 
-class _MaxLengthDelegate(QStyledItemDelegate):
-    """Limita el text que s'hi pot escriure (Notes: màxim 8 caràcters)."""
+class _CellEditDelegate(QStyledItemDelegate):
+    """Editor en línia d'una columna de la taula de detall.
 
-    def __init__(self, max_length: int, parent=None):
+    - Limita el text que s'hi pot escriure (Núm.: 6 xifres; Notes: 8
+      caràcters). `max_length=None` vol dir sense límit (Mides).
+    - Avisa amb `enter_pressed(fila, columna)` quan s'hi ha premut Enter,
+      perquè el panell decideixi on va el focus tot seguit (Mides → Notes
+      de la mateixa fila, Notes → la línia següent), en comptes del salt
+      per defecte de Qt. El senyal s'emet DESPRÉS de deixar que Qt desi i
+      tanqui l'editor com sempre, així el valor escrit no es perd.
+    """
+
+    enter_pressed = Signal(int, int)
+
+    def __init__(self, max_length: int | None = None, parent=None):
         super().__init__(parent)
         self._max_length = max_length
 
     def createEditor(self, parent, option, index):
         editor = super().createEditor(parent, option, index)
-        if isinstance(editor, QLineEdit):
+        if isinstance(editor, QLineEdit) and self._max_length is not None:
             editor.setMaxLength(self._max_length)
+        # De quina cel·la és aquest editor: dins d'eventFilter ja no hi ha
+        # l'índex, i cal saber-ho per dir on ha d'anar el focus després.
+        editor.setProperty("_cell_row", index.row())
+        editor.setProperty("_cell_col", index.column())
         return editor
+
+    def eventFilter(self, editor, event):
+        if event.type() == QEvent.KeyPress and event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            row = editor.property("_cell_row")
+            col = editor.property("_cell_col")
+            handled = super().eventFilter(editor, event)
+            if row is not None and col is not None:
+                self.enter_pressed.emit(row, col)
+            return handled
+        return super().eventFilter(editor, event)
 
 
 class PositionPanel(QFrame):
@@ -118,7 +159,9 @@ class PositionPanel(QFrame):
         layout.setSpacing(4)
 
         self.title_label = QLabel()
-        self.title_label.setStyleSheet("font-weight: 700; font-size: 15px; color: #1a1a1a;")
+        # Títol de la posició, el text més gran del panell: és el que diu
+        # de quina posició s'està parlant.
+        self.title_label.setStyleSheet("font-weight: 700; font-size: 19px; color: #1a1a1a;")
         self.title_label.setAlignment(Qt.AlignCenter)
         self.title_label.setWordWrap(True)
         layout.addWidget(self.title_label)
@@ -153,14 +196,18 @@ class PositionPanel(QFrame):
         self.detail_table.verticalHeader().setVisible(False)
         self.detail_table.verticalHeader().setDefaultSectionSize(18)
         self.detail_table.setStyleSheet("font-size: 10px;")
-        # Núm.: màxim 6 xifres (rules.MATERIAL_CODE_MAX = 999999). Notes:
-        # màxim 8 caràcters.
-        self.detail_table.setItemDelegateForColumn(
-            self._DETAIL_CODE_COL, _MaxLengthDelegate(6, self.detail_table)
-        )
-        self.detail_table.setItemDelegateForColumn(
-            self._DETAIL_NOTES_COL, _MaxLengthDelegate(8, self.detail_table)
-        )
+        # Un delegat per columna editable: Núm. màxim 6 xifres
+        # (rules.MATERIAL_CODE_MAX = 999999), Notes màxim 8 caràcters,
+        # Mides sense límit. Tots tres avisen quan s'hi prem Enter, perquè
+        # el focus vagi al camp següent (`_on_editor_enter`).
+        for col, max_length in (
+            (self._DETAIL_CODE_COL, 6),
+            (self._DETAIL_DIMS_COL, None),
+            (self._DETAIL_NOTES_COL, 8),
+        ):
+            delegate = _CellEditDelegate(max_length, self.detail_table)
+            delegate.enter_pressed.connect(self._on_editor_enter)
+            self.detail_table.setItemDelegateForColumn(col, delegate)
         # Núm./Mides/Notes: ample inicial ajustat, però "Interactive"
         # (l'usuari els pot canviar i es queden fixats). Material: s'estira
         # perquè les columnes aprofitin tot l'ample que té el panell (que
@@ -179,23 +226,56 @@ class PositionPanel(QFrame):
         # perquè l'alçada real de la lletra varia segons la plataforma.
         self._fit_detail_table_height()
 
-        # Tecla Delete = esborrar l'última peça (igual que abans el botó
-        # "Esborrar última peça"). Només quan la taula NO està editant una
-        # cel·la (si no, Delete s'hauria d'aplicar al text que s'edita).
-        self._delete_shortcut = QShortcut(QKeySequence(Qt.Key_Delete), self.detail_table)
-        self._delete_shortcut.setContext(Qt.WidgetShortcut)
-        self._delete_shortcut.activated.connect(self._on_delete_shortcut)
+        # Botó dret sobre una fila: opció d'esborrar la peça, activada
+        # només a l'última (a les primeres hi surt deshabilitada).
+        self.detail_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.detail_table.customContextMenuRequested.connect(self._show_detail_context_menu)
+
+        # Delete i Retrocés = esborrar l'última peça. Són dues tecles
+        # diferents (a Windows, Supr i Retrocés; als teclats Mac, la tecla
+        # gran de sobre Retorn envia Retrocés i "fn+delete" envia Delete),
+        # i totes dues han de fer el mateix. Amb context WidgetShortcut
+        # només salten quan té el focus la taula, no un editor de cel·la
+        # obert; la comprovació d'EditingState de `_on_delete_shortcut` ho
+        # torna a assegurar, perquè Retrocés no s'endugui mai la peça
+        # sencera mentre s'edita el text de Mides/Notes.
+        self._delete_shortcuts = []
+        for key in (Qt.Key_Delete, Qt.Key_Backspace):
+            shortcut = QShortcut(QKeySequence(key), self.detail_table)
+            shortcut.setContext(Qt.WidgetShortcut)
+            shortcut.activated.connect(self._on_delete_shortcut)
+            self._delete_shortcuts.append(shortcut)
 
         # Botons compactes: menys padding que el QPushButton global.
-        compact_button_style = "padding: 2px 8px; font-size: 10px;"
+        # Botons compactes, però amb la lletra una mica més gran que abans
+        # (10 -> 12 px) per llegir-los millor sense inflar-los.
+        compact_button_style = "padding: 3px 10px; font-size: 12px;"
 
         move_row = QHBoxLayout()
         move_row.setSpacing(3)
+        # (la separació concreta entre Esborrar i Moure es posa més avall)
+        # Esborrar, a l'esquerra de Moure: fa exactament el mateix que la
+        # tecla Delete i que el menú del botó dret (`_on_delete_last_piece`,
+        # que ja demana confirmació, refresca i emet `changed`) — aquí no
+        # es repeteix res d'aquella lògica. Surt desactivat i només s'activa
+        # quan la fila seleccionada és l'última peça (`_can_delete_row`).
+        # Paperera a l'esquerra del text, amb el mateix sistema d'icones que
+        # la resta de l'aplicació (emoji dins del text del botó).
+        self.delete_button = QPushButton(f"🗑️  {t('position.delete_button')}")
+        self.delete_button.setStyleSheet(compact_button_style)
+        self.delete_button.setEnabled(False)
+        self.delete_button.clicked.connect(self._on_delete_last_piece)
+        # S'activa/desactiva segons quina fila queda seleccionada.
+        self.detail_table.currentCellChanged.connect(self._on_current_cell_changed)
         self.move_target = QSpinBox()
         self.move_target.setRange(1, 61)
         self.move_button = QPushButton(t("position.move_button"))
         self.move_button.setStyleSheet(compact_button_style)
         self.move_button.clicked.connect(self._on_move_piece)
+        move_row.addWidget(self.delete_button, 0)
+        # Una mica d'aire entre Esborrar i Moure: són dues accions molt
+        # diferents i enganxades es podien confondre en clicar.
+        move_row.addSpacing(12)
         move_row.addWidget(self.move_button, 1)
         move_row.addWidget(self.move_target)
         layout.addLayout(move_row)
@@ -224,6 +304,44 @@ class PositionPanel(QFrame):
         if next_free_row < 5:
             self._start_editing(next_free_row, self._DETAIL_CODE_COL)
 
+    def _on_editor_enter(self, row: int, col: int):
+        """Enter dins d'un editor de cel·la: cap on va el focus tot seguit.
+
+        Núm. → Mides ja ho fa `_on_code_cell_edited` en donar d'alta la
+        peça, així que aquí només cal tractar les altres dues columnes:
+
+          - Mides → Notes de la MATEIXA fila: acaba l'edició de Mides i
+            continua a Notes (Qt, per defecte, baixaria de fila).
+          - Notes → la línia següent (les Notes de la fila de sota).
+
+        Es passa per un QTimer a 0 perquè Qt desa i tanca l'editor amb una
+        crida en cua: obrint el següent editor ara mateix, aquell
+        tancament se l'enduria pel davant.
+        """
+        if col == self._DETAIL_DIMS_COL:
+            QTimer.singleShot(0, lambda: self._start_editing(row, self._DETAIL_NOTES_COL))
+        elif col == self._DETAIL_NOTES_COL:
+            QTimer.singleShot(0, lambda: self._go_to_next_notes_row(row))
+
+    def _go_to_next_notes_row(self, row: int):
+        """Notes + Enter: salta a les Notes de la línia següent. Si aquella
+        línia encara no té peça (les seves Notes no són editables), només
+        s'hi deixa el cursor i no s'obre cap editor."""
+        next_row = row + 1
+        if next_row >= self.detail_table.rowCount():
+            return
+        self.detail_table.setCurrentCell(next_row, self._DETAIL_NOTES_COL)
+        self._start_editing(next_row, self._DETAIL_NOTES_COL)
+
+    def _on_current_cell_changed(self, row, column, previous_row, previous_column):
+        self._update_delete_button()
+
+    def _update_delete_button(self):
+        """El botó Esborrar només s'activa quan la fila seleccionada és
+        l'última peça de la posició — exactament la mateixa condició que fa
+        servir el menú del botó dret (`_can_delete_row`)."""
+        self.delete_button.setEnabled(self._can_delete_row(self.detail_table.currentRow()))
+
     def _start_editing(self, row: int, col: int):
         item = self.detail_table.item(row, col)
         if item is not None and (item.flags() & Qt.ItemIsEditable):
@@ -238,6 +356,7 @@ class PositionPanel(QFrame):
     def clear_selection(self):
         self.position = None
         self._stack.setCurrentIndex(0)
+        self._update_delete_button()
 
     def refresh(self):
         if self.position is None:
@@ -274,6 +393,7 @@ class PositionPanel(QFrame):
                 self.detail_table.setItem(r, c, item)
         self.detail_table.blockSignals(False)
         self._fit_detail_table_height()
+        self._update_delete_button()
 
     def _on_detail_item_changed(self, item):
         if self.position is None:
@@ -296,6 +416,7 @@ class PositionPanel(QFrame):
         """Alta d'una peça nova: s'escriu el núm. de material directament a
         la primera fila buida de la taula (Mides/Notes es poden omplir
         després, editant-les en línia un cop la peça ja existeix)."""
+        code = (code or "").strip()
         if not code:
             return  # s'ha buidat la cel·la sense escriure-hi res
         detail = self.repo.get_position_detail(self.position)
@@ -303,34 +424,51 @@ class PositionPanel(QFrame):
             self.refresh()  # per seguretat: només la primera fila buida hi val
             return
 
-        # Avís (no bloquejant) si el número no existeix al catàleg: es pot
-        # continuar igualment, la peça s'afegeix amb el material en blanc.
-        if self.repo.lookup_material(code) == rules.EMPTY_MATERIAL_MARK:
-            QMessageBox.warning(
-                self, t("position.material_not_found.title"), t("position.material_not_found.text", code=code)
+        # PRIMER de tot: això que s'hi ha escrit, és un número? Només s'hi
+        # admeten números positius (1, 25, 99999...); ni 0, ni negatius, ni
+        # lletres. Es comprova ABANS de buscar res a la base de dades, així
+        # un text que per casualitat hi coincidís no se saltaria la
+        # validació.
+        if not rules.is_valid_material_code(code):
+            dialogs.warn(
+                self, t("position.invalid_code.title"), t("position.invalid_code.text", code=code)
+            )
+            self.refresh()
+            self._start_editing(row, self._DETAIL_CODE_COL)  # per corregir-lo
+            return
+        code_number = int(float(code))
+
+        # I DESPRÉS, ja sabent que és un número: avís (no bloquejant) si no
+        # existeix al catàleg; es pot continuar igualment i la peça s'hi
+        # afegeix amb el material en blanc.
+        if self.repo.lookup_material(code_number) == rules.EMPTY_MATERIAL_MARK:
+            dialogs.warn(
+                self,
+                t("position.material_not_found.title"),
+                t("position.material_not_found.text", code=code_number),
             )
 
         try:
-            self.repo.add_piece(self.position, code, dimensions="", notes="")
+            self.repo.add_piece(self.position, code_number, dimensions="", notes="")
         except DuplicateMaterialError as exc:
-            resp = QMessageBox.question(
+            if dialogs.confirm(
                 self,
                 t("position.duplicate.title"),
                 t("position.duplicate.text", positions=", ".join(str(p) for p in exc.positions)),
-                QMessageBox.Yes | QMessageBox.No,
-            )
-            if resp == QMessageBox.Yes:
+            ):
                 try:
-                    self.repo.add_piece(self.position, code, dimensions="", notes="", confirm_duplicate=True)
+                    self.repo.add_piece(
+                        self.position, code_number, dimensions="", notes="", confirm_duplicate=True
+                    )
                 except RuleViolation as exc2:
-                    QMessageBox.critical(self, t("common.error"), str(exc2))
+                    dialogs.error(self, t("common.error"), str(exc2))
                     self.refresh()
                     return
             else:
                 self.refresh()
                 return
         except (PositionFullError, RuleViolation) as exc:
-            QMessageBox.critical(self, t("position.cannot_add"), str(exc))
+            dialogs.error(self, t("position.cannot_add"), str(exc))
             self.refresh()
             return
 
@@ -340,11 +478,72 @@ class PositionPanel(QFrame):
         # la mateixa fila per poder-les editar tot seguit.
         self._start_editing(row, self._DETAIL_DIMS_COL)
 
+    def _last_piece_row(self) -> int | None:
+        """Fila de l'ÚLTIMA peça de la posició (None si la posició és buida).
+
+        És l'única fila des d'on es pot esborrar, i es rellegeix sempre de
+        la base de dades (mai d'una còpia en memòria): així la restricció
+        segueix sent correcta encara que la posició hagi canviat entremig
+        —alta, baixa, o un trasllat des d'una altra posició, que renumera
+        els slots— sense dependre de quan es va pintar la taula.
+
+        `get_position_detail` retorna les peces ordenades per slot i
+        `refresh()` col·loca detail[r] a la fila r, així que l'última peça
+        (la de slot més alt, l'única que `rules.can_delete_slot` deixa
+        esborrar) és sempre la de la fila len(detail) - 1.
+        """
+        if self.position is None:
+            return None
+        detail = self.repo.get_position_detail(self.position)
+        if not detail:
+            return None
+        return len(detail) - 1
+
+    def _can_delete_row(self, row: int) -> bool:
+        """Només l'última peça de la posició es pot esborrar (la resta de
+        files —les primeres peces i les buides— no)."""
+        last_row = self._last_piece_row()
+        return last_row is not None and row == last_row
+
+    def _build_delete_menu(self, row: int) -> QMenu:
+        """Menú del botó dret d'una fila: una sola opció, esborrar la peça,
+        activada només si aquella fila és l'última peça. A les altres hi
+        surt igualment, però deshabilitada i amb el motiu al tooltip —
+        així es veu que l'opció existeix i per què no s'hi pot fer."""
+        menu = QMenu(self.detail_table)
+        menu.setToolTipsVisible(True)
+        delete_action = menu.addAction(t("position.delete_action"))
+        delete_action.setEnabled(self._can_delete_row(row))
+        if not delete_action.isEnabled():
+            delete_action.setToolTip(t("position.only_last.text"))
+        return menu
+
+    def _show_detail_context_menu(self, pos):
+        index = self.detail_table.indexAt(pos)
+        if not index.isValid():
+            return
+        menu = self._build_delete_menu(index.row())
+        # Una sola opció al menú: si exec() en retorna alguna, és aquella
+        # (una de deshabilitada no es pot triar mai).
+        if menu.exec(self.detail_table.viewport().mapToGlobal(pos)) is not None:
+            self._on_delete_last_piece()
+
     def _on_delete_shortcut(self):
-        # La tecla Delete no ha d'esborrar la peça mentre s'està editant el
-        # text d'una cel·la (Mides/Notes, o el núm. d'una peça nova): en
-        # aquest cas Delete s'ha d'aplicar al text, no a la peça sencera.
+        # Ni Delete ni Retrocés han d'esborrar la peça mentre s'està
+        # editant el text d'una cel·la (Mides/Notes, o el núm. d'una peça
+        # nova): allà s'han d'aplicar al text, no a la peça sencera.
         if self.detail_table.state() == QAbstractItemView.EditingState:
+            return
+        last_row = self._last_piece_row()
+        current_row = self.detail_table.currentRow()
+        # Només l'última peça es pot esborrar: sobre una de les primeres
+        # s'avisa, en lloc d'esborrar-ne una altra per sorpresa. Sobre una
+        # fila buida (que no és cap peça, hi ha el cursor tot just carregar
+        # la posició) la tecla segueix actuant sobre l'última, com fins ara.
+        if last_row is not None and 0 <= current_row < last_row:
+            dialogs.info(
+                self, t("position.only_last.title"), t("position.only_last.text")
+            )
             return
         self._on_delete_last_piece()
 
@@ -353,10 +552,10 @@ class PositionPanel(QFrame):
         # pot esborrar, igual que a l'Excel original.
         detail = self.repo.get_position_detail(self.position)
         if not detail:
-            QMessageBox.information(self, t("position.no_pieces.title"), t("position.no_pieces.text"))
+            dialogs.info(self, t("position.no_pieces.title"), t("position.no_pieces.text"))
             return
         last = max(detail, key=lambda p: p["slot"])
-        resp = QMessageBox.question(
+        if not dialogs.confirm(
             self,
             t("position.confirm_delete.title"),
             t(
@@ -365,14 +564,12 @@ class PositionPanel(QFrame):
                 code=last["material_code"],
                 desc=last["material_desc"],
             ),
-            QMessageBox.Yes | QMessageBox.No,
-        )
-        if resp != QMessageBox.Yes:
+        ):
             return
         try:
             self.repo.delete_piece(self.position, last["slot"])
         except RuleViolation as exc:
-            QMessageBox.critical(self, t("position.cannot_delete"), str(exc))
+            dialogs.error(self, t("position.cannot_delete"), str(exc))
             return
         self.refresh()
         self.changed.emit()
@@ -382,9 +579,9 @@ class PositionPanel(QFrame):
         try:
             result = self.repo.move_piece(self.position, target)
         except RuleViolation as exc:
-            QMessageBox.critical(self, t("position.cannot_move"), str(exc))
+            dialogs.error(self, t("position.cannot_move"), str(exc))
             return
-        QMessageBox.information(
+        dialogs.info(
             self,
             t("position.moved.title"),
             t(

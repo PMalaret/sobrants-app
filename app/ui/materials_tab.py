@@ -15,10 +15,8 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QHeaderView,
-    QInputDialog,
     QLabel,
     QLineEdit,
-    QMessageBox,
     QPushButton,
     QSpinBox,
     QTableWidget,
@@ -29,7 +27,9 @@ from PySide6.QtWidgets import (
 
 from app.i18n import t
 from app.logic.repository import Repository, RuleViolation
-from app.security import check_password
+from app.security import WORKER
+from app.ui import dialogs
+from app.ui.password_dialog import ask_password
 
 
 class _NumericItem(QTableWidgetItem):
@@ -144,16 +144,9 @@ class MaterialsTab(QWidget):
 
     # ------------------------------------------------------------------ #
     def _on_add_material(self):
-        password, ok = QInputDialog.getText(
-            self,
-            t("materials.password.title"),
-            t("materials.password.label"),
-            QLineEdit.Password,
-        )
-        if not ok:
-            return
-        if not check_password(password):
-            QMessageBox.critical(self, t("materials.password.wrong.title"), t("materials.password.wrong.text"))
+        # Mateixa contrasenya i mateix diàleg que la resta d'accions
+        # protegides de l'aplicació (`ask_password`).
+        if not ask_password(self, WORKER, t("materials.password.label"), t("materials.password.wrong.text")):
             return
 
         dialog = _AddMaterialDialog(self)
@@ -161,30 +154,28 @@ class MaterialsTab(QWidget):
             return
         code, description = dialog.values()
         if not description:
-            QMessageBox.warning(self, t("common.error"), t("materials.add.missing_fields"))
+            dialogs.warn(self, t("common.error"), t("materials.add.missing_fields"))
             return
 
         try:
             self.repo.add_material(code, description)
         except RuleViolation:
             existing = self.repo.lookup_material(code)
-            resp = QMessageBox.question(
+            if not dialogs.confirm(
                 self,
-                t("materials.password.title"),
+                t("materials.add.confirm_overwrite.title"),
                 t("materials.add.confirm_overwrite", code=code, description=existing),
-                QMessageBox.Yes | QMessageBox.No,
-            )
-            if resp != QMessageBox.Yes:
+            ):
                 return
             self.repo.add_material(code, description, overwrite=True)
 
         self.refresh()
-        QMessageBox.information(self, t("common.done"), t("materials.add.success"))
+        dialogs.info(self, t("common.done"), t("materials.add.success"))
 
     def _on_delete_material(self):
         items = self.table.selectedItems()
         if not items:
-            QMessageBox.warning(
+            dialogs.warn(
                 self, t("materials.delete.no_selection.title"), t("materials.delete.no_selection.text")
             )
             return
@@ -193,34 +184,23 @@ class MaterialsTab(QWidget):
         description = self.table.item(row, 1).text()
 
         # Mateix mecanisme de contrasenya que per afegir un material.
-        password, ok = QInputDialog.getText(
-            self,
-            t("materials.password.title"),
-            t("materials.password.label_delete"),
-            QLineEdit.Password,
-        )
-        if not ok:
-            return
-        if not check_password(password):
-            QMessageBox.critical(
-                self, t("materials.password.wrong.title"), t("materials.password.wrong.text_delete")
-            )
+        if not ask_password(
+            self, WORKER, t("materials.password.label_delete"), t("materials.password.wrong.text_delete")
+        ):
             return
 
-        resp = QMessageBox.question(
+        if not dialogs.confirm(
             self,
             t("materials.delete.confirm.title"),
             t("materials.delete.confirm.text", code=code, description=description),
-            QMessageBox.Yes | QMessageBox.No,
-        )
-        if resp != QMessageBox.Yes:
+        ):
             return
 
         try:
             self.repo.delete_material(code)
         except RuleViolation as exc:
-            QMessageBox.critical(self, t("common.error"), str(exc))
+            dialogs.error(self, t("common.error"), str(exc))
             return
 
         self.refresh()
-        QMessageBox.information(self, t("common.done"), t("materials.delete.success"))
+        dialogs.info(self, t("common.done"), t("materials.delete.success"))

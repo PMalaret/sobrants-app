@@ -175,6 +175,11 @@ def migrate_desmagatzem(wb, conn) -> int:
 
 def migrate(excel_path: str, db_path: str) -> dict:
     wb = openpyxl.load_workbook(excel_path, data_only=True, keep_vba=False)
+    # Cridat des de la línia d'ordres, la carpeta de destí (SobrantsData/)
+    # encara pot no existir: en el flux normal la crea `main._data_dir` en
+    # arrencar l'aplicació, però aquí no hi hem passat i sqlite3 no la crea
+    # sol (fallava amb "unable to open database file").
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     conn = connect(db_path)
     try:
         stats = {

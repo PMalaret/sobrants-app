@@ -35,13 +35,28 @@ from PySide6.QtWidgets import (
 from app.i18n import t
 from app.logic.repository import Repository
 from app.ui.position_panel import PositionPanel
-from app.ui.search_panel import SearchPanel
+from app.ui.search_panel import SEARCH_COLORS, SearchPanel
 
 # (posició inicial, nombre de posicions) de cada bloc de columnes, igual que
 # els blocs A/F/K de Hoja1.
 BLOCKS = [(1, 27), (28, 27), (55, 7)]
 FIELDS_PER_BLOCK = 5
 TABLE_ROWS = max(count for _start, count in BLOCKS)
+
+# Mida de lletra de la taula (la mateixa que fixa el full d'estil de sota,
+# aquí com a constant perquè les dues no es desincronitzin).
+BOARD_FONT_PX = 12
+# Notes: al tauler només se'n mostren els 8 primers caràcters (el mateix
+# màxim que ja imposa el panell de detall en escriure-les). Amb un límit
+# fix i curt, la columna no ha de ser més ampla que això.
+NOTES_MAX_CHARS = 8
+# Ample de la columna Notes: el que ocupen 8 caràcters amb la lletra de la
+# taula, marge de cel·la inclòs (mesurat amb resizeColumnToContents: 57-59
+# px per a 8 xifres o minúscules; la capçalera "Notes"/"Notas" només en
+# demana 50). Abans eren 70 px per a un text sense límit de longitud; els
+# que sobren se'ls endú Material, que és l'única columna "Stretch" i, com
+# que no té límit de longitud, és qui de debò necessita l'espai.
+NOTES_COLUMN_WIDTH = 60
 
 # El panell de detall de posició s'incrusta dins l'espai en blanc del 3r
 # bloc (posicions 55-61: només 7 de les 27 files fan servei).
@@ -132,8 +147,8 @@ class BoardTab(QWidget):
         # Capçalera més prima: es redueix el padding vertical de la secció,
         # no la mida de la lletra (que es queda igual, a 12px).
         self.table.setStyleSheet(
-            "QTableWidget { font-size: 12px; }"
-            "QHeaderView::section { font-size: 12px; padding: 1px 4px; }"
+            f"QTableWidget {{ font-size: {BOARD_FONT_PX}px; }}"
+            f"QHeaderView::section {{ font-size: {BOARD_FONT_PX}px; padding: 1px 4px; }}"
         )
         # El tauler sempre té exactament 61 posicions (mai més, mai menys),
         # però ara que la taula s'expandeix per ocupar l'espai vertical
@@ -179,11 +194,13 @@ class BoardTab(QWidget):
         # centrada), Núm. (6 xifres) i Notes (8 caràcters) tenen un màxim
         # de caràcters petit i fix, així que no els cal créixer — és
         # Material, sense límit de longitud, qui aprofita l'ample que
-        # deixen lliure. L'usuari pot igualment eixamplar o estrènyer
-        # qualsevol columna "Interactive" arrossegant la vora, i l'ample
-        # que triï es queda fixat (Qt no el reinicia sol; refresh_board()
-        # no torna a cridar aquest mètode).
-        initial_widths = [30, 62, None, 80, 70]
+        # deixen lliure. Notes es queda amb l'ample just dels seus 8
+        # caràcters (`NOTES_COLUMN_WIDTH`), ni un píxel més: tot el que
+        # abans li sobrava se l'endú Material. L'usuari pot igualment
+        # eixamplar o estrènyer qualsevol columna "Interactive"
+        # arrossegant la vora, i l'ample que triï es queda fixat (Qt no el
+        # reinicia sol; refresh_board() no torna a cridar aquest mètode).
+        initial_widths = [30, 62, None, 80, NOTES_COLUMN_WIDTH]
         for block_idx in range(len(BLOCKS)):
             for field_idx, width in enumerate(initial_widths):
                 col = block_idx * FIELDS_PER_BLOCK + field_idx
@@ -236,12 +253,18 @@ class BoardTab(QWidget):
 
         for entry in self.repo.get_board():
             row, col0 = _position_to_cell(entry["position"])
+            # Notes: només els 8 primers caràcters (la columna té l'ample
+            # just per a aquests 8). No s'hi afegeix cap "..." — la
+            # columna ja no en deixa espai i el tauler es llegeix més net
+            # sense; el text sencer queda al tooltip de la cel·la, i
+            # sempre es pot veure/editar al panell de detall.
+            notes_full = entry["notes"] or ""
             values = [
                 entry["position"],
                 entry["material_code"] if entry["material_code"] is not None else "",
                 entry["material_desc"] or "",
                 entry["dimensions"] or "",
-                entry["notes"] or "",
+                notes_full[:NOTES_MAX_CHARS],
             ]
             fill = QColor(entry["fill_color"])
             # El fons vermell (posició plena) necessita text blanc per
@@ -255,14 +278,22 @@ class BoardTab(QWidget):
                 if field_idx == 0:
                     item.setBackground(fill)
                     item.setForeground(fill_text_color)
-                    # Posició: com a màxim 2 xifres (1-61), centrada.
+                    # Posició: com a màxim 2 xifres (1-61), centrada i en
+                    # negreta — és el número que identifica la fila, ha de
+                    # destacar per sobre de la resta de camps.
                     item.setTextAlignment(Qt.AlignCenter)
+                    font = item.font()
+                    font.setBold(True)
+                    item.setFont(font)
                 if entry["inconsistent"]:
                     if field_idx != 0:
                         item.setForeground(QColor("#c62828"))
                     item.setToolTip(t("board.tooltip.inconsistent"))
                 elif field_idx == 2 and entry["material_desc"]:
                     item.setToolTip(entry["material_desc"])
+                elif field_idx == 4 and len(notes_full) > NOTES_MAX_CHARS:
+                    # Notes retallades: el text sencer, al tooltip.
+                    item.setToolTip(notes_full)
                 self.table.setItem(row, col0 + field_idx, item)
 
         self._reapply_all_highlights()
@@ -304,28 +335,42 @@ class BoardTab(QWidget):
             return
         result = self.repo.search(text, mode=mode)
         oldest = result["oldest_position"]
-        # El color del camp de cerca reflecteix el color d'ocupació de la
-        # posició trobada (el mateix escalat blanc/groc/verd/blau/vermell
-        # del tauler), no un color fix per mode; sense coincidència, cap.
-        match_color = None
-        if oldest:
-            entry = next((b for b in self.repo.get_board() if b["position"] == oldest), None)
-            if entry:
-                match_color = entry["fill_color"]
+        # El camp de cerca es pinta amb el color propi del cercador
+        # (`SEARCH_COLORS[mode]`, el mateix amb què es ressalten les seves
+        # coincidències a la taula), no amb cap color derivat del material
+        # o de la posició trobats: dos materials diferents cercats pel
+        # mateix camp han de sortir sempre igual. Aquí només es diu SI hi
+        # ha coincidència; el color el posa el propi panell de cerca.
         self.search_panel.set_result(
-            mode, result["count"], oldest if oldest else "—", result["desmagatzem_qty"], match_color
+            mode,
+            result["count"],
+            self._oldest_text(mode, oldest),
+            result["desmagatzem_qty"],
+            has_match=bool(result["count"]),
         )
         positions = {m["position"] for m in result["matches"]}
         self._highlight_field(positions, self._SEARCH_FIELD[mode], self._SEARCH_COLOR[mode])
 
+    @staticmethod
+    def _oldest_text(mode: str, oldest) -> str:
+        """Text de "Posició més antiga" per a cada cercador.
+
+        Per notes no n'hi ha: com a l'Excel original (`ActualitzarM24`
+        calculava O24 però sempre hi acabava escrivint "--"), aquest
+        cercador no en mostra cap. Els de núm. i material sí que mostren
+        la que han trobat, com sempre.
+        """
+        if mode == "notes":
+            return "—"
+        return str(oldest) if oldest else "—"
+
     # Camp del tauler que es ressalta per a cada cercador (igual que
     # l'original pintava B/G/L per M20, C/H/M per M22, E/J/O per M24).
     _SEARCH_FIELD = {"code": 1, "description": 2, "notes": 4}
-    _SEARCH_COLOR = {
-        "code": QColor("#ffe08a"),
-        "description": QColor("#a8e6a1"),
-        "notes": QColor("#9fd3ff"),
-    }
+    # Un color fix per cercador, el mateix que fa servir el propi panell de
+    # cerca (i Desmagatzem): es deriva de `SEARCH_COLORS` en comptes de
+    # repetir-hi els codis, així no poden acabar dient coses diferents.
+    _SEARCH_COLOR = {mode: QColor(color) for mode, color in SEARCH_COLORS.items()}
     # Columnes amb el color fix d'ocupació (una per bloc); mai es toquen en
     # pintar/netejar ressaltats de cerca.
     _POSITION_COLUMNS = {block_idx * FIELDS_PER_BLOCK for block_idx in range(len(BLOCKS))}

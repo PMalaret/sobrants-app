@@ -81,6 +81,14 @@ QPushButton:pressed {
     background-color: #1e47a3;
 }
 
+/* Sense aquesta regla, un botó desactivat es quedava exactament igual que
+   un d'actiu: com que QPushButton té aquí un fons fix, Qt ja no li aplica
+   el gris de deshabilitat que posaria l'estil natiu de la plataforma. */
+QPushButton:disabled {
+    background-color: #c9cdd4;
+    color: #7e838b;
+}
+
 QLineEdit, QSpinBox {
     border: 1px solid #c7cad1;
     border-radius: 4px;
@@ -137,4 +145,11 @@ QMenu::item {
 QMenu::item:selected {
     background-color: #d8e2fb;
     color: #1a1a1a;
+}
+
+/* Mateix motiu que a QPushButton: el color fix de QMenu::item també
+   s'aplicava a les opcions desactivades (p. ex. "Esborrar aquesta peça"
+   sobre una peça que no és l'última), i no es distingien de les actives. */
+QMenu::item:disabled {
+    color: #9aa0a8;
 }

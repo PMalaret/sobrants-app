@@ -8,3 +8,8 @@ SobrantsData/
 *.db
 .DS_Store
 venv/
+
+# Llibre Excel original amb dades reals: es queda fora del repositori
+# (public) i viu nomes a la maquina de qui el fa servir.
+*.xlsm
+*.xlsx

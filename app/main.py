@@ -5,12 +5,14 @@ import sys
 from pathlib import Path
 
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox
+from PySide6.QtWidgets import QApplication
 
 from app import i18n
 from app.data.db import connect
 from app.i18n import t
 from app.logic.repository import Repository
+from app.ui import dialogs
+from app.ui.import_actions import import_from_excel
 
 
 def _data_dir() -> Path:
@@ -29,25 +31,10 @@ def _ensure_database(data_dir: Path) -> Path:
     if db_path.exists():
         return db_path
 
-    resp = QMessageBox.question(
-        None,
-        t("startup.title"),
-        t("startup.text"),
-        QMessageBox.Yes | QMessageBox.No,
-    )
-    if resp == QMessageBox.Yes:
-        excel_path, _ = QFileDialog.getOpenFileName(
-            None, t("startup.pick_excel"), str(Path.home()), "Excel (*.xlsm *.xlsx)"
-        )
-        if excel_path:
-            from app.migration.from_excel import migrate
-
-            stats = migrate(excel_path, str(db_path))
-            QMessageBox.information(
-                None,
-                t("startup.import_done.title"),
-                t("startup.import_done.text") + "\n".join(f"  {k}: {v}" for k, v in stats.items()),
-            )
+    # La importació és exactament la mateixa que la del menú
+    # "Importar → Importar d'Excel" (`app.ui.import_actions`), no una còpia.
+    if dialogs.confirm(None, t("startup.title"), t("startup.text")):
+        if import_from_excel(None, db_path):
             return db_path
 
     # Sense importació: crea una base de dades buida amb l'esquema

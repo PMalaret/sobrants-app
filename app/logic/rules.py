@@ -13,8 +13,9 @@ from datetime import datetime
 from app.i18n import t
 
 MAX_SLOTS = 5
-MATERIAL_CODE_MIN, MATERIAL_CODE_MAX = 0, 999999
-DESMAGATZEM_QTY_MIN, DESMAGATZEM_QTY_MAX = 0, 20
+# Només números positius: el 0 no és cap material (i els negatius, menys).
+MATERIAL_CODE_MIN, MATERIAL_CODE_MAX = 1, 999999
+DESMAGATZEM_QTY_MIN, DESMAGATZEM_QTY_MAX = 0, 999
 CUSTOM_MATERIAL_SENTINEL = 1  # codi "1" = material no registrat (text lliure)
 EMPTY_MATERIAL_MARK = "---------"
 
@@ -31,18 +32,23 @@ def normalize_text(text) -> str:
 
 
 def is_valid_material_code(value) -> bool:
-    """Worksheet_Change Hoja1: només números 0..999999 a L12:L16 (l'original
+    """Worksheet_Change Hoja1: només números positius a L12:L16 (l'original
     admetia fins a 99999, però l'alta de materials nous ja permet codis de
-    6 xifres — cal que aquí també s'hi puguin col·locar peces)."""
+    6 xifres — cal que aquí també s'hi puguin col·locar peces).
+
+    Fals per a qualsevol cosa que no sigui un número (lletres, buit, símbols)
+    i també per al 0 i els negatius."""
     try:
         n = float(value)
     except (TypeError, ValueError):
         return False
+    if n != int(n):
+        return False  # un codi de material és un enter, no 12,5
     return MATERIAL_CODE_MIN <= n <= MATERIAL_CODE_MAX
 
 
 def is_valid_desmagatzem_qty(value) -> bool:
-    """Worksheet_Change desmagatzem: només números 0..20 a la columna A."""
+    """Worksheet_Change desmagatzem: només números 0..100 a la columna A."""
     try:
         n = float(value)
     except (TypeError, ValueError):

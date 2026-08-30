@@ -8,6 +8,7 @@ de l'original).
 from __future__ import annotations
 
 import sqlite3
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -40,6 +41,27 @@ def _now() -> str:
 class Repository:
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
+
+    @contextmanager
+    def _transaction(self):
+        """Cada operació que toca dades va dins d'UNA transacció: o s'hi
+        desa tot, o no s'hi desa res.
+
+        En sortir bé fa `commit()`, i amb `synchronous = FULL` (veure
+        `app.data.db.connect`) això vol dir que la dada ja és al disc: si
+        al segon següent marxa la llum, el canvi hi continua sent. Si
+        salta qualsevol excepció pel camí es fa `rollback()`, de manera
+        que una operació a mitges (p. ex. la peça desada però l'històric
+        no) no hi pot quedar ni pot acabar entrant "de rebot" amb el
+        commit de l'operació següent.
+        """
+        try:
+            yield self.conn
+        except Exception:
+            self.conn.rollback()
+            raise
+        else:
+            self.conn.commit()
 
     # ------------------------------------------------------------------ #
     # Materials (fulla "Materials")
@@ -80,12 +102,12 @@ class Repository:
         ).fetchone()
         if existing is not None and not overwrite:
             raise RuleViolation(t("err.material_exists", code=code, description=existing["description"]))
-        self.conn.execute(
-            "INSERT INTO materials(code, description) VALUES (?, ?) "
-            "ON CONFLICT(code) DO UPDATE SET description = excluded.description",
-            (code, description),
-        )
-        self.conn.commit()
+        with self._transaction():
+            self.conn.execute(
+                "INSERT INTO materials(code, description) VALUES (?, ?) "
+                "ON CONFLICT(code) DO UPDATE SET description = excluded.description",
+                (code, description),
+            )
 
     def delete_material(self, code: int) -> str:
         """Baixa d'un material del catàleg (mateixa protecció per contrasenya
@@ -98,8 +120,8 @@ class Repository:
         ).fetchone()
         if existing is None:
             raise RuleViolation(t("err.material_not_found", code=code))
-        self.conn.execute("DELETE FROM materials WHERE code = ?", (code,))
-        self.conn.commit()
+        with self._transaction():
+            self.conn.execute("DELETE FROM materials WHERE code = ?", (code,))
         return existing["description"]
 
     # ------------------------------------------------------------------ #
@@ -189,13 +211,13 @@ class Repository:
         desc = self.lookup_material(material_code)
         entered_at = _now() if material_code > rules.CUSTOM_MATERIAL_SENTINEL else None
 
-        self.conn.execute(
-            """INSERT INTO pieces(position, slot, material_code, material_desc, dimensions, notes, entered_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (position, slot, material_code, desc, dimensions or None, notes or None, entered_at),
-        )
-        self._log_historic(str(position), str(material_code), desc, 1, "in")
-        self.conn.commit()
+        with self._transaction():
+            self.conn.execute(
+                """INSERT INTO pieces(position, slot, material_code, material_desc, dimensions, notes, entered_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (position, slot, material_code, desc, dimensions or None, notes or None, entered_at),
+            )
+            self._log_historic(str(position), str(material_code), desc, 1, "in")
         return {"position": position, "slot": slot, "material_code": material_code, "material_desc": desc}
 
     def delete_piece(self, position: int, slot: int) -> None:
@@ -210,11 +232,11 @@ class Repository:
             raise RuleViolation(t("err.wrong_delete_order"))
 
         piece = next(p for p in existing if p["slot"] == slot)
-        self.conn.execute("DELETE FROM pieces WHERE position = ? AND slot = ?", (position, slot))
-        self._log_historic(
-            str(position), str(piece["material_code"]), piece["material_desc"], -1, "out"
-        )
-        self.conn.commit()
+        with self._transaction():
+            self.conn.execute("DELETE FROM pieces WHERE position = ? AND slot = ?", (position, slot))
+            self._log_historic(
+                str(position), str(piece["material_code"]), piece["material_desc"], -1, "out"
+            )
 
     def update_piece_field(self, position: int, slot: int, field: str, value: str) -> None:
         """Edició en línia de Mides/Notes des del panell de detall de
@@ -223,11 +245,11 @@ class Repository:
         camps, mai el codi o la descripció del material."""
         if field not in ("dimensions", "notes"):
             raise ValueError(f"Camp no editable: {field}")
-        self.conn.execute(
-            f"UPDATE pieces SET {field} = ? WHERE position = ? AND slot = ?",  # noqa: S608
-            (value or None, position, slot),
-        )
-        self.conn.commit()
+        with self._transaction():
+            self.conn.execute(
+                f"UPDATE pieces SET {field} = ? WHERE position = ? AND slot = ?",  # noqa: S608
+                (value or None, position, slot),
+            )
 
     def move_piece(self, from_position: int, to_position: int) -> dict:
         """Trasllat de la peça 'visible' d'una posició a una altra.
@@ -254,48 +276,51 @@ class Repository:
         if dest_slot is None:
             raise PositionFullError(t("err.position_full"))
 
-        # Treu la peça de l'origen i renumera els slots restants per no deixar forats
-        self.conn.execute(
-            "DELETE FROM pieces WHERE position = ? AND slot = ?", (from_position, piece["slot"])
-        )
-        remaining = [p for p in pieces if p["slot"] != piece["slot"]]
-        for new_slot, p in enumerate(sorted(remaining, key=lambda x: x["slot"]), start=1):
-            if new_slot != p["slot"]:
-                self.conn.execute(
-                    "UPDATE pieces SET slot = ? WHERE position = ? AND slot = ?",
-                    (new_slot, from_position, p["slot"]),
-                )
+        # Tot el trasllat (treure d'origen, renumerar, posar a destí i
+        # les dues línies d'històric) és una sola transacció: no hi pot
+        # quedar mai una peça treta d'un lloc i no posada a l'altre.
+        with self._transaction():
+            # Treu la peça de l'origen i renumera els slots restants per no deixar forats
+            self.conn.execute(
+                "DELETE FROM pieces WHERE position = ? AND slot = ?", (from_position, piece["slot"])
+            )
+            remaining = [p for p in pieces if p["slot"] != piece["slot"]]
+            for new_slot, p in enumerate(sorted(remaining, key=lambda x: x["slot"]), start=1):
+                if new_slot != p["slot"]:
+                    self.conn.execute(
+                        "UPDATE pieces SET slot = ? WHERE position = ? AND slot = ?",
+                        (new_slot, from_position, p["slot"]),
+                    )
 
-        self.conn.execute(
-            """INSERT INTO pieces(position, slot, material_code, material_desc, dimensions, notes, entered_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (
-                to_position,
-                dest_slot,
-                piece["material_code"],
-                piece["material_desc"],
-                piece["dimensions"],
-                piece["notes"],
-                piece["entered_at"],
-            ),
-        )
+            self.conn.execute(
+                """INSERT INTO pieces(position, slot, material_code, material_desc, dimensions, notes, entered_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    to_position,
+                    dest_slot,
+                    piece["material_code"],
+                    piece["material_desc"],
+                    piece["dimensions"],
+                    piece["notes"],
+                    piece["entered_at"],
+                ),
+            )
 
-        # La data/hora de l'històric d'un trasllat és la de l'entrada
-        # original de la peça (piece["entered_at"]), no la del moment del
-        # trasllat: moure-la no n'ha de canviar la data d'entrada. Els
-        # materials no registrats (codi <= 1) no en guarden ("---------"),
-        # així que per a aquests es fa servir l'hora actual com a únic
-        # valor disponible.
-        ts = piece["entered_at"] or _now()
-        self.conn.execute(
-            "INSERT INTO historic(position, material_code, material_desc, ts, direction, kind) VALUES (?,?,?,?,?,?)",
-            (str(from_position), str(piece["material_code"]), piece["material_desc"], ts, None, "move_out"),
-        )
-        self.conn.execute(
-            "INSERT INTO historic(position, material_code, material_desc, ts, direction, kind) VALUES (?,?,?,?,?,?)",
-            (str(to_position), str(piece["material_code"]), piece["material_desc"], ts, None, "move_in"),
-        )
-        self.conn.commit()
+            # La data/hora de l'històric d'un trasllat és la de l'entrada
+            # original de la peça (piece["entered_at"]), no la del moment del
+            # trasllat: moure-la no n'ha de canviar la data d'entrada. Els
+            # materials no registrats (codi <= 1) no en guarden ("---------"),
+            # així que per a aquests es fa servir l'hora actual com a únic
+            # valor disponible.
+            ts = piece["entered_at"] or _now()
+            self.conn.execute(
+                "INSERT INTO historic(position, material_code, material_desc, ts, direction, kind) VALUES (?,?,?,?,?,?)",
+                (str(from_position), str(piece["material_code"]), piece["material_desc"], ts, None, "move_out"),
+            )
+            self.conn.execute(
+                "INSERT INTO historic(position, material_code, material_desc, ts, direction, kind) VALUES (?,?,?,?,?,?)",
+                (str(to_position), str(piece["material_code"]), piece["material_desc"], ts, None, "move_in"),
+            )
         return {"from_position": from_position, "to_position": to_position, "piece": piece}
 
     # ------------------------------------------------------------------ #
@@ -397,6 +422,51 @@ class Repository:
         rows = self.conn.execute(sql, params).fetchall()
         return [dict(r) for r in rows]
 
+    def historic_ids_to_keep(self) -> list[int]:
+        """Ids de l'històric que NO s'han d'esborrar en netejar-lo: l'ÚLTIMA
+        entrada de cada material que ara mateix hi ha al Tauler.
+
+        Com es lliguen les dues taules: el Tauler és `pieces` (una fila per
+        peça col·locada, amb `material_code` numèric) i l'històric és
+        `historic` (auditoria append-only, amb `material_code` com a text i
+        `ts` en ISO). El material és, doncs, el codi; i la seva "última
+        entrada" és la fila de `historic` amb el `ts` més gran d'aquell
+        codi — amb l'`id` més alt per desempatar, perquè `ts` només té
+        precisió de segon i dos moviments seguits hi poden coincidir. No es
+        mira l'ordre en què es veu la taula a la pantalla.
+        """
+        codes = self.conn.execute(
+            "SELECT DISTINCT material_code FROM pieces WHERE material_code IS NOT NULL"
+        ).fetchall()
+        keep = []
+        for row in codes:
+            last = self.conn.execute(
+                "SELECT id FROM historic WHERE material_code = ? ORDER BY ts DESC, id DESC LIMIT 1",
+                (str(row["material_code"]),),
+            ).fetchone()
+            if last is not None:
+                keep.append(last["id"])
+        return keep
+
+    def clear_historic(self) -> dict:
+        """Neteja l'històric conservant l'última entrada de cada material que
+        segueix al Tauler (veure `historic_ids_to_keep`).
+
+        Tot dins d'una sola transacció: si peta pel camí no queda l'històric
+        mig esborrat, es desfà sencer.
+        """
+        keep = self.historic_ids_to_keep()
+        with self._transaction():
+            if keep:
+                placeholders = ",".join("?" for _ in keep)
+                cursor = self.conn.execute(
+                    f"DELETE FROM historic WHERE id NOT IN ({placeholders})", tuple(keep)  # noqa: S608
+                )
+            else:
+                cursor = self.conn.execute("DELETE FROM historic")
+            deleted = cursor.rowcount
+        return {"deleted": deleted, "kept": len(keep)}
+
     def covered_materials_report(self) -> list[dict]:
         """Informe 'Materials tapats' (ComprovarIMostrarTapats_Correcte).
 
@@ -439,14 +509,14 @@ class Repository:
         next_order = (
             self.conn.execute("SELECT COALESCE(MAX(row_order), 0) + 1 FROM desmagatzem").fetchone()[0]
         )
-        self.conn.execute(
-            """INSERT INTO desmagatzem(row_order, quantity, material_code, material_desc, custom_text, dimensions, cart_ref, ts)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (next_order, quantity, code_str, desc, custom_text, dimensions or None, cart_ref or None, _now()),
-        )
-        for _ in range(quantity):
-            self._log_historic("Desmagatzem", code_str, desc, 1, "in")
-        self.conn.commit()
+        with self._transaction():
+            self.conn.execute(
+                """INSERT INTO desmagatzem(row_order, quantity, material_code, material_desc, custom_text, dimensions, cart_ref, ts)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (next_order, quantity, code_str, desc, custom_text, dimensions or None, cart_ref or None, _now()),
+            )
+            for _ in range(quantity):
+                self._log_historic("Desmagatzem", code_str, desc, 1, "in")
         return {"row_order": next_order, "material_desc": desc}
 
     def update_desmagatzem_quantity(self, row_id: int, new_qty: int) -> str:
@@ -466,20 +536,22 @@ class Repository:
         if change is None:
             return "noop"
 
-        if change == "delete":
-            for _ in range(row["quantity"]):
-                self._log_historic("Desmagatzem", row["material_code"], row["material_desc"], -1, "out")
-            self.conn.execute("DELETE FROM desmagatzem WHERE id = ?", (row_id,))
-            self._compact_desmagatzem()
-        else:
-            diff = abs(new_qty - row["quantity"])
-            direction = 1 if change == "increase" else -1
-            kind = "in" if change == "increase" else "out"
-            for _ in range(diff):
-                self._log_historic("Desmagatzem", row["material_code"], row["material_desc"], direction, kind)
-            self.conn.execute("UPDATE desmagatzem SET quantity = ? WHERE id = ?", (new_qty, row_id))
+        # El canvi de quantitat i les línies d'històric que genera van
+        # junts: o s'hi desa tot, o no s'hi desa res.
+        with self._transaction():
+            if change == "delete":
+                for _ in range(row["quantity"]):
+                    self._log_historic("Desmagatzem", row["material_code"], row["material_desc"], -1, "out")
+                self.conn.execute("DELETE FROM desmagatzem WHERE id = ?", (row_id,))
+                self._compact_desmagatzem()
+            else:
+                diff = abs(new_qty - row["quantity"])
+                direction = 1 if change == "increase" else -1
+                kind = "in" if change == "increase" else "out"
+                for _ in range(diff):
+                    self._log_historic("Desmagatzem", row["material_code"], row["material_desc"], direction, kind)
+                self.conn.execute("UPDATE desmagatzem SET quantity = ? WHERE id = ?", (new_qty, row_id))
 
-        self.conn.commit()
         return change
 
     def _compact_desmagatzem(self):

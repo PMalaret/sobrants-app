@@ -11,8 +11,9 @@ Qualsevol clau nova que s'afegeixi aquí ha de portar sempre els 4 idiomes
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
+
+from app import settings
 
 DEFAULT_LANG = "ca"
 LANGS = {"ca": "Català", "es": "Castellano", "en": "English", "fr": "Français"}
@@ -22,17 +23,18 @@ _settings_path: Path | None = None
 
 
 def init_settings_path(data_dir: Path) -> None:
-    """Crida's una vegada a l'arrencada amb la carpeta de dades de l'app."""
+    """Crida's una vegada a l'arrencada amb la carpeta de dades de l'app.
+
+    L'idioma comparteix fitxer amb la resta de preferències (contrasenya,
+    interval de còpies): es llegeix i s'escriu a través d'`app.settings`,
+    que hi fa un llegir-modificar-desar i no se les emporta per davant.
+    """
     global _settings_path
-    _settings_path = data_dir / "settings.json"
-    if _settings_path.exists():
-        try:
-            data = json.loads(_settings_path.read_text(encoding="utf-8"))
-            lang = data.get("language")
-            if lang in LANGS:
-                _state["lang"] = lang
-        except (OSError, ValueError):
-            pass
+    settings.init(data_dir)
+    _settings_path = settings.path()
+    lang = settings.get("language")
+    if lang in LANGS:
+        _state["lang"] = lang
 
 
 def get_language() -> str:
@@ -44,10 +46,7 @@ def set_language(lang: str) -> None:
         raise ValueError(f"Idioma desconegut: {lang}")
     _state["lang"] = lang
     if _settings_path is not None:
-        try:
-            _settings_path.write_text(json.dumps({"language": lang}), encoding="utf-8")
-        except OSError:
-            pass
+        settings.set_value("language", lang)
 
 
 def t(key: str, **kwargs) -> str:
@@ -74,17 +73,13 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Backup now",
         "fr": "Sauvegarder maintenant",
     },
-    "menu.export_board": {
-        "ca": "Exportar tauler a PDF…",
-        "es": "Exportar tablero a PDF…",
-        "en": "Export board to PDF…",
-        "fr": "Exporter le tableau en PDF…",
+    "menu.print_board": {
+        "ca": "Imprimir tauler", "es": "Imprimir tablero",
+        "en": "Print board", "fr": "Imprimer le tableau",
     },
-    "menu.export_desmagatzem": {
-        "ca": "Exportar desmagatzem a PDF…",
-        "es": "Exportar desmagatzem a PDF…",
-        "en": "Export desmagatzem to PDF…",
-        "fr": "Exporter desmagatzem en PDF…",
+    "menu.print_desmagatzem": {
+        "ca": "Imprimir desmagatzem", "es": "Imprimir desmagatzem",
+        "en": "Print desmagatzem", "fr": "Imprimer desmagatzem",
     },
     "menu.report_covered": {
         "ca": "Informe de materials tapats",
@@ -109,10 +104,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     },
     # El nom "Raül Vives Morros" no es tradueix mai, en cap idioma.
     "about.original_idea": {
-        "ca": "Idea original de Raül Vives Morros",
-        "es": "Idea original de Raül Vives Morros",
-        "en": "Original idea by Raül Vives Morros",
-        "fr": "Idée originale de Raül Vives Morros",
+        "ca": "Idea original de Raül V.",
+        "es": "Idea original de Raül V.",
+        "en": "Original idea by Raül V.",
+        "fr": "Idée originale de Raül V.",
     },
     "action.backup": {
         "ca": "Còpia de\nseguretat",
@@ -120,17 +115,13 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Create\nbackup",
         "fr": "Créer une\nsauvegarde",
     },
-    "action.export_board": {
-        "ca": "Exportar\ntauler a PDF",
-        "es": "Exportar\ntablero a PDF",
-        "en": "Export\nboard to PDF",
-        "fr": "Exporter\nle tableau en PDF",
+    "action.print_board": {
+        "ca": "Imprimir tauler", "es": "Imprimir tablero",
+        "en": "Print board", "fr": "Imprimer le tableau",
     },
-    "action.export_desmagatzem": {
-        "ca": "Exportar\ndesmagatzem a PDF",
-        "es": "Exportar\ndesmagatzem a PDF",
-        "en": "Export\ndesmagatzem to PDF",
-        "fr": "Exporter\ndesmagatzem en PDF",
+    "action.print_desmagatzem": {
+        "ca": "Imprimir desmagatzem", "es": "Imprimir desmagatzem",
+        "en": "Print desmagatzem", "fr": "Imprimer desmagatzem",
     },
     "action.covered": {
         "ca": "Materials\ntapats",
@@ -161,38 +152,6 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "es": "Base de datos: {path} — última copia: ahora",
         "en": "Database: {path} — last backup: now",
         "fr": "Base de données : {path} — dernière sauvegarde : maintenant",
-    },
-    "dialog.export_board.title": {
-        "ca": "Exportar tauler",
-        "es": "Exportar tablero",
-        "en": "Export board",
-        "fr": "Exporter le tableau",
-    },
-    "dialog.export_board.filename": {"ca": "tauler.pdf", "es": "tablero.pdf", "en": "board.pdf", "fr": "tableau.pdf"},
-    "dialog.exported.title": {"ca": "Exportat", "es": "Exportado", "en": "Exported", "fr": "Exporté"},
-    "dialog.export_board.done": {
-        "ca": "Tauler exportat a:\n{path}",
-        "es": "Tablero exportado a:\n{path}",
-        "en": "Board exported to:\n{path}",
-        "fr": "Tableau exporté dans :\n{path}",
-    },
-    "dialog.export_desmagatzem.title": {
-        "ca": "Exportar desmagatzem",
-        "es": "Exportar desmagatzem",
-        "en": "Export desmagatzem",
-        "fr": "Exporter desmagatzem",
-    },
-    "dialog.export_desmagatzem.filename": {
-        "ca": "desmagatzem.pdf",
-        "es": "desmagatzem.pdf",
-        "en": "desmagatzem.pdf",
-        "fr": "desmagatzem.pdf",
-    },
-    "dialog.export_desmagatzem.done": {
-        "ca": "Desmagatzem exportat a:\n{path}",
-        "es": "Desmagatzem exportado a:\n{path}",
-        "en": "Desmagatzem exported to:\n{path}",
-        "fr": "Desmagatzem exporté dans :\n{path}",
     },
     "legend.title": {
         "ca": "Ocupació de les posicions",
@@ -244,24 +203,24 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
 
     # -- Diàleg de cerca ---------------------------------------------------- #
     "search.code_label": {
-        "ca": "Per núm. (exacte):", "es": "Por núm. (exacto):",
-        "en": "By no. (exact):", "fr": "Par n° (exact) :",
+        "ca": "Per núm.:", "es": "Por núm.:",
+        "en": "By no.:", "fr": "Par n° :",
     },
     "search.code_placeholder": {
         "ca": "Núm. de material exacte", "es": "Núm. de material exacto",
         "en": "Exact material no.", "fr": "N° de matériau exact",
     },
     "search.desc_label": {
-        "ca": "Per material (parcial):", "es": "Por material (parcial):",
-        "en": "By material (partial):", "fr": "Par matériau (partiel) :",
+        "ca": "Per material:", "es": "Por material:",
+        "en": "By material:", "fr": "Par matériau :",
     },
     "search.desc_placeholder": {
         "ca": "Text parcial a la descripció", "es": "Texto parcial en la descripción",
         "en": "Partial text in the description", "fr": "Texte partiel dans la description",
     },
     "search.notes_label": {
-        "ca": "Per notes (parcial):", "es": "Por notas (parcial):",
-        "en": "By notes (partial):", "fr": "Par notes (partiel) :",
+        "ca": "Per notes:", "es": "Por notas:",
+        "en": "By notes:", "fr": "Par notes :",
     },
     "search.notes_placeholder": {
         "ca": "Text parcial a les notes", "es": "Texto parcial en las notas",
@@ -304,6 +263,16 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "This material is already in position(s): {positions}\n\nConfirm adding it anyway?",
         "fr": "Ce matériau se trouve déjà dans la (les) position(s) : {positions}\n\nConfirmez-vous l'ajouter quand même ?",
     },
+    "position.invalid_code.title": {
+        "ca": "Núm. no vàlid", "es": "Núm. no válido",
+        "en": "Invalid no.", "fr": "N° non valide",
+    },
+    "position.invalid_code.text": {
+        "ca": "«{code}» no és un núm. de material vàlid: només s'hi admeten números positius.",
+        "es": "«{code}» no es un núm. de material válido: solo se admiten números positivos.",
+        "en": "«{code}» is not a valid material no.: only positive numbers are allowed.",
+        "fr": "« {code} » n'est pas un n° de matériau valide : seuls les nombres positifs sont admis.",
+    },
     "position.material_not_found.title": {
         "ca": "Material no trobat", "es": "Material no encontrado",
         "en": "Material not found", "fr": "Matériau introuvable",
@@ -343,6 +312,27 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "position.cannot_delete": {
         "ca": "No es pot esborrar", "es": "No se puede borrar",
         "en": "Cannot delete", "fr": "Impossible de supprimer",
+    },
+    "position.delete_button": {
+        "ca": "Esborrar", "es": "Borrar", "en": "Delete", "fr": "Supprimer",
+    },
+    "position.delete_action": {
+        "ca": "Esborrar aquesta peça", "es": "Borrar esta pieza",
+        "en": "Delete this piece", "fr": "Supprimer cette pièce",
+    },
+    "position.only_last.title": {
+        "ca": "Només l'última peça", "es": "Solo la última pieza",
+        "en": "Only the last piece", "fr": "Seulement la dernière pièce",
+    },
+    "position.only_last.text": {
+        "ca": "Només es pot esborrar l'última peça de la posició. "
+              "Selecciona-la (l'última fila amb dades) per poder esborrar-la.",
+        "es": "Solo se puede borrar la última pieza de la posición. "
+              "Selecciónala (la última fila con datos) para poder borrarla.",
+        "en": "Only the last piece of the position can be deleted. "
+              "Select it (the last row with data) to delete it.",
+        "fr": "Seule la dernière pièce de la position peut être supprimée. "
+              "Sélectionnez-la (la dernière ligne remplie) pour la supprimer.",
     },
     "position.cannot_move": {
         "ca": "No es pot moure", "es": "No se puede mover",
@@ -384,12 +374,6 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ca": "p.ex. 12, o 'Desmagatzem'", "es": "p.ej. 12, o 'Desmagatzem'",
         "en": "e.g. 12, or 'Desmagatzem'", "fr": "ex. 12, ou « Desmagatzem »",
     },
-    "historic.sort_label": {
-        "ca": "Ordenar per:", "es": "Ordenar por:", "en": "Sort by:", "fr": "Trier par :",
-    },
-    "historic.sort_date": {"ca": "Data", "es": "Fecha", "en": "Date", "fr": "Date"},
-    "historic.sort_position": {"ca": "Pos.", "es": "Pos.", "en": "Pos.", "fr": "Pos."},
-    "historic.refresh": {"ca": "Actualitzar", "es": "Actualizar", "en": "Refresh", "fr": "Actualiser"},
 
     # -- Materials ------------------------------------------------------------ #
     "materials.col.code": {
@@ -492,6 +476,20 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "desmagatzem.missing_code.text": {
         "ca": "Indica el núm. de material.", "es": "Indica el núm. de material.",
         "en": "Enter the material no.", "fr": "Indiquez le n° de matériau.",
+    },
+    "desmagatzem.material_not_found.title": {
+        "ca": "Material no trobat", "es": "Material no encontrado",
+        "en": "Material not found", "fr": "Matériau introuvable",
+    },
+    "desmagatzem.material_not_found.text": {
+        "ca": "El núm. {code} no existeix al catàleg de materials.\n\n"
+              "Corregeix el número, o fes servir el núm. 1 si el material no està registrat.",
+        "es": "El núm. {code} no existe en el catálogo de materiales.\n\n"
+              "Corrige el número, o usa el núm. 1 si el material no está registrado.",
+        "en": "Material no. {code} is not in the catalog.\n\n"
+              "Correct the number, or use no. 1 for an unregistered material.",
+        "fr": "Le n° {code} n'existe pas dans le catalogue des matériaux.\n\n"
+              "Corrigez le numéro, ou utilisez le n° 1 pour un matériau non enregistré.",
     },
     "desmagatzem.cannot_register": {
         "ca": "No es pot registrar", "es": "No se puede registrar",
@@ -641,7 +639,288 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ca": "➕ Afegir material", "es": "➕ Añadir material",
         "en": "➕ Add material", "fr": "➕ Ajouter un matériau",
     },
-    "materials.password.title": {
+    "menu.import": {
+        "ca": "&Importar", "es": "&Importar", "en": "&Import", "fr": "&Importer",
+    },
+    "menu.import_excel": {
+        "ca": "Importar d'Excel...", "es": "Importar de Excel...",
+        "en": "Import from Excel...", "fr": "Importer depuis Excel...",
+    },
+    "menu.import_database": {
+        "ca": "Importar de base de dades...", "es": "Importar de base de datos...",
+        "en": "Import from database...", "fr": "Importer depuis une base de données...",
+    },
+    "import.excel.error.title": {
+        "ca": "No s'ha pogut importar l'Excel", "es": "No se ha podido importar el Excel",
+        "en": "Could not import the Excel file", "fr": "Impossible d'importer le fichier Excel",
+    },
+    "import.error.text": {
+        "ca": "No s'ha canviat res.\n\n{error}",
+        "es": "No se ha cambiado nada.\n\n{error}",
+        "en": "Nothing has been changed.\n\n{error}",
+        "fr": "Rien n'a été modifié.\n\n{error}",
+    },
+    "import.db.pick": {
+        "ca": "Tria la base de dades a importar (.db)",
+        "es": "Elige la base de datos a importar (.db)",
+        "en": "Choose the database to import (.db)",
+        "fr": "Choisissez la base de données à importer (.db)",
+    },
+    "import.db.error.title": {
+        "ca": "No s'ha pogut importar", "es": "No se ha podido importar",
+        "en": "Could not import", "fr": "Impossible d'importer",
+    },
+    "import.db.invalid": {
+        "ca": "Aquest fitxer no és una base de dades de Sobrants (o està malmès).\n\nDetall: {detail}",
+        "es": "Este archivo no es una base de datos de Sobrants (o está dañado).\n\nDetalle: {detail}",
+        "en": "This file is not a Sobrants database (or it is damaged).\n\nDetail: {detail}",
+        "fr": "Ce fichier n'est pas une base de données Sobrants (ou il est endommagé).\n\nDétail : {detail}",
+    },
+    "import.db.same_file": {
+        "ca": "Aquesta ja és la base de dades que s'està fent servir.",
+        "es": "Esta ya es la base de datos que se está usando.",
+        "en": "That is already the database in use.",
+        "fr": "C'est déjà la base de données utilisée.",
+    },
+    "import.db.confirm.title": {
+        "ca": "Importar la base de dades", "es": "Importar la base de datos",
+        "en": "Import the database", "fr": "Importer la base de données",
+    },
+    "import.db.confirm.text": {
+        "ca": "El fitxer conté:\n{summary}\n\nSe substituiran TOTES les dades actuals. Abans se'n farà una còpia de seguretat. Continuar?",
+        "es": "El archivo contiene:\n{summary}\n\nSe sustituirán TODOS los datos actuales. Antes se hará una copia de seguridad. ¿Continuar?",
+        "en": "The file contains:\n{summary}\n\nALL current data will be replaced. A backup will be made first. Continue?",
+        "fr": "Le fichier contient :\n{summary}\n\nTOUTES les données actuelles seront remplacées. Une sauvegarde sera faite avant. Continuer ?",
+    },
+    "import.db.done.title": {
+        "ca": "Base de dades importada", "es": "Base de datos importada",
+        "en": "Database imported", "fr": "Base de données importée",
+    },
+    "import.db.done.text": {
+        "ca": "S'han importat:\n{summary}\n\nCòpia de les dades anteriors: {backup}",
+        "es": "Se han importado:\n{summary}\n\nCopia de los datos anteriores: {backup}",
+        "en": "Imported:\n{summary}\n\nBackup of the previous data: {backup}",
+        "fr": "Importé :\n{summary}\n\nSauvegarde des données précédentes : {backup}",
+    },
+    "import.db.reloaded": {
+        "ca": "L'aplicació ja treballa amb les dades importades.",
+        "es": "La aplicación ya trabaja con los datos importados.",
+        "en": "The application is now working with the imported data.",
+        "fr": "L'application travaille maintenant avec les données importées.",
+    },
+    "print.dialog.title": {
+        "ca": "Imprimir", "es": "Imprimir", "en": "Print", "fr": "Imprimer",
+    },
+    "print.error.title": {
+        "ca": "No s'ha pogut imprimir", "es": "No se ha podido imprimir",
+        "en": "Could not print", "fr": "Impossible d'imprimer",
+    },
+    "print.error.text": {
+        "ca": "No s'ha pogut preparar la pàgina per a la impressora.",
+        "es": "No se ha podido preparar la página para la impresora.",
+        "en": "The page could not be prepared for the printer.",
+        "fr": "La page n'a pas pu être préparée pour l'imprimante.",
+    },
+    "print.error.detail": {
+        "ca": "No s'ha imprès res.\n\n{error}",
+        "es": "No se ha impreso nada.\n\n{error}",
+        "en": "Nothing has been printed.\n\n{error}",
+        "fr": "Rien n'a été imprimé.\n\n{error}",
+    },
+    "print.sent": {
+        "ca": "Enviat a la impressora.", "es": "Enviado a la impresora.",
+        "en": "Sent to the printer.", "fr": "Envoyé à l'imprimante.",
+    },
+    "menu.backups": {
+        "ca": "&Còpies de seguretat", "es": "&Copias de seguridad",
+        "en": "&Backups", "fr": "&Sauvegardes",
+    },
+    "menu.backup_interval": {
+        "ca": "Interval de còpies automàtiques...", "es": "Intervalo de copias automáticas...",
+        "en": "Automatic backup interval...", "fr": "Intervalle des sauvegardes automatiques...",
+    },
+    "menu.change_password": {
+        "ca": "Canviar contrasenya...", "es": "Cambiar contraseña...",
+        "en": "Change password...", "fr": "Changer le mot de passe...",
+    },
+    "password.label_backup": {
+        "ca": "Introdueix la contrasenya per fer una còpia de seguretat:",
+        "es": "Introduce la contraseña para hacer una copia de seguridad:",
+        "en": "Enter the password to make a backup:",
+        "fr": "Entrez le mot de passe pour faire une sauvegarde :",
+    },
+    "password.wrong.text_backup": {
+        "ca": "La contrasenya introduïda no és correcta. No s'ha fet cap còpia de seguretat.",
+        "es": "La contraseña introducida no es correcta. No se ha hecho ninguna copia de seguridad.",
+        "en": "The password entered is not correct. No backup has been made.",
+        "fr": "Le mot de passe saisi est incorrect. Aucune sauvegarde n'a été faite.",
+    },
+    "password.label_interval": {
+        "ca": "Introdueix la contrasenya per canviar cada quantes hores es fa la còpia:",
+        "es": "Introduce la contraseña para cambiar cada cuántas horas se hace la copia:",
+        "en": "Enter the password to change how often the backup is made:",
+        "fr": "Entrez le mot de passe pour changer la fréquence des sauvegardes :",
+    },
+    "password.label_change": {
+        "ca": "Introdueix la contrasenya actual:", "es": "Introduce la contraseña actual:",
+        "en": "Enter the current password:", "fr": "Entrez le mot de passe actuel :",
+    },
+    "password.wrong.text_generic": {
+        "ca": "La contrasenya introduïda no és correcta. No s'ha canviat res.",
+        "es": "La contraseña introducida no es correcta. No se ha cambiado nada.",
+        "en": "The password entered is not correct. Nothing has been changed.",
+        "fr": "Le mot de passe saisi est incorrect. Rien n'a été modifié.",
+    },
+    "password.change.title": {
+        "ca": "Canviar contrasenya", "es": "Cambiar contraseña",
+        "en": "Change password", "fr": "Changer le mot de passe",
+    },
+    "password.change.new": {
+        "ca": "Nova contrasenya:", "es": "Nueva contraseña:",
+        "en": "New password:", "fr": "Nouveau mot de passe :",
+    },
+    "password.change.repeat": {
+        "ca": "Repeteix la nova contrasenya:", "es": "Repite la nueva contraseña:",
+        "en": "Repeat the new password:", "fr": "Répétez le nouveau mot de passe :",
+    },
+    "password.change.mismatch.title": {
+        "ca": "No coincideixen", "es": "No coinciden",
+        "en": "They do not match", "fr": "Elles ne correspondent pas",
+    },
+    "password.change.mismatch.text": {
+        "ca": "Les dues contrasenyes no són iguals. No s'ha canviat res.",
+        "es": "Las dos contraseñas no son iguales. No se ha cambiado nada.",
+        "en": "The two passwords are not the same. Nothing has been changed.",
+        "fr": "Les deux mots de passe ne sont pas identiques. Rien n'a été modifié.",
+    },
+    "password.change.done.title": {
+        "ca": "Contrasenya canviada", "es": "Contraseña cambiada",
+        "en": "Password changed", "fr": "Mot de passe changé",
+    },
+    "password.change.done.text": {
+        "ca": "A partir d'ara, totes les accions protegides demanaran la contrasenya nova.",
+        "es": "A partir de ahora, todas las acciones protegidas pedirán la contraseña nueva.",
+        "en": "From now on, every protected action will ask for the new password.",
+        "fr": "Désormais, toutes les actions protégées demanderont le nouveau mot de passe.",
+    },
+    "backup.interval.title": {
+        "ca": "Còpies automàtiques", "es": "Copias automáticas",
+        "en": "Automatic backups", "fr": "Sauvegardes automatiques",
+    },
+    "backup.interval.label": {
+        "ca": "Cada quantes hores es fa una còpia de seguretat? ({min}-{max})",
+        "es": "¿Cada cuántas horas se hace una copia de seguridad? ({min}-{max})",
+        "en": "How many hours between backups? ({min}-{max})",
+        "fr": "Toutes les combien d'heures faire une sauvegarde ? ({min}-{max})",
+    },
+    "backup.interval.done": {
+        "ca": "A partir d'ara es farà una còpia de seguretat cada {hours} h.",
+        "es": "A partir de ahora se hará una copia de seguridad cada {hours} h.",
+        "en": "From now on a backup will be made every {hours} h.",
+        "fr": "Désormais une sauvegarde sera faite toutes les {hours} h.",
+    },
+    "usb.connected": {
+        "ca": "USB connectat: {drives}", "es": "USB conectado: {drives}",
+        "en": "USB connected: {drives}", "fr": "USB connecté : {drives}",
+    },
+    "usb.disconnected": {
+        "ca": "Cap USB connectat", "es": "Ningún USB conectado",
+        "en": "No USB connected", "fr": "Aucun USB connecté",
+    },
+    "materials.add.confirm_overwrite.title": {
+        "ca": "El material ja existeix", "es": "El material ya existe",
+        "en": "The material already exists", "fr": "Le matériau existe déjà",
+    },
+    "common.yes": {"ca": "Sí", "es": "Sí", "en": "Yes", "fr": "Oui"},
+    "common.no": {"ca": "No", "es": "No", "en": "No", "fr": "Non"},
+    "common.ok": {"ca": "Acceptar", "es": "Aceptar", "en": "OK", "fr": "Accepter"},
+    "historic.count": {
+        "ca": "{count} moviments", "es": "{count} movimientos",
+        "en": "{count} movements", "fr": "{count} mouvements",
+    },
+    "historic.export_excel": {
+        "ca": "Exporta Excel", "es": "Exporta Excel",
+        "en": "Export to Excel", "fr": "Exporter en Excel",
+    },
+    "historic.export.title": {
+        "ca": "Exportar l'històric a Excel", "es": "Exportar el histórico a Excel",
+        "en": "Export the history to Excel", "fr": "Exporter l'historique en Excel",
+    },
+    "historic.export.done": {
+        "ca": "S'han exportat {count} moviments a:\n{path}",
+        "es": "Se han exportado {count} movimientos a:\n{path}",
+        "en": "{count} movements exported to:\n{path}",
+        "fr": "{count} mouvements exportés vers :\n{path}",
+    },
+    "historic.export.error.title": {
+        "ca": "No s'ha pogut exportar", "es": "No se ha podido exportar",
+        "en": "Could not export", "fr": "Impossible d'exporter",
+    },
+    "historic.export.error.text": {
+        "ca": "No s'ha pogut desar el fitxer. L'històric no s'ha tocat.\n\n{error}",
+        "es": "No se ha podido guardar el archivo. El histórico no se ha tocado.\n\n{error}",
+        "en": "The file could not be saved. The history has not been touched.\n\n{error}",
+        "fr": "Le fichier n'a pas pu être enregistré. L'historique n'a pas été touché.\n\n{error}",
+    },
+    "historic.clear": {
+        "ca": "Netejar", "es": "Limpiar", "en": "Clear", "fr": "Nettoyer",
+    },
+    "historic.clear.password": {
+        "ca": "Introdueix la contrasenya d'administrador per netejar l'històric:",
+        "es": "Introduce la contraseña de administrador para limpiar el histórico:",
+        "en": "Enter the administrator password to clear the history:",
+        "fr": "Entrez le mot de passe administrateur pour nettoyer l'historique :",
+    },
+    "historic.clear.confirm.title": {
+        "ca": "Netejar l'històric", "es": "Limpiar el histórico",
+        "en": "Clear the history", "fr": "Nettoyer l'historique",
+    },
+    "historic.clear.confirm.text": {
+        "ca": "Ja has exportat totes les dades a Excel?\n\nS'esborrarà tot l'històric excepte "
+              "l'última entrada de cada material que encara hi ha al Tauler. No es pot desfer.",
+        "es": "¿Ya has exportado todos los datos a Excel?\n\nSe borrará todo el histórico excepto "
+              "la última entrada de cada material que todavía está en el Tauler. No se puede deshacer.",
+        "en": "Have you already exported all the data to Excel?\n\nThe whole history will be deleted "
+              "except the last entry of each material still on the board. This cannot be undone.",
+        "fr": "Avez-vous déjà exporté toutes les données en Excel ?\n\nTout l'historique sera supprimé "
+              "sauf la dernière entrée de chaque matériau encore sur le tableau. Irréversible.",
+    },
+    "historic.clear.done": {
+        "ca": "S'han esborrat {deleted} moviments. Se n'han conservat {kept} "
+              "(l'últim de cada material que hi ha al Tauler).",
+        "es": "Se han borrado {deleted} movimientos. Se han conservado {kept} "
+              "(el último de cada material que hay en el Tauler).",
+        "en": "{deleted} movements deleted. {kept} kept (the last one of each material on the board).",
+        "fr": "{deleted} mouvements supprimés. {kept} conservés "
+              "(le dernier de chaque matériau présent sur le tableau).",
+    },
+    "historic.clear.error": {
+        "ca": "No s'ha pogut netejar l'històric; no s'hi ha tocat res.\n\n{error}",
+        "es": "No se ha podido limpiar el histórico; no se ha tocado nada.\n\n{error}",
+        "en": "The history could not be cleared; nothing has been touched.\n\n{error}",
+        "fr": "L'historique n'a pas pu être nettoyé ; rien n'a été touché.\n\n{error}",
+    },
+    "password.scope.admin": {
+        "ca": "Contrasenya administrador (còpies de seguretat i netejar)",
+        "es": "Contraseña administrador (copias de seguridad y limpiar)",
+        "en": "Administrator password (backups and clearing)",
+        "fr": "Mot de passe administrateur (sauvegardes et nettoyage)",
+    },
+    "password.scope.worker": {
+        "ca": "Contrasenya treballador (afegir i esborrar materials)",
+        "es": "Contraseña trabajador (añadir y borrar materiales)",
+        "en": "Worker password (adding and deleting materials)",
+        "fr": "Mot de passe travailleur (ajouter et supprimer des matériaux)",
+    },
+    "password.change.which": {
+        "ca": "Quina contrasenya vols canviar?", "es": "¿Qué contraseña quieres cambiar?",
+        "en": "Which password do you want to change?", "fr": "Quel mot de passe voulez-vous changer ?",
+    },
+    "password.change.current": {
+        "ca": "Contrasenya actual:", "es": "Contraseña actual:",
+        "en": "Current password:", "fr": "Mot de passe actuel :",
+    },
+    "password.title": {
         "ca": "Contrasenya", "es": "Contraseña", "en": "Password", "fr": "Mot de passe",
     },
     "materials.password.label": {
@@ -650,7 +929,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Enter the password to add a new material:",
         "fr": "Entrez le mot de passe pour ajouter un nouveau matériau :",
     },
-    "materials.password.wrong.title": {
+    "password.wrong.title": {
         "ca": "Contrasenya incorrecta", "es": "Contraseña incorrecta",
         "en": "Wrong password", "fr": "Mot de passe incorrect",
     },

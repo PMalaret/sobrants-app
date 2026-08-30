@@ -14,17 +14,28 @@ def test_normalize_text_strips_accents_and_case():
 
 
 def test_is_valid_material_code_range():
-    assert rules.is_valid_material_code(0) is True
+    # Només números positius: 0 i negatius no són codis vàlids
+    assert rules.is_valid_material_code(1) is True
+    assert rules.is_valid_material_code(25) is True
+    assert rules.is_valid_material_code(99999) is True
     assert rules.is_valid_material_code(999999) is True
     assert rules.is_valid_material_code(1000000) is False
+    assert rules.is_valid_material_code(0) is False
     assert rules.is_valid_material_code(-1) is False
+    assert rules.is_valid_material_code(-25) is False
     assert rules.is_valid_material_code("abc") is False
+    assert rules.is_valid_material_code("") is False
+    assert rules.is_valid_material_code(None) is False
+    assert rules.is_valid_material_code("12x") is False
+    # Un text que sigui un número sí que val (és el que s'escriu a la cel·la)
+    assert rules.is_valid_material_code("25") is True
 
 
 def test_is_valid_desmagatzem_qty_range():
     assert rules.is_valid_desmagatzem_qty(0) is True
     assert rules.is_valid_desmagatzem_qty(20) is True
-    assert rules.is_valid_desmagatzem_qty(21) is False
+    assert rules.is_valid_desmagatzem_qty(999) is True
+    assert rules.is_valid_desmagatzem_qty(1000) is False
     assert rules.is_valid_desmagatzem_qty(-1) is False
 
 

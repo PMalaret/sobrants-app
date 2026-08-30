@@ -11,7 +11,6 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
     QMainWindow,
-    QMessageBox,
     QPushButton,
     QStackedWidget,
     QTabBar,
@@ -19,28 +18,45 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app import i18n
+from app import i18n, settings
 from app.backup import create_backup
-from app.export import covered_materials_report_text, export_board_pdf, export_desmagatzem_pdf
+from app.data.db import connect
+from app.export import covered_materials_report_text, print_widget
 from app.i18n import t
 from app.logic.repository import Repository
+from app.security import ADMIN
+from app.ui import dialogs
 from app.ui.about_dialog import AboutDialog
+from app.ui.import_actions import import_from_database, import_from_excel
 from app.ui.board_tab import BoardTab
 from app.ui.desmagatzem_tab import DesmagatzemTab
 from app.ui.historic_tab import HistoricTab
 from app.ui.materials_tab import MaterialsTab
+from app.ui.password_dialog import ChangePasswordDialog, ask_password
+from app.ui.usb_indicator import UsbIndicator
 from app.version import APP_VERSION
 
-# Cada 4 hores, igual que IniciarBackupAutomatic a l'original.
-BACKUP_INTERVAL_MS = 4 * 60 * 60 * 1000
+# Cada quantes hores es fa la còpia automàtica. 4 per defecte, igual que
+# IniciarBackupAutomatic a l'original, però ara es pot canviar des de
+# Fitxer → interval de còpies i es recorda entre arrencades
+# (`settings.json`). Els límits són només de sentit comú: com a mínim cada
+# hora i com a molt un cop per setmana.
+DEFAULT_BACKUP_INTERVAL_HOURS = 4
+MIN_BACKUP_INTERVAL_HOURS = 1
+MAX_BACKUP_INTERVAL_HOURS = 168
+BACKUP_INTERVAL_SETTING = "backup_interval_hours"
 
 # Botons grans d'accions (icona + text + color), per a gent a qui li costi
 # llegir un menú de text pla. (clau de traducció, emoji, color, mètode a cridar)
+# La còpia de seguretat ja no hi és: ara demana contrasenya i viu només al
+# menú Fitxer; al seu lloc, a la fila, hi ha l'indicador d'USB.
 ACTION_BUTTONS = [
-    ("action.backup", "💾", "#2f6fed", "_manual_backup"),
-    ("action.export_board", "🗂️", "#1a9c6d", "_export_board"),
-    ("action.export_desmagatzem", "📦", "#c9852b", "_export_desmagatzem"),
-    ("action.covered", "⚠️", "#c62828", "_show_covered_report"),
+    # Imprimir: obren el diàleg d'impressió del sistema (abans desaven un
+    # PDF a un fitxer; el PDF es pot seguir fent triant-lo com a impressora).
+    ("action.print_board", "🖨️", "#1a9c6d", "_print_board"),
+    ("action.print_desmagatzem", "🖨️", "#c9852b", "_print_desmagatzem"),
+    # Ull: "materials tapats" és veure els que queden amagats darrere d'un altre.
+    ("action.covered", "👁️", "#c62828", "_show_covered_report"),
 ]
 
 
@@ -57,7 +73,7 @@ class MainWindow(QMainWindow):
 
         self._backup_timer = QTimer(self)
         self._backup_timer.timeout.connect(self._auto_backup)
-        self._backup_timer.start(BACKUP_INTERVAL_MS)
+        self._apply_backup_interval()
 
         self._build_everything()
 
@@ -74,6 +90,7 @@ class MainWindow(QMainWindow):
         self.materials_tab = MaterialsTab(self.repo)
         self.desmagatzem_tab = DesmagatzemTab(self.repo)
         self.board_tab.data_changed.connect(self.historic_tab.refresh)
+        self.desmagatzem_tab.data_changed.connect(self.historic_tab.refresh)
         # Els cercadors del Tauler també ressalten coincidències a
         # Desmagatzem amb el mateix color (igual que l'original). Netejar
         # un camp de cerca (text buit) ja neteja el ressaltat corresponent
@@ -135,7 +152,10 @@ class MainWindow(QMainWindow):
 
     def _add_action_buttons(self, layout):
         """Botons grans amb icona i color, arraconats a la dreta de la
-        mateixa fila que les pestanyes."""
+        mateixa fila que les pestanyes, amb l'indicador d'USB al davant
+        (just on abans hi havia el botó de còpia de seguretat)."""
+        self.usb_indicator = UsbIndicator()
+        layout.addWidget(self.usb_indicator)
         for label_key, emoji, color, slot_name in ACTION_BUTTONS:
             label = t(label_key).replace("\n", " ")
             button = QPushButton(f"{emoji}  {label}")
@@ -165,16 +185,16 @@ class MainWindow(QMainWindow):
     def _build_menu(self):
         menu = self.menuBar().addMenu(t("menu.file"))
 
-        backup_action = menu.addAction(t("menu.backup_now"))
-        backup_action.triggered.connect(self._manual_backup)
+        change_password_action = menu.addAction(t("menu.change_password"))
+        change_password_action.triggered.connect(self._change_password)
 
         menu.addSeparator()
 
-        export_board_action = menu.addAction(t("menu.export_board"))
-        export_board_action.triggered.connect(self._export_board)
+        print_board_action = menu.addAction(t("menu.print_board"))
+        print_board_action.triggered.connect(self._print_board)
 
-        export_desmagatzem_action = menu.addAction(t("menu.export_desmagatzem"))
-        export_desmagatzem_action.triggered.connect(self._export_desmagatzem)
+        print_desmagatzem_action = menu.addAction(t("menu.print_desmagatzem"))
+        print_desmagatzem_action.triggered.connect(self._print_desmagatzem)
 
         report_action = menu.addAction(t("menu.report_covered"))
         report_action.triggered.connect(self._show_covered_report)
@@ -190,6 +210,22 @@ class MainWindow(QMainWindow):
         menu.addSeparator()
         version_action = menu.addAction(t("menu.version", version=APP_VERSION))
         version_action.setEnabled(False)  # només informatiu, no cal que faci res en clicar
+
+        # Menú d'importació, entre Fitxer i Còpies de seguretat.
+        import_menu = self.menuBar().addMenu(t("menu.import"))
+        import_excel_action = import_menu.addAction(t("menu.import_excel"))
+        import_excel_action.triggered.connect(self._import_from_excel)
+        import_db_action = import_menu.addAction(t("menu.import_database"))
+        import_db_action.triggered.connect(self._import_from_database)
+
+        # Menú propi de còpies de seguretat, entre Fitxer i Idioma: tot el
+        # que hi té a veure (fer-ne una ara i cada quantes hores es fan
+        # soles) en un sol lloc, i les dues protegides amb la contrasenya.
+        backup_menu = self.menuBar().addMenu(t("menu.backups"))
+        backup_now_action = backup_menu.addAction(t("menu.backup_now"))
+        backup_now_action.triggered.connect(self._manual_backup)
+        interval_action = backup_menu.addAction(t("menu.backup_interval"))
+        interval_action.triggered.connect(self._change_backup_interval)
 
         lang_menu = self.menuBar().addMenu(f"🌐 {t('app.language')}")
         group = QActionGroup(self)
@@ -211,9 +247,58 @@ class MainWindow(QMainWindow):
         dialog = AboutDialog(self)
         dialog.exec()
 
+    # ------------------------------------------------------------------ #
+    # Còpies de seguretat
+    # ------------------------------------------------------------------ #
+    def backup_interval_hours(self) -> int:
+        """Cada quantes hores es fa la còpia automàtica (de settings.json).
+        Si el valor desat no és utilitzable, es torna al de sempre."""
+        value = settings.get(BACKUP_INTERVAL_SETTING, DEFAULT_BACKUP_INTERVAL_HOURS)
+        try:
+            hours = int(value)
+        except (TypeError, ValueError):
+            return DEFAULT_BACKUP_INTERVAL_HOURS
+        if not MIN_BACKUP_INTERVAL_HOURS <= hours <= MAX_BACKUP_INTERVAL_HOURS:
+            return DEFAULT_BACKUP_INTERVAL_HOURS
+        return hours
+
+    def _apply_backup_interval(self):
+        self._backup_timer.start(self.backup_interval_hours() * 60 * 60 * 1000)
+
     def _manual_backup(self):
+        # Protegida amb la contrasenya de l'aplicació: si no és correcta no
+        # se'n comença cap part (es surt abans de tocar cap fitxer).
+        if not ask_password(self, ADMIN, t("password.label_backup"), t("password.wrong.text_backup")):
+            return
         dest = create_backup(self.db_path)
-        QMessageBox.information(self, t("dialog.backup.title"), t("dialog.backup.text", path=dest))
+        dialogs.info(self, t("dialog.backup.title"), t("dialog.backup.text", path=dest))
+
+    def _change_backup_interval(self):
+        """La contrasenya protegeix la CONFIGURACIÓ de les còpies
+        automàtiques; un cop desada, les còpies programades es fan soles
+        quan toca, sense demanar-la (i sense haver-la de desar enlloc)."""
+        if not ask_password(self, ADMIN, t("password.label_interval"), t("password.wrong.text_generic")):
+            return
+        hours, ok = dialogs.ask_int(
+            self,
+            t("backup.interval.title"),
+            t("backup.interval.label", min=MIN_BACKUP_INTERVAL_HOURS, max=MAX_BACKUP_INTERVAL_HOURS),
+            self.backup_interval_hours(),
+            MIN_BACKUP_INTERVAL_HOURS,
+            MAX_BACKUP_INTERVAL_HOURS,
+        )
+        if not ok:
+            return
+        settings.set_value(BACKUP_INTERVAL_SETTING, hours)
+        self._apply_backup_interval()
+        dialogs.info(self, t("common.done"), t("backup.interval.done", hours=hours))
+
+    def _change_password(self):
+        """Un sol diàleg per a les DUES contrasenyes (còpies de seguretat i
+        materials): s'hi tria quina es canvia, i canviar-ne una no toca
+        l'altra. Cada canvi demana la contrasenya actual d'aquella mateixa i
+        la nova dues vegades (veure `ChangePasswordDialog`)."""
+        ChangePasswordDialog(self).exec()
 
     def _auto_backup(self):
         try:
@@ -238,25 +323,57 @@ class MainWindow(QMainWindow):
         QApplication.processEvents()
         self._stack.setCurrentIndex(original)
 
-    def _export_board(self):
-        path, _ = QFileDialog.getSaveFileName(
-            self, t("dialog.export_board.title"), t("dialog.export_board.filename"), "PDF (*.pdf)"
-        )
-        if not path:
-            return
-        self._ensure_tab_laid_out(self.board_tab)
-        export_board_pdf(self.board_tab, path)
-        QMessageBox.information(self, t("dialog.exported.title"), t("dialog.export_board.done", path=path))
+    # ------------------------------------------------------------------ #
+    # Imprimir
+    # ------------------------------------------------------------------ #
+    def _print_board(self):
+        self._print(self.board_tab, self.board_tab)
 
-    def _export_desmagatzem(self):
-        path, _ = QFileDialog.getSaveFileName(
-            self, t("dialog.export_desmagatzem.title"), t("dialog.export_desmagatzem.filename"), "PDF (*.pdf)"
-        )
-        if not path:
+    def _print_desmagatzem(self):
+        self._print(self.desmagatzem_tab, self.desmagatzem_tab.table)
+
+    def _print(self, tab: QWidget, widget: QWidget):
+        """Flux d'impressió comú als dos botons: preparar el que s'ha
+        d'imprimir, obrir el diàleg del sistema i imprimir-hi si s'accepta.
+
+        Cancel·lar no és cap error i no diu res; si falla la impressió (cap
+        impressora, sense permisos...) s'avisa i no queda res a mitges.
+        """
+        self._ensure_tab_laid_out(tab)
+        try:
+            printed = print_widget(widget, self)
+        except Exception as exc:  # noqa: BLE001 - qualsevol problema de la impressora
+            dialogs.error(self, t("print.error.title"), t("print.error.detail", error=exc))
             return
-        self._ensure_tab_laid_out(self.desmagatzem_tab)
-        export_desmagatzem_pdf(self.desmagatzem_tab.table, path)
-        QMessageBox.information(self, t("dialog.exported.title"), t("dialog.export_desmagatzem.done", path=path))
+        if printed:
+            self.statusBar().showMessage(t("print.sent"), 5000)
+
+    # ------------------------------------------------------------------ #
+    # Importar
+    # ------------------------------------------------------------------ #
+    def _import_from_excel(self):
+        if import_from_excel(self, Path(self.db_path)):
+            self._reload_database()
+
+    def _import_from_database(self):
+        """Substitueix la base de dades per la d'un fitxer .db. La connexió
+        oberta es tanca abans de tocar el fitxer i es torna a obrir després,
+        perquè cap pestanya no es quedi amb dades velles."""
+        self.repo.conn.close()
+        replaced = import_from_database(self, Path(self.db_path))
+        self._reload_database()
+        if replaced:
+            dialogs.info(self, t("common.done"), t("import.db.reloaded"))
+
+    def _reload_database(self):
+        """Torna a obrir la base de dades i reconstrueix la finestra amb les
+        dades noves (mateix camí que en canviar d'idioma)."""
+        try:
+            self.repo.conn.close()
+        except Exception:  # noqa: BLE001 - ja podia estar tancada
+            pass
+        self.repo = Repository(connect(self.db_path))
+        self._build_everything()
 
     def _show_covered_report(self):
         # Igual que l'original (ComprovarIMostrarTapats_Correcte): escriu

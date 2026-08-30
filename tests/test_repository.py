@@ -278,8 +278,12 @@ def test_get_historic_order_by_position_is_numeric_not_lexicographic(repo):
 
 
 def test_desmagatzem_rejects_invalid_quantity(repo):
+    # El límit de la fulla desmagatzem ara és 0..999 (abans, 0..20)
+    repo.add_desmagatzem_row(material_code="41011", quantity=999, dimensions="", cart_ref="")
     with pytest.raises(RuleViolation):
-        repo.add_desmagatzem_row(material_code="41011", quantity=21, dimensions="", cart_ref="")
+        repo.add_desmagatzem_row(material_code="41011", quantity=1000, dimensions="", cart_ref="")
+    with pytest.raises(RuleViolation):
+        repo.add_desmagatzem_row(material_code="41011", quantity=-1, dimensions="", cart_ref="")
 
 
 def test_add_material_new_code(repo):

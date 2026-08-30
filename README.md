@@ -7,7 +7,7 @@ Python + PySide6 (Qt), con los datos en una base de datos SQLite local
 (catalán, castellano, inglés, francés)**, con selector en el menú
 "🌐 Idioma/Language/Langue" (se recuerda entre arranques en
 `SobrantsData/settings.json`); toda la traducción vive en `app/i18n.py`,
-con las 164 claves siempre en los 4 idiomas a la vez (cualquier cadena
+con las 219 claves siempre en los 4 idiomas a la vez (cualquier cadena
 nueva que se añada debe seguir esa misma regla). Esta documentación y los
 comentarios del código quedan en castellano por continuidad con el resto
 del proyecto.
@@ -34,10 +34,13 @@ exactamente esas 61 posiciones (no hay lógica para un número variable), así
 que la tabla tiene una altura fija y el espacio que queda justo debajo se
 aprovecha para el **panel de detalle de la posición seleccionada**
 (`app/ui/position_panel.py`): alta/baja/traslado de piezas, incrustado de
-forma permanente (ya no es una ventana emergente). La búsqueda sigue siendo
-un botón + diálogo no modal, abajo a la derecha; sus resultados (coincidencias,
-posición más antigua, unidades en Desmagatzem) se muestran como tarjetas con
-número grande, no como texto plano.
+forma permanente (ya no es una ventana emergente). Los tres buscadores
+(`app/ui/search_panel.py`) viven debajo, siempre visibles: cada uno ocupa una
+sola fila de bloques con el mismo formato —título encima, contenido debajo—,
+el campo de texto primero y después sus tres resultados (coincidencias,
+posición más antigua, unidades en Desmagatzem) con el número en grande. El
+color de resaltado es fijo por buscador (`SEARCH_COLORS`), nunca depende del
+material encontrado.
 
 ### Desmagatzem: mismos colores de búsqueda que el Tauler
 
@@ -48,25 +51,78 @@ con el color de la propia celda de búsqueda M20/M22/M24). Los colores están
 centralizados en `SEARCH_COLORS` (`app/ui/search_dialog.py`) y los reutilizan
 tanto el Tauler como Desmagatzem — no hay una paleta duplicada.
 
-### Materiales: alta protegida por contraseña
+### Acciones protegidas: dos contraseñas
 
-`Materials` permite dar de alta un material nuevo (funcionalidad que no
-existía en el Excel original, donde el catálogo se editaba libremente en la
-hoja). Pide una contraseña antes de continuar; el valor vive en un único
-sitio, `app/security.py` (`ADMIN_PASSWORD`), fácil de cambiar más adelante.
+Hay **dos contraseñas independientes** (`app/security.py`), las dos `1234`
+de partida:
+
+- `security.ADMIN` — *contraseña administrador*: copias de seguridad
+  (manual e intervalo) y limpiar el histórico.
+- `security.WORKER` — *contraseña trabajador*: alta y borrado de
+  materiales.
+
+Cambiar una no toca la otra. Se cambian las dos desde un único diálogo,
+**Archivo → Cambiar contraseña** (`ChangePasswordDialog`), donde se elige
+cuál, se escribe la actual de esa misma y la nueva dos veces. Todas las
+acciones protegidas piden la suya por el mismo sitio
+(`app/ui/password_dialog.py` → `ask_password`), así no puede aparecer un
+tercer mecanismo por su cuenta.
+
+No se guarda nunca en claro: en `SobrantsData/settings.json` sólo va un
+PBKDF2-HMAC-SHA256 con sal aleatoria (`hashlib`, biblioteca estándar). En
+una instalación nueva vale la contraseña inicial `1234`
+(`security.DEFAULT_PASSWORD`, el único valor en claro del código); al
+cambiarla desde **Archivo → Cambiar contraseña** se guarda el hash y la
+inicial deja de servir.
 
 ## Uso en desarrollo
 
+No hace falta compilar nada para probar un cambio: la aplicación se
+arranca directamente con `python run_app.py`, en cualquiera de los tres
+sistemas. El código es el mismo en todos (no hay nada específico de
+macOS); lo único que cambia es cómo se activa el entorno virtual.
+
+**macOS / Linux**
+
 ```bash
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 python run_app.py
 ```
 
+**Windows** (PowerShell, desde la carpeta del proyecto)
+
+```powershell
+py -m venv venv
+.\venv\Scripts\Activate.ps1     # cmd.exe: venv\Scripts\activate.bat
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+python run_app.py
+```
+
+Si PowerShell no deja ejecutar `Activate.ps1` por la política de scripts,
+o bien se ejecuta una vez
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, o bien se llama al
+intérprete del entorno sin activarlo, que funciona igual:
+
+```powershell
+.\venv\Scripts\python.exe run_app.py
+.\venv\Scripts\python.exe -m pytest tests/ -q
+```
+
+**Versión de Python.** Lo recomendable es 3.10 o superior (es lo que usa
+la compilación en GitHub Actions: 3.12). Con Python 3.9 también funciona:
+`requirements.txt` fija con marcadores `python_version` las últimas
+versiones de PySide6 y pytest que aún lo soportan (6.10.3 y 8.4.2), así
+que `pip install -r requirements.txt` instala lo correcto en cada caso
+sin tener que tocar nada.
+
 En el primer arranque, la aplicación pregunta si quieres importar los
 datos desde un `.xlsm` existente (recomendado la primera vez) o empezar
-con una base de datos vacía.
+con una base de datos vacía. La base de datos y las copias de seguridad
+se crean en `SobrantsData/`, junto al proyecto (esa carpeta está en
+`.gitignore`); para volver a empezar de cero basta con borrarla.
 
 Para importar sin pasar por la interfaz:
 
@@ -126,16 +182,96 @@ datos y las copias de seguridad automáticas.
 
 ## Copias de seguridad
 
-Automáticas cada 4 horas y al cerrar la aplicación, en
-`SobrantsData/Backups/` (se conservan las 10 más recientes). También hay
-un botón "Copia de seguridad ahora" en el menú Archivo.
+Automáticas al cerrar la aplicación y cada X horas (4 por defecto,
+configurable en **Copias de seguridad → Interval de còpies automàtiques**; el valor se
+guarda en `settings.json` y se mantiene entre arranques), en
+`SobrantsData/Backups/` (se conservan las 10 más recientes).
 
-## Diferencia intencionada respecto al original
+Todo lo de las copias vive en su propio menú, **Copias de seguridad**
+(entre Archivo e Idioma). La copia manual está ahí y pide la
+contraseña antes de empezar (si no es correcta no se toca ningún fichero).
+Ya no hay botón permanente en la interfaz: en su sitio, en la fila de
+acciones, está el **indicador de USB** (`app/ui/usb_indicator.py`), que se
+pinta en verde si hay alguna unidad extraíble conectada y en rojo si no,
+comprobándolo de verdad cada pocos segundos (`GetDriveTypeW` en Windows,
+`QStorageInfo` en macOS y Linux).
+
+Las copias automáticas **no** piden contraseña: la contraseña protege
+configurarlas, no ejecutarlas, así que la aplicación nunca se queda
+esperando a nadie cuando toca hacer una.
+
+## Importar datos
+
+Menú **Importar** (entre Archivo y Copias de seguridad),
+`app/ui/import_actions.py`:
+
+- **Importar de Excel** — el mismo flujo que el primer arranque; de hecho
+  `main._ensure_database` llama a esa misma función, no a una copia.
+- **Importar de base de datos** — un `.db` del mismo formato que dejan las
+  copias de seguridad. Antes de tocar nada valida el fichero
+  (`db.describe_database`: que sea SQLite y tenga las cuatro tablas), pide
+  confirmación diciendo qué contiene, hace una copia de seguridad de los
+  datos actuales con la función de siempre (`backup.create_backup`) y
+  entonces sustituye el fichero; si la copia falla, restaura la de
+  seguridad. Después se reabre la conexión y se reconstruye la ventana
+  (`MainWindow._reload_database`), así que ninguna pestaña se queda con
+  datos viejos.
+
+## Imprimir
+
+**Imprimir tauler** e **Imprimir desmagatzem** abren el diálogo de
+impresión **nativo** del sistema (`QPrintDialog`) y pintan el mismo
+contenido y formato de siempre en la impresora elegida —incluida
+"imprimir a PDF", si el sistema la ofrece—. No se crea ningún fichero
+temporal por el camino. Cancelar no hace nada; un fallo de la impresora se
+avisa. El dibujo es compartido (`export._paint_widget_on_printer`), así que
+la generación del PDF y la impresión no se duplican.
+
+## Histórico: sin límite de filas, y cómo se limpia
+
+La tabla es un `QTableView` con un modelo propio (`_HistoricModel`), no un
+`QTableWidget`: Qt sólo pide las celdas que se ven, así que **no hay ningún
+límite de filas** y decenas de miles (10.000, 50.000, 100.000) se abren al
+instante. Se ordena clicando las cabeceras (con su flecha), no con botones
+aparte, y no hay botón "Actualizar": se refresca sola al entrar en la
+pestaña y cuando el Tauler o Desmagatzem escriben algo.
+
+**Exporta Excel** guarda el histórico **entero** (todas las filas y
+columnas, no lo que se ve), con `openpyxl` en modo *write_only*, y propone
+`historic_AAAA-MM-DD.xlsx`.
+
+**Netejar** pide la contraseña de administrador, luego confirma que ya se ha
+exportado a Excel, y entonces borra el histórico **conservando la última
+entrada de cada material que sigue en el Tauler**: los materiales son los
+`material_code` de `pieces`, y su "última entrada" es la fila de `historic`
+con el `ts` más alto (desempatando por `id`, porque `ts` va por segundos) —
+no el orden en que se ve la tabla. Todo dentro de una transacción: si algo
+falla, rollback y el histórico queda intacto (`Repository.clear_historic`).
+
+## Guardado: cada cambio va al disco al momento
+
+SQLite, en `SobrantsData/sobrants.db`. **No hay nada "en memoria a la
+espera de guardar"**: cada operación del `Repository` que toca datos
+(alta/baja/traslado de piezas, edición de medidas y notas, materiales,
+líneas de desmagatzem y sus cantidades) se ejecuta dentro de
+`Repository._transaction`, que hace `commit()` al terminar bien y
+`rollback()` si salta cualquier excepción — así una operación a medias no
+se queda ni acaba entrando "de rebote" con el commit de la siguiente. Con
+`synchronous = FULL` (`app/data/db.py`), ese commit no vuelve hasta que el
+cambio está en el disco: si un segundo después se va la luz, al reabrir la
+aplicación el cambio sigue ahí. Las copias de seguridad no tienen nada que
+ver con esto: son una copia adicional, no el momento en que se guarda.
+
+Ver `tests/test_persistence.py`: cada operación se comprueba **releyendo
+la base de datos desde una segunda conexión**, que es lo que vería un
+arranque nuevo.
+
+## Buscador por notas: sin "posición más antigua"
 
 En el Excel, la casilla "posición prioritaria" del buscador por notas
-(O24) se calculaba pero luego se sobrescribía siempre con el texto fijo
-`"--"` (código muerto: el resultado real nunca llegaba a mostrarse — ver
-`Módulo1`, `ActualitzarM24`). Aquí se muestra el resultado calculado de
-verdad, igual que en los otros dos buscadores. Es la única discrepancia
-deliberada respecto al comportamiento observable del original; todo lo
-demás se ha validado para que coincida exactamente.
+(O24) se calculaba pero luego se sobrescribía siempre con un texto fijo
+(ver `Módulo1`, `ActualitzarM24`): ese buscador nunca ha mostrado ninguna
+posición. Aquí es igual — muestra siempre `—` (`BoardTab._oldest_text`) —,
+mientras que los buscadores por núm. y por material sí muestran la suya.
+El color del buscador por notas es el rosa de Excel, un punto más
+intenso (`#ffa8b4`).
