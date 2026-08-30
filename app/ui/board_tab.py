@@ -195,12 +195,15 @@ class BoardTab(QWidget):
         footer = QWidget()
         footer_layout = QVBoxLayout(footer)
         footer_layout.setContentsMargins(0, 0, 0, 0)
-        footer_layout.setSpacing(3)
+        footer_layout.setSpacing(2)
         footer_layout.addWidget(self.search_panel)
         self.print_button = QPushButton(f"\U0001f5a8\ufe0f  {t('action.print_board')}")
-        self.print_button.setStyleSheet("padding: 2px 10px; font-size: 12px;")
+        # Compacte: l'ample just per a la icona i el text (amb una mica de
+        # marge), i una mica més alt per poder-lo clicar còmodament.
+        self.print_button.setStyleSheet("padding: 5px 14px; font-size: 12px;")
+        self.print_button.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
         self.print_button.clicked.connect(self.print_requested.emit)
-        footer_layout.addWidget(self.print_button)
+        footer_layout.addWidget(self.print_button, 0, Qt.AlignLeft)
         self.position_panel.add_footer(footer)
         self._search_state: dict[str, str] = {}
 

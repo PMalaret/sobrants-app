@@ -130,7 +130,7 @@ class PositionPanel(QFrame):
 
     def _build_ui(self):
         self._outer = QVBoxLayout(self)
-        self._outer.setContentsMargins(8, 4, 8, 4)
+        self._outer.setContentsMargins(8, 3, 8, 3)
         self._outer.setSpacing(3)
 
         self._stack = QStackedWidget()
@@ -261,7 +261,7 @@ class PositionPanel(QFrame):
         compact_button_style = "padding: 3px 10px; font-size: 12px;"
 
         move_row = QHBoxLayout()
-        move_row.setSpacing(3)
+        move_row.setSpacing(2)
         # (la separació concreta entre Esborrar i Moure es posa més avall)
         # Esborrar, a l'esquerra de Moure: fa exactament el mateix que la
         # tecla Delete i que el menú del botó dret (`_on_delete_last_piece`,

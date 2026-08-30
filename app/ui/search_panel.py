@@ -71,7 +71,7 @@ class SearchPanel(QWidget):
         super().__init__(parent)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(2)
+        layout.setSpacing(1)
 
         # {mode: {clau del resultat: QLabel del valor}}, per poder-los
         # actualitzar des de set_result sense tornar a construir res.

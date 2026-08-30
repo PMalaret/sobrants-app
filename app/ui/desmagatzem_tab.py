@@ -102,11 +102,16 @@ class DesmagatzemTab(QWidget):
             t("desmagatzem.col.datetime"),
         ]
 
-    def _confirm_text(self):
+    def _confirm_text(self, current_qty: int, new_qty: int):
+        """Text de la confirmació, amb les dues quantitats de debò (la que
+        hi ha ara i la que s'hi posarà), en negreta perquè es vegin d'un
+        cop d'ull. Els valors surten sempre de la línia i del que ha
+        escrit l'usuari, mai d'un exemple."""
+        quantities = t("desmagatzem.confirm.quantities", current=current_qty, new=new_qty)
         return {
-            "increase": t("desmagatzem.confirm.increase"),
-            "decrease": t("desmagatzem.confirm.decrease"),
-            "delete": t("desmagatzem.confirm.delete"),
+            "increase": quantities + t("desmagatzem.confirm.increase"),
+            "decrease": quantities + t("desmagatzem.confirm.decrease"),
+            "delete": quantities + t("desmagatzem.confirm.delete"),
         }
 
     def _configure_column_widths(self):
@@ -464,7 +469,9 @@ class DesmagatzemTab(QWidget):
         change = quantity_change_kind(current["quantity"], new_qty)
         if change is None:
             return
-        if not dialogs.confirm(self, t("common.confirm"), self._confirm_text()[change]):
+        if not dialogs.confirm(
+            self, t("common.confirm"), self._confirm_text(current["quantity"], new_qty)[change]
+        ):
             return
         try:
             self.repo.update_desmagatzem_quantity(row_id, new_qty)

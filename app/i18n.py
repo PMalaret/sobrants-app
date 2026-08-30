@@ -401,6 +401,12 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "desmagatzem.col.dimensions": {"ca": "Mides", "es": "Medidas", "en": "Dimensions", "fr": "Dimensions"},
     "desmagatzem.col.cart": {"ca": "Notes", "es": "Notas", "en": "Notes", "fr": "Notes"},
     "desmagatzem.col.datetime": {"ca": "Data/hora", "es": "Fecha/hora", "en": "Date/time", "fr": "Date/heure"},
+    "desmagatzem.confirm.quantities": {
+        "ca": "La quantitat actual és <b>{current}</b> i la nova serà <b>{new}</b>.<br><br>",
+        "es": "La cantidad actual es <b>{current}</b> y la nueva será <b>{new}</b>.<br><br>",
+        "en": "The current quantity is <b>{current}</b> and the new one will be <b>{new}</b>.<br><br>",
+        "fr": "La quantité actuelle est <b>{current}</b> et la nouvelle sera <b>{new}</b>.<br><br>",
+    },
     "desmagatzem.confirm.increase": {
         "ca": "Confirmes augmentar la quantitat? Es registrarà a l'històric.",
         "es": "¿Confirmas aumentar la cantidad? Se registrará en el histórico.",
