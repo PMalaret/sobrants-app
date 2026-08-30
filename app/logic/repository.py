@@ -127,6 +127,15 @@ class Repository:
     # ------------------------------------------------------------------ #
     # Panell principal (fulla "Hoja1" + "llista")
     # ------------------------------------------------------------------ #
+    def count_pieces(self) -> int:
+        """Quantes peces hi ha al Tauler en total, sumant les de totes les
+        posicions (cada fila de `pieces` és una peça).
+
+        Es compta a la base de dades, no a la pantalla: no depèn de què hi
+        hagi pintat, ni de l'scroll, ni de cap filtre.
+        """
+        return self.conn.execute("SELECT COUNT(*) FROM pieces").fetchone()[0]
+
     def get_board(self) -> list[dict]:
         """Resum per posició mostrat al panell (ActualitzarUltimesCoincidencies)."""
         all_pieces = self._all_pieces_by_position()

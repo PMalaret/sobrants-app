@@ -7,7 +7,7 @@ Python + PySide6 (Qt), con los datos en una base de datos SQLite local
 (catalán, castellano, inglés, francés)**, con selector en el menú
 "🌐 Idioma/Language/Langue" (se recuerda entre arranques en
 `SobrantsData/settings.json`); toda la traducción vive en `app/i18n.py`,
-con las 242 claves siempre en los 4 idiomas a la vez (cualquier cadena
+con las 243 claves siempre en los 4 idiomas a la vez (cualquier cadena
 nueva que se añada debe seguir esa misma regla). Esta documentación y los
 comentarios del código quedan en castellano por continuidad con el resto
 del proyecto.
@@ -26,6 +26,13 @@ del proyecto.
 Ver `docs/ANALISIS_VBA.md` para el mapeo detallado macro por macro.
 
 ### Diseño del Tauler
+
+Arriba a la derecha, a la izquierda del indicador de USB, va el **total de
+piezas** del tablero (`Repository.count_pieces`, un `COUNT(*)` sobre
+`pieces`): la suma de las piezas de todas las posiciones, no cuántas
+posiciones hay ocupadas. Sale de la base de datos, así que no depende del
+scroll ni de lo que esté pintado, y se recalcula solo con cualquier cambio
+de datos y al cambiar de pestaña.
 
 Las 61 posiciones se muestran en 3 bloques de columnas lado a lado (1-27,
 28-54, 55-61) para que quepan todas a la vista sin scroll — igual que

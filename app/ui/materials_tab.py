@@ -8,6 +8,8 @@ per error.
 """
 from __future__ import annotations
 
+from PySide6.QtCore import Signal
+
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
@@ -77,6 +79,10 @@ class _AddMaterialDialog(QDialog):
 
 
 class MaterialsTab(QWidget):
+    # Perquè la finestra pugui refrescar el que depengui del catàleg
+    # (ara mateix, el comptador de peces del Tauler).
+    data_changed = Signal()
+
     def __init__(self, repo: Repository, parent=None):
         super().__init__(parent)
         self.repo = repo
@@ -170,6 +176,7 @@ class MaterialsTab(QWidget):
             self.repo.add_material(code, description, overwrite=True)
 
         self.refresh()
+        self.data_changed.emit()
         dialogs.info(self, t("common.done"), t("materials.add.success"))
 
     def _on_delete_material(self):
@@ -203,4 +210,5 @@ class MaterialsTab(QWidget):
             return
 
         self.refresh()
+        self.data_changed.emit()
         dialogs.info(self, t("common.done"), t("materials.delete.success"))

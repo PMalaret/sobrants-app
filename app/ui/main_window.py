@@ -4,12 +4,13 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from PySide6.QtCore import QTimer, QUrl
+from PySide6.QtCore import QLocale, Qt, QTimer, QUrl
 from PySide6.QtGui import QAction, QActionGroup, QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
     QHBoxLayout,
+    QLabel,
     QMainWindow,
     QPushButton,
     QStackedWidget,
@@ -37,6 +38,12 @@ from app.ui.materials_tab import MaterialsTab
 from app.ui.password_dialog import ChangePasswordDialog, ask_password
 from app.ui.usb_indicator import UsbIndicator
 from app.version import APP_VERSION
+
+
+def _format_number(value: int) -> str:
+    """El número amb els separadors de milers de l'idioma de l'aplicació
+    (1.248 en català i castellà, 1,248 en anglès...)."""
+    return QLocale(i18n.get_language()).toString(value)
 
 # Cada quantes hores es fa la còpia automàtica. 4 per defecte, igual que
 # IniciarBackupAutomatic a l'original, però ara es pot canviar des de
@@ -88,6 +95,9 @@ class MainWindow(QMainWindow):
         self.materials_tab = MaterialsTab(self.repo)
         self.desmagatzem_tab = DesmagatzemTab(self.repo)
         self.board_tab.data_changed.connect(self.historic_tab.refresh)
+        # El comptador de peces es refresca amb qualsevol canvi de dades.
+        for tab in (self.board_tab, self.desmagatzem_tab, self.materials_tab):
+            tab.data_changed.connect(self.refresh_piece_count)
         self.desmagatzem_tab.data_changed.connect(self.historic_tab.refresh)
         # Els botons d'imprimir viuen dins de les pestanyes, però el flux
         # d'impressió segueix sent el mateix d'aquí.
@@ -154,9 +164,16 @@ class MainWindow(QMainWindow):
         status.showMessage(t("status.db", path=self.db_path))
 
     def _add_action_buttons(self, layout):
-        """Botons grans amb icona i color, arraconats a la dreta de la
-        mateixa fila que les pestanyes, amb l'indicador d'USB al davant
-        (just on abans hi havia el botó de còpia de seguretat)."""
+        """El que va a la dreta de la fila de les pestanyes: el total de
+        peces del Tauler i, al seu costat, l'indicador d'USB."""
+        # Total de peces, a l'esquerra de la icona d'USB. Ve de la base de
+        # dades (`Repository.count_pieces`), no del que hi hagi pintat.
+        self.pieces_label = QLabel()
+        self.pieces_label.setStyleSheet("font-size: 13px; font-weight: 600; color: #1a1a1a;")
+        self.pieces_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        layout.addWidget(self.pieces_label)
+        self.refresh_piece_count()
+
         self.usb_indicator = UsbIndicator()
         layout.addWidget(self.usb_indicator)
         for label_key, emoji, color, slot_name in ACTION_BUTTONS:
@@ -179,11 +196,19 @@ class MainWindow(QMainWindow):
             button.clicked.connect(getattr(self, slot_name))
             layout.addWidget(button)
 
+    def refresh_piece_count(self):
+        """Torna a comptar les peces i ho ensenya. Es crida cada cop que
+        alguna cosa pot haver-les canviat (altes, baixes, trasllats, canvis
+        de quantitat, importacions...) i en canviar de pestanya."""
+        count = self.repo.count_pieces()
+        self.pieces_label.setText(t("board.piece_count", count=_format_number(count)))
+
     def _on_tab_changed(self, index: int):
         self._stack.setCurrentIndex(index)
         widget = self._stack.widget(index)
         if hasattr(widget, "refresh"):
             widget.refresh()
+        self.refresh_piece_count()
 
     def _build_menu(self):
         menu = self.menuBar().addMenu(t("menu.file"))

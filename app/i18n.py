@@ -175,6 +175,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "tab.materials": {"ca": "Materials", "es": "Materiales", "en": "Materials", "fr": "Matériaux"},
 
     # -- Tauler ------------------------------------------------------------ #
+    "board.piece_count": {
+        "ca": "{count} peces", "es": "{count} piezas",
+        "en": "{count} pieces", "fr": "{count} pièces",
+    },
     "board.field.position": {"ca": "Pos.", "es": "Pos.", "en": "Pos.", "fr": "Pos."},
     "board.field.code": {
         "ca": "Núm.", "es": "Núm.", "en": "No.", "fr": "N°",
