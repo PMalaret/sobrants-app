@@ -56,6 +56,15 @@ from app.logic import rules
 from app.logic.repository import DuplicateMaterialError, PositionFullError, Repository, RuleViolation
 from app.ui import dialogs
 
+# Marc fi només al voltant del trasllat (número + botó), a joc amb la
+# vora del panell.
+_MOVE_GROUP_STYLE = """
+QFrame#moveGroup {
+    border: 1px solid #c7cad1;
+    border-radius: 6px;
+}
+"""
+
 _PANEL_STYLE = """
 QFrame#positionPanel {
     background-color: #ffffff;
@@ -121,8 +130,8 @@ class PositionPanel(QFrame):
 
     def _build_ui(self):
         self._outer = QVBoxLayout(self)
-        self._outer.setContentsMargins(8, 6, 8, 6)
-        self._outer.setSpacing(4)
+        self._outer.setContentsMargins(8, 4, 8, 4)
+        self._outer.setSpacing(3)
 
         self._stack = QStackedWidget()
         self._outer.addWidget(self._stack)
@@ -267,17 +276,28 @@ class PositionPanel(QFrame):
         self.delete_button.clicked.connect(self._on_delete_last_piece)
         # S'activa/desactiva segons quina fila queda seleccionada.
         self.detail_table.currentCellChanged.connect(self._on_current_cell_changed)
-        self.move_target = QSpinBox()
-        self.move_target.setRange(1, 61)
+        # El trasllat, dins d'un marc fi: el botó i el número al qual
+        # s'envia la peça són una sola cosa i es llegeixen millor agrupats.
+        # El marc és només per a aquests dos (ni el cercador ni Esborrar).
+        self.move_group = QFrame()
+        self.move_group.setObjectName("moveGroup")
+        self.move_group.setStyleSheet(_MOVE_GROUP_STYLE)
+        move_group_row = QHBoxLayout(self.move_group)
+        move_group_row.setContentsMargins(6, 2, 6, 2)   # una mica d'aire per dins
+        move_group_row.setSpacing(6)
         self.move_button = QPushButton(t("position.move_button"))
         self.move_button.setStyleSheet(compact_button_style)
         self.move_button.clicked.connect(self._on_move_piece)
+        self.move_target = QSpinBox()
+        self.move_target.setRange(1, 61)
+        move_group_row.addWidget(self.move_button, 1)
+        move_group_row.addWidget(self.move_target)
+
         move_row.addWidget(self.delete_button, 0)
         # Una mica d'aire entre Esborrar i Moure: són dues accions molt
         # diferents i enganxades es podien confondre en clicar.
         move_row.addSpacing(12)
-        move_row.addWidget(self.move_button, 1)
-        move_row.addWidget(self.move_target)
+        move_row.addWidget(self.move_group, 1)
         layout.addLayout(move_row)
         # Sense stretch aquí: l'espai sobrant s'ha de quedar tot avall de
         # tot el panell (sota el de cerca), no just després del trasllat.
@@ -576,6 +596,22 @@ class PositionPanel(QFrame):
 
     def _on_move_piece(self):
         target = self.move_target.value()
+        # Moure una peça de lloc no es desfà: primer es pregunta. El
+        # diàleg és el mateix de tota l'aplicació (`dialogs.confirm`, amb
+        # Cancel·lar per defecte), i si es cancel·la no es toca res.
+        piece = rules.board_summary_piece(self.repo.get_position_detail(self.position))
+        if not dialogs.confirm(
+            self,
+            t("position.confirm_move.title"),
+            t(
+                "position.confirm_move.text",
+                code=piece["material_code"] if piece else "—",
+                desc=piece["material_desc"] if piece else "—",
+                from_pos=self.position,
+                to_pos=target,
+            ),
+        ):
+            return
         try:
             result = self.repo.move_piece(self.position, target)
         except RuleViolation as exc:

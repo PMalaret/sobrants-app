@@ -64,6 +64,18 @@ def ask_text(parent: QWidget, title: str, label: str, password: bool = False) ->
     return dialog.textValue(), accepted
 
 
+def ask_choice(parent: QWidget, title: str, label: str, options: list[str]) -> tuple[str, bool]:
+    """Triar un element d'una llista, amb Acceptar/Cancel·lar traduïts."""
+    dialog = QInputDialog(parent)
+    dialog.setWindowTitle(title)
+    dialog.setLabelText(label)
+    dialog.setComboBoxItems(options)
+    dialog.setOkButtonText(t("common.ok"))
+    dialog.setCancelButtonText(t("common.cancel"))
+    accepted = dialog.exec() == QInputDialog.Accepted
+    return dialog.textValue(), accepted
+
+
 def ask_int(
     parent: QWidget, title: str, label: str, value: int, minimum: int, maximum: int
 ) -> tuple[int, bool]:

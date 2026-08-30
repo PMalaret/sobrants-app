@@ -7,7 +7,7 @@ Python + PySide6 (Qt), con los datos en una base de datos SQLite local
 (catalán, castellano, inglés, francés)**, con selector en el menú
 "🌐 Idioma/Language/Langue" (se recuerda entre arranques en
 `SobrantsData/settings.json`); toda la traducción vive en `app/i18n.py`,
-con las 219 claves siempre en los 4 idiomas a la vez (cualquier cadena
+con las 237 claves siempre en los 4 idiomas a la vez (cualquier cadena
 nueva que se añada debe seguir esa misma regla). Esta documentación y los
 comentarios del código quedan en castellano por continuidad con el resto
 del proyecto.
@@ -182,10 +182,28 @@ datos y las copias de seguridad automáticas.
 
 ## Copias de seguridad
 
-Automáticas al cerrar la aplicación y cada X horas (4 por defecto,
-configurable en **Copias de seguridad → Interval de còpies automàtiques**; el valor se
-guarda en `settings.json` y se mantiene entre arranques), en
-`SobrantsData/Backups/` (se conservan las 10 más recientes).
+Automáticas al cerrar la aplicación y cada X horas. Todo se configura en
+**Copias de seguridad → Configuración** (`app/ui/backup_dialog.py`), pide la
+contraseña de administrador y se guarda en `settings.json`:
+
+- **carpeta de destino**, elegida con el selector nativo (por defecto
+  `SobrantsData/Backups/`);
+- **nombre** de las copias: siempre `AAAAMMDDHHMM_<nombre>.db`, con la
+  fecha delante para que ordenar por nombre sea ordenar por fecha;
+- **cada cuántas horas** se hacen (4 por defecto).
+
+Se conservan las 10 más recientes —y la rotación solo borra ficheros con el
+patrón de la aplicación, nunca otros `.db` que haya en esa carpeta—. Nunca
+se sobrescribe una copia anterior (dos copias del mismo minuto quedan como
+`…-2.db`) y cada copia se verifica (existe y mide lo mismo que el original)
+antes de darla por buena.
+
+**Copia doble en USB**: si hay una unidad extraíble conectada, se hace una
+segunda copia idéntica en `SobrantsBackups/` dentro del USB. Si no hay USB,
+o si el USB falla, la copia principal se hace igualmente y el mensaje dice
+exactamente qué ha pasado — nunca dice "duplicada" si no lo está. Con más
+de un USB, la copia manual pregunta cuál; la automática usa el primero y no
+pregunta nunca nada.
 
 Todo lo de las copias vive en su propio menú, **Copias de seguridad**
 (entre Archivo e Idioma). La copia manual está ahí y pide la
@@ -219,13 +237,23 @@ Menú **Importar** (entre Archivo y Copias de seguridad),
 
 ## Imprimir
 
-**Imprimir tauler** e **Imprimir desmagatzem** abren el diálogo de
-impresión **nativo** del sistema (`QPrintDialog`) y pintan el mismo
-contenido y formato de siempre en la impresora elegida —incluida
-"imprimir a PDF", si el sistema la ofrece—. No se crea ningún fichero
-temporal por el camino. Cancelar no hace nada; un fallo de la impresora se
-avisa. El dibujo es compartido (`export._paint_widget_on_printer`), así que
-la generación del PDF y la impresión no se duplican.
+Cada botón vive en su pestaña: **Imprimir tauler** debajo del buscador del
+Tauler, e **Imprimir desmagatzem** en la fila de acciones de Desmagatzem.
+Los dos abren el diálogo de impresión **nativo** del sistema
+(`QPrintDialog`) —donde se puede elegir "imprimir a PDF"— y ninguno crea
+ficheros temporales. Cancelar no hace nada; un fallo de la impresora se
+avisa.
+
+Son dos formas distintas a propósito:
+
+- El **Tauler** es una imagen: se imprime tal como se ve
+  (`export._paint_widget_on_printer`, el mismo dibujo que ya generaba el PDF).
+- **Desmagatzem** es un **informe**: `export.print_table_report` compone
+  todas las filas de la tabla en un `QTextDocument` (HTML con `<thead>`),
+  así que Qt las reparte en páginas, repite la cabecera en cada una y no
+  parte filas. No depende del scroll ni de lo que se vea: si hay 500
+  registros se imprimen los 500, en horizontal y respetando el orden que
+  haya elegido el usuario en las cabeceras.
 
 ## Histórico: sin límite de filas, y cómo se limpia
 

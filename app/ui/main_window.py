@@ -19,15 +19,17 @@ from PySide6.QtWidgets import (
 )
 
 from app import i18n, settings
-from app.backup import create_backup
+from app.backup import create_backup, run_backup
 from app.data.db import connect
-from app.export import covered_materials_report_text, print_widget
+from app.export import covered_materials_report_text, print_table_report, print_widget
 from app.i18n import t
 from app.logic.repository import Repository
 from app.security import ADMIN
 from app.ui import dialogs
 from app.ui.about_dialog import AboutDialog
+from app.ui.backup_dialog import BackupSettingsDialog, backup_folder, backup_prefix
 from app.ui.import_actions import import_from_database, import_from_excel
+from app.ui.usb_indicator import removable_drives
 from app.ui.board_tab import BoardTab
 from app.ui.desmagatzem_tab import DesmagatzemTab
 from app.ui.historic_tab import HistoricTab
@@ -50,11 +52,10 @@ BACKUP_INTERVAL_SETTING = "backup_interval_hours"
 # llegir un menú de text pla. (clau de traducció, emoji, color, mètode a cridar)
 # La còpia de seguretat ja no hi és: ara demana contrasenya i viu només al
 # menú Fitxer; al seu lloc, a la fila, hi ha l'indicador d'USB.
+# Els dos botons d'imprimir ja no són aquí: cadascun viu dins de la seva
+# pestanya (sota el cercador del Tauler i a la fila d'accions de
+# Desmagatzem), que és on l'usuari els busca.
 ACTION_BUTTONS = [
-    # Imprimir: obren el diàleg d'impressió del sistema (abans desaven un
-    # PDF a un fitxer; el PDF es pot seguir fent triant-lo com a impressora).
-    ("action.print_board", "🖨️", "#1a9c6d", "_print_board"),
-    ("action.print_desmagatzem", "🖨️", "#c9852b", "_print_desmagatzem"),
     # Ull: "materials tapats" és veure els que queden amagats darrere d'un altre.
     ("action.covered", "👁️", "#c62828", "_show_covered_report"),
 ]
@@ -91,6 +92,10 @@ class MainWindow(QMainWindow):
         self.desmagatzem_tab = DesmagatzemTab(self.repo)
         self.board_tab.data_changed.connect(self.historic_tab.refresh)
         self.desmagatzem_tab.data_changed.connect(self.historic_tab.refresh)
+        # Els botons d'imprimir viuen dins de les pestanyes, però el flux
+        # d'impressió segueix sent el mateix d'aquí.
+        self.board_tab.print_requested.connect(self._print_board)
+        self.desmagatzem_tab.print_requested.connect(self._print_desmagatzem)
         # Els cercadors del Tauler també ressalten coincidències a
         # Desmagatzem amb el mateix color (igual que l'original). Netejar
         # un camp de cerca (text buit) ja neteja el ressaltat corresponent
@@ -265,33 +270,79 @@ class MainWindow(QMainWindow):
     def _apply_backup_interval(self):
         self._backup_timer.start(self.backup_interval_hours() * 60 * 60 * 1000)
 
+    def _backup_folder(self):
+        from app.backup import default_backups_dir
+
+        return backup_folder(self.db_path, default_backups_dir(self.db_path))
+
+    def _usb_root(self, ask: bool = False):
+        """Quin USB fer servir per a la segona còpia, o None si no n'hi ha.
+
+        Amb un de sol, aquell. Amb més d'un: si es pot preguntar (còpia
+        manual) es deixa triar, i si no (còpia automàtica) s'agafa el
+        primer per ordre, que és un criteri estable i previsible.
+        """
+        drives = removable_drives()
+        if not drives:
+            return None
+        if len(drives) == 1 or not ask:
+            return drives[0]
+        choice, ok = dialogs.ask_choice(
+            self, t("backup.usb.pick.title"), t("backup.usb.pick.text"), drives
+        )
+        return choice if ok else None
+
+    def _do_backup(self, ask_usb: bool) -> "BackupResult":
+        """La còpia tal com la fa l'aplicació, amb la carpeta i el nom
+        configurats i la segona còpia al USB si n'hi ha."""
+        return run_backup(
+            self.db_path,
+            backups_dir=self._backup_folder(),
+            prefix=backup_prefix(),
+            usb_root=self._usb_root(ask=ask_usb),
+        )
+
     def _manual_backup(self):
-        # Protegida amb la contrasenya de l'aplicació: si no és correcta no
+        # Protegida amb la contrasenya d'administrador: si no és correcta no
         # se'n comença cap part (es surt abans de tocar cap fitxer).
         if not ask_password(self, ADMIN, t("password.label_backup"), t("password.wrong.text_backup")):
             return
-        dest = create_backup(self.db_path)
-        dialogs.info(self, t("dialog.backup.title"), t("dialog.backup.text", path=dest))
+        result = self._do_backup(ask_usb=True)
+        if not result.ok:
+            dialogs.error(
+                self, t("dialog.backup.error.title"),
+                t("dialog.backup.error.text", error="; ".join(result.errors)),
+            )
+            return
+        # Es diu exactament què ha passat: mai "duplicada" si no ho és.
+        if result.duplicated:
+            text = t("dialog.backup.text_usb", path=result.main_path, usb=result.usb_path)
+        elif result.usb_error:
+            text = t("dialog.backup.text_usb_failed", path=result.main_path, error=result.usb_error)
+        else:
+            text = t("dialog.backup.text", path=result.main_path)
+        dialogs.info(self, t("dialog.backup.title"), text)
 
     def _change_backup_interval(self):
-        """La contrasenya protegeix la CONFIGURACIÓ de les còpies
-        automàtiques; un cop desada, les còpies programades es fan soles
-        quan toca, sense demanar-la (i sense haver-la de desar enlloc)."""
+        """Configuració de les còpies: on van, com es diuen i cada quantes
+        hores es fan. La contrasenya protegeix la CONFIGURACIÓ; un cop
+        desada, les còpies programades es fan soles quan toca, sense
+        demanar-la (i sense haver-la de desar enlloc)."""
         if not ask_password(self, ADMIN, t("password.label_interval"), t("password.wrong.text_generic")):
             return
-        hours, ok = dialogs.ask_int(
-            self,
-            t("backup.interval.title"),
-            t("backup.interval.label", min=MIN_BACKUP_INTERVAL_HOURS, max=MAX_BACKUP_INTERVAL_HOURS),
+        from app.backup import default_backups_dir
+
+        dialog = BackupSettingsDialog(
+            default_backups_dir(self.db_path),
             self.backup_interval_hours(),
             MIN_BACKUP_INTERVAL_HOURS,
             MAX_BACKUP_INTERVAL_HOURS,
+            self,
         )
-        if not ok:
+        if dialog.exec() != BackupSettingsDialog.Accepted:
             return
-        settings.set_value(BACKUP_INTERVAL_SETTING, hours)
         self._apply_backup_interval()
-        dialogs.info(self, t("common.done"), t("backup.interval.done", hours=hours))
+        dialogs.info(self, t("common.done"), t("backup.settings.done", folder=self._backup_folder()))
 
     def _change_password(self):
         """Un sol diàleg per a les DUES contrasenyes (còpies de seguretat i
@@ -301,11 +352,14 @@ class MainWindow(QMainWindow):
         ChangePasswordDialog(self).exec()
 
     def _auto_backup(self):
+        """Còpia programada: mai demana res (ni contrasenya ni quin USB) i
+        mai interromp la feina si falla."""
         try:
-            create_backup(self.db_path)
-            self.statusBar().showMessage(t("status.db_backed_up", path=self.db_path), 5000)
+            result = self._do_backup(ask_usb=False)
         except OSError:
-            pass  # backup silenciós; no s'interromp la feina si falla
+            return
+        if result.ok:
+            self.statusBar().showMessage(t("status.db_backed_up", path=result.main_path), 5000)
 
     def _ensure_tab_laid_out(self, tab_widget: QWidget):
         """Els botons d'exportar es poden clicar des de qualsevol pestanya
@@ -330,7 +384,17 @@ class MainWindow(QMainWindow):
         self._print(self.board_tab, self.board_tab)
 
     def _print_desmagatzem(self):
-        self._print(self.desmagatzem_tab, self.desmagatzem_tab.table)
+        """Desmagatzem s'imprimeix com un INFORME, no com una captura: es
+        demanen a la pestanya totes les files de la taula (hi hagi scroll
+        o no) i es componen en pàgines amb la capçalera repetida."""
+        headers, rows = self.desmagatzem_tab.printable_rows()
+        try:
+            printed = print_table_report(t("tab.desmagatzem"), headers, rows, self)
+        except Exception as exc:  # noqa: BLE001 - qualsevol problema de la impressora
+            dialogs.error(self, t("print.error.title"), t("print.error.detail", error=exc))
+            return
+        if printed:
+            self.statusBar().showMessage(t("print.sent"), 5000)
 
     def _print(self, tab: QWidget, widget: QWidget):
         """Flux d'impressió comú als dos botons: preparar el que s'ha
@@ -387,7 +451,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         try:
-            create_backup(self.db_path)
+            self._do_backup(ask_usb=False)
         except OSError:
             pass
         super().closeEvent(event)

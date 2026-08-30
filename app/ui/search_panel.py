@@ -71,7 +71,7 @@ class SearchPanel(QWidget):
         super().__init__(parent)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(4)
+        layout.setSpacing(2)
 
         # {mode: {clau del resultat: QLabel del valor}}, per poder-los
         # actualitzar des de set_result sense tornar a construir res.
@@ -153,7 +153,7 @@ class SearchPanel(QWidget):
         accent = SEARCH_COLORS[mode]
         edit.setStyleSheet(
             f"background-color: {bg_color}; color: #1a1a1a; border: 1px solid #999; "
-            f"border-left: 4px solid {accent}; border-radius: 3px; padding: 3px 6px; font-size: 12px;"
+            f"border-left: 4px solid {accent}; border-radius: 3px; padding: 1px 6px; font-size: 12px;"
         )
 
     def set_result(self, mode: str, count, oldest, qty, has_match: bool = False):

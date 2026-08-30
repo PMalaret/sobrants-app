@@ -731,6 +731,105 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ca": "Enviat a la impressora.", "es": "Enviado a la impresora.",
         "en": "Sent to the printer.", "fr": "Envoyé à l'imprimante.",
     },
+    "position.confirm_move.title": {
+        "ca": "Moure la peça", "es": "Mover la pieza",
+        "en": "Move the piece", "fr": "Déplacer la pièce",
+    },
+    "position.confirm_move.text": {
+        "ca": "Segur que vols moure aquesta peça de la posició {from_pos} a la {to_pos}?\n\nNúm. {code} — {desc}",
+        "es": "¿Seguro que quieres mover esta pieza de la posición {from_pos} a la {to_pos}?\n\nNúm. {code} — {desc}",
+        "en": "Are you sure you want to move this piece from position {from_pos} to {to_pos}?\n\nNo. {code} — {desc}",
+        "fr": "Voulez-vous vraiment déplacer cette pièce de la position {from_pos} vers {to_pos} ?\n\nN° {code} — {desc}",
+    },
+    "print.report.subtitle": {
+        "ca": "{count} línies — {datetime}", "es": "{count} líneas — {datetime}",
+        "en": "{count} rows — {datetime}", "fr": "{count} lignes — {datetime}",
+    },
+    "backup.settings.title": {
+        "ca": "Configuració de les còpies de seguretat",
+        "es": "Configuración de las copias de seguridad",
+        "en": "Backup settings", "fr": "Configuration des sauvegardes",
+    },
+    "backup.settings.folder": {
+        "ca": "Carpeta de còpies:", "es": "Carpeta de copias:",
+        "en": "Backups folder:", "fr": "Dossier des sauvegardes :",
+    },
+    "backup.settings.pick_folder": {
+        "ca": "Seleccionar carpeta", "es": "Seleccionar carpeta",
+        "en": "Choose folder", "fr": "Choisir le dossier",
+    },
+    "backup.settings.name": {
+        "ca": "Nom de les còpies:", "es": "Nombre de las copias:",
+        "en": "Backup name:", "fr": "Nom des sauvegardes :",
+    },
+    "backup.settings.example": {
+        "ca": "Quedaran com: {name}", "es": "Quedarán como: {name}",
+        "en": "They will be named: {name}", "fr": "Elles seront nommées : {name}",
+    },
+    "backup.settings.interval": {
+        "ca": "Cada quantes hores:", "es": "Cada cuántas horas:",
+        "en": "How often:", "fr": "Fréquence :",
+    },
+    "backup.settings.usb": {
+        "ca": "USB:", "es": "USB:", "en": "USB:", "fr": "USB :",
+    },
+    "backup.settings.usb_found": {
+        "ca": "Connectat ({drives}): se n'hi farà una segona còpia",
+        "es": "Conectado ({drives}): se hará una segunda copia",
+        "en": "Connected ({drives}): a second copy will be made there",
+        "fr": "Connecté ({drives}) : une deuxième copie y sera faite",
+    },
+    "backup.settings.usb_missing": {
+        "ca": "Cap USB connectat: la còpia es farà només a la carpeta",
+        "es": "Ningún USB conectado: la copia se hará solo en la carpeta",
+        "en": "No USB connected: the backup will only go to the folder",
+        "fr": "Aucun USB connecté : la sauvegarde ira seulement dans le dossier",
+    },
+    "backup.settings.folder_error.title": {
+        "ca": "Carpeta no disponible", "es": "Carpeta no disponible",
+        "en": "Folder not available", "fr": "Dossier non disponible",
+    },
+    "backup.settings.folder_error.text": {
+        "ca": "No s'ha pogut fer servir «{folder}». Tria'n una altra.\n\n{error}",
+        "es": "No se ha podido usar «{folder}». Elige otra.\n\n{error}",
+        "en": "«{folder}» could not be used. Choose another one.\n\n{error}",
+        "fr": "« {folder} » n'a pas pu être utilisé. Choisissez-en un autre.\n\n{error}",
+    },
+    "backup.settings.done": {
+        "ca": "Les còpies aniran a: {folder}", "es": "Las copias irán a: {folder}",
+        "en": "Backups will go to: {folder}", "fr": "Les sauvegardes iront vers : {folder}",
+    },
+    "backup.usb.pick.title": {
+        "ca": "Quin USB?", "es": "¿Qué USB?", "en": "Which USB?", "fr": "Quel USB ?",
+    },
+    "backup.usb.pick.text": {
+        "ca": "Hi ha més d'un USB connectat. On vols la segona còpia?",
+        "es": "Hay más de un USB conectado. ¿Dónde quieres la segunda copia?",
+        "en": "More than one USB is connected. Where do you want the second copy?",
+        "fr": "Plusieurs USB sont connectés. Où voulez-vous la deuxième copie ?",
+    },
+    "dialog.backup.text_usb": {
+        "ca": "Còpia feta per duplicat:\n  Carpeta: {path}\n  USB: {usb}",
+        "es": "Copia hecha por duplicado:\n  Carpeta: {path}\n  USB: {usb}",
+        "en": "Backup made twice:\n  Folder: {path}\n  USB: {usb}",
+        "fr": "Sauvegarde faite en double :\n  Dossier : {path}\n  USB : {usb}",
+    },
+    "dialog.backup.text_usb_failed": {
+        "ca": "Còpia feta NOMÉS a la carpeta:\n{path}\n\nNo s'ha pogut copiar al USB: {error}",
+        "es": "Copia hecha SOLO en la carpeta:\n{path}\n\nNo se ha podido copiar al USB: {error}",
+        "en": "Backup made ONLY in the folder:\n{path}\n\nIt could not be copied to the USB: {error}",
+        "fr": "Sauvegarde faite SEULEMENT dans le dossier :\n{path}\n\nImpossible de copier sur l'USB : {error}",
+    },
+    "dialog.backup.error.title": {
+        "ca": "No s'ha pogut fer la còpia", "es": "No se ha podido hacer la copia",
+        "en": "The backup could not be made", "fr": "La sauvegarde n'a pas pu être faite",
+    },
+    "dialog.backup.error.text": {
+        "ca": "No s'ha desat cap còpia.\n\n{error}",
+        "es": "No se ha guardado ninguna copia.\n\n{error}",
+        "en": "No backup has been saved.\n\n{error}",
+        "fr": "Aucune sauvegarde n'a été enregistrée.\n\n{error}",
+    },
     "menu.backups": {
         "ca": "&Còpies de seguretat", "es": "&Copias de seguridad",
         "en": "&Backups", "fr": "&Sauvegardes",
@@ -802,22 +901,6 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "es": "A partir de ahora, todas las acciones protegidas pedirán la contraseña nueva.",
         "en": "From now on, every protected action will ask for the new password.",
         "fr": "Désormais, toutes les actions protégées demanderont le nouveau mot de passe.",
-    },
-    "backup.interval.title": {
-        "ca": "Còpies automàtiques", "es": "Copias automáticas",
-        "en": "Automatic backups", "fr": "Sauvegardes automatiques",
-    },
-    "backup.interval.label": {
-        "ca": "Cada quantes hores es fa una còpia de seguretat? ({min}-{max})",
-        "es": "¿Cada cuántas horas se hace una copia de seguridad? ({min}-{max})",
-        "en": "How many hours between backups? ({min}-{max})",
-        "fr": "Toutes les combien d'heures faire une sauvegarde ? ({min}-{max})",
-    },
-    "backup.interval.done": {
-        "ca": "A partir d'ara es farà una còpia de seguretat cada {hours} h.",
-        "es": "A partir de ahora se hará una copia de seguridad cada {hours} h.",
-        "en": "From now on a backup will be made every {hours} h.",
-        "fr": "Désormais une sauvegarde sera faite toutes les {hours} h.",
     },
     "usb.connected": {
         "ca": "USB connectat: {drives}", "es": "USB conectado: {drives}",

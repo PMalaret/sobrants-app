@@ -21,9 +21,10 @@ widgets.
 from __future__ import annotations
 
 from datetime import datetime
+from html import escape
 
 from PySide6.QtCore import QMarginsF, Qt
-from PySide6.QtGui import QPageLayout, QPageSize, QPainter
+from PySide6.QtGui import QPageLayout, QPageSize, QPainter, QTextDocument
 from PySide6.QtPrintSupport import QPrintDialog, QPrinter
 from PySide6.QtWidgets import QWidget
 
@@ -102,6 +103,67 @@ def print_widget(widget: QWidget, parent: QWidget | None = None) -> bool:
         return False  # cancel·lat: no es fa res, i no és cap error
     _paint_widget_on_printer(widget, printer)
     return True
+
+
+def print_table_report(
+    title: str,
+    headers: list[str],
+    rows: list[list[str]],
+    parent: QWidget | None = None,
+) -> bool:
+    """Imprimeix una taula SENCERA com un informe, no com una captura.
+
+    Es fa amb un `QTextDocument`: se li dona la taula en HTML i el motor de
+    text de Qt ja s'encarrega de repartir-la en pàgines, de repetir la
+    capçalera (`<thead>`) a cada pàgina i de no partir les files pel mig.
+    Per això no depèn gens del que es vegi a la pantalla: hi surten totes
+    les files que se li passin, per moltes que siguin, i cap botó ni cap
+    altre control de l'aplicació.
+
+    Surt apaïsat (les taules són més amples que altes) i no crea cap fitxer
+    temporal: es pinta directament a la impressora que triï l'usuari al
+    diàleg del sistema. Retorna False si s'ha cancel·lat.
+    """
+    printer = QPrinter(QPrinter.HighResolution)
+    printer.setPageLayout(
+        QPageLayout(QPageSize(QPageSize.A4), QPageLayout.Landscape, QMarginsF(12, 12, 12, 12))
+    )
+    dialog = QPrintDialog(printer, parent)
+    dialog.setWindowTitle(t("print.dialog.title"))
+    if dialog.exec() != QPrintDialog.Accepted:
+        return False
+
+    document = QTextDocument()
+    document.setDefaultStyleSheet(_REPORT_STYLE)
+    document.setHtml(_report_html(title, headers, rows))
+    document.setPageSize(printer.pageRect(QPrinter.Point).size())
+    document.print_(printer)
+    return True
+
+
+_REPORT_STYLE = """
+h1 { font-size: 13pt; font-family: sans-serif; }
+p.subtitle { font-size: 8pt; color: #444; font-family: sans-serif; }
+table { border-collapse: collapse; font-family: sans-serif; font-size: 8pt; }
+th { background-color: #eef0f3; border: 1px solid #9aa0a8; padding: 3px 5px; text-align: left; }
+td { border: 1px solid #c7cad1; padding: 2px 5px; }
+"""
+
+
+def _report_html(title: str, headers: list[str], rows: list[list[str]]) -> str:
+    """La taula en HTML. `<thead>` és el que fa que Qt repeteixi la
+    capçalera a cada pàgina."""
+    head = "".join(f"<th>{escape(str(h))}</th>" for h in headers)
+    body = "".join(
+        "<tr>" + "".join(f"<td>{escape('' if v is None else str(v))}</td>" for v in row) + "</tr>"
+        for row in rows
+    )
+    now = datetime.now().strftime("%d/%m/%Y %H:%M")
+    return (
+        f"<h1>{escape(title)}</h1>"
+        f"<p class='subtitle'>{escape(t('print.report.subtitle', count=len(rows), datetime=now))}</p>"
+        f"<table width='100%'><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>"
+    )
 
 
 def covered_materials_report_text(repo: Repository) -> str:

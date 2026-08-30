@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QPushButton,
     QSizePolicy,
     QStyledItemDelegate,
     QTableWidget,
@@ -112,6 +113,10 @@ class _BoardGridDelegate(QStyledItemDelegate):
 
 class BoardTab(QWidget):
     data_changed = Signal()
+    # El botó d'imprimir viu en aquesta pestanya, però qui imprimeix
+    # segueix sent la finestra (`MainWindow._print_board`), que ja té el
+    # flux comú d'impressió: aquí només s'avisa.
+    print_requested = Signal()
 
     def __init__(self, repo: Repository, parent=None):
         super().__init__(parent)
@@ -184,7 +189,19 @@ class BoardTab(QWidget):
         # creuat de Desmagatzem (mateixos colors de cerca que el tauler).
         self.search_panel = SearchPanel()
         self.search_panel.search_changed.connect(self._on_search_changed)
-        self.position_panel.add_footer(self.search_panel)
+        # Sota el cercador, el botó d'imprimir el tauler: viu aquí dins (no
+        # a la fila d'accions de la finestra) i, com que la pestanya és
+        # visible quan s'hi clica, el que s'imprimeix ja té la mida bona.
+        footer = QWidget()
+        footer_layout = QVBoxLayout(footer)
+        footer_layout.setContentsMargins(0, 0, 0, 0)
+        footer_layout.setSpacing(3)
+        footer_layout.addWidget(self.search_panel)
+        self.print_button = QPushButton(f"\U0001f5a8\ufe0f  {t('action.print_board')}")
+        self.print_button.setStyleSheet("padding: 2px 10px; font-size: 12px;")
+        self.print_button.clicked.connect(self.print_requested.emit)
+        footer_layout.addWidget(self.print_button)
+        self.position_panel.add_footer(footer)
         self._search_state: dict[str, str] = {}
 
     def _configure_column_widths(self):

@@ -74,6 +74,9 @@ class DesmagatzemTab(QWidget):
     # els canvis de quantitat hi deixen línies): ja no hi ha cap botó
     # d'actualitzar a l'Històric.
     data_changed = Signal()
+    # Imprimir la taula: el botó és aquí, però el flux d'impressió comú
+    # segueix a `MainWindow._print_desmagatzem`.
+    print_requested = Signal()
 
     # Columna de la taula (Quantitat, Núm., Material, Mides, Carro/lot, Data)
     # que ressalta cada cercador — igual que B/C/E a la fulla desmagatzem
@@ -213,6 +216,9 @@ class DesmagatzemTab(QWidget):
         self.new_qty_input = QSpinBox()
         self.new_qty_input.setRange(rules.DESMAGATZEM_QTY_MIN, rules.DESMAGATZEM_QTY_MAX)
         qty_row.addWidget(self.new_qty_input)
+        self.print_button = QPushButton(f"\U0001f5a8\ufe0f  {t('action.print_desmagatzem')}")
+        self.print_button.clicked.connect(self.print_requested.emit)
+
         self.update_qty_button = QPushButton(t("desmagatzem.apply_qty"))
         self.update_qty_button.clicked.connect(self._on_update_qty)
         # Només té sentit amb una línia triada: desactivat mentre no n'hi
@@ -234,7 +240,30 @@ class DesmagatzemTab(QWidget):
             self._delete_shortcuts.append(shortcut)
         qty_row.addWidget(self.update_qty_button)
         qty_row.addStretch()
+        # Zona d'accions de la pestanya: imprimir la taula sencera.
+        qty_row.addWidget(self.print_button)
         layout.addLayout(qty_row)
+
+    def printable_rows(self) -> tuple[list[str], list[list[str]]]:
+        """Capçaleres i TOTES les files de la taula, en l'ordre en què es
+        veuen (l'ordenació que hagi triat l'usuari clicant una capçalera).
+
+        Es llegeix de la taula, no de la pantalla: el `QTableWidget` té
+        totes les files carregades —no hi ha paginació ni virtualització—,
+        així que aquí hi surten totes, hi hagi scroll o no, i amb el mateix
+        text que es veu. Si algun dia s'hi afegís un filtre, aquest mètode
+        seguiria donant el conjunt que la taula mostra.
+        """
+        headers = self._columns()
+        rows = []
+        for r in range(self.table.rowCount()):
+            if self.table.isRowHidden(r):
+                continue
+            rows.append([
+                self.table.item(r, c).text() if self.table.item(r, c) else ""
+                for c in range(self.table.columnCount())
+            ])
+        return headers, rows
 
     def refresh(self):
         # Desactivem l'ordenació mentre omplim la taula (si no, Qt reordena
