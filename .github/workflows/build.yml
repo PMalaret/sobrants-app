@@ -1,8 +1,16 @@
 name: Compilar ejecutables
 
-# Genera el .exe de Windows, el binario de macOS y el de Linux en cada
-# push/PR, y los deja descargables como "artifacts" del workflow run.
-# Para publicarlos como Release adjunta al repo, crea un tag "v*.*.*".
+# Genera el .exe de Windows en cada push/PR y lo deja descargable como
+# "artifact" del workflow run. Para publicarlo como Release adjunta al
+# repo, crea un tag "v*.*.*".
+#
+# Sólo Windows: es el sistema donde se usa la aplicación. El código no
+# tiene nada específico de ningún sistema y sigue arrancando en macOS y
+# Linux con `python run_app.py`; quien necesite un binario para uno de
+# esos dos lo compila allí mismo con PyInstaller (README, "Opción B"),
+# porque PyInstaller no compila de forma cruzada. Para volver a generarlos
+# aquí, basta con devolver la matriz de sistemas al job `build` y sus
+# líneas al paso "Preparar assets".
 
 on:
   push:
@@ -13,7 +21,10 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Los tests corren en Windows, el mismo sistema donde se ejecuta la
+    # aplicación: así cualquier problema propio de Windows (rutas, fines
+    # de línea) sale aquí y no en la máquina del usuario.
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,16 +35,7 @@ jobs:
 
   build:
     needs: test
-    strategy:
-      matrix:
-        include:
-          - os: windows-latest
-            asset_name: Sobrants-Windows
-          - os: macos-latest
-            asset_name: Sobrants-macOS
-          - os: ubuntu-latest
-            asset_name: Sobrants-Linux
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -41,18 +43,20 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: pyinstaller sobrants.spec --noconfirm
-      # En Windows dist/Sobrants es una carpeta (modo onedir); en
-      # macOS/Linux es el binario suelto (modo onefile). En ambos casos
-      # el path de salida es el mismo.
+      # En Windows dist/Sobrants es una carpeta (modo onedir): dentro van
+      # Sobrants.exe y _internal/.
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.asset_name }}
+          name: Sobrants-Windows
           path: dist/Sobrants
 
   release:
-    # Sólo al empujar un tag "vX.Y.Z": publica los tres binarios como
-    # assets fijos de una GitHub Release (no caducan, a diferencia de
-    # los artifacts de Actions, que se borran a los 90 días).
+    # Sólo al empujar un tag "vX.Y.Z": publica el ejecutable como asset
+    # fijo de una GitHub Release (no caduca, a diferencia de los
+    # artifacts de Actions, que se borran a los 90 días).
+    #
+    # Este job no compila nada (sólo comprime y publica), así que se queda
+    # en Linux, que es el runner más barato y el que trae `zip` y `gh`.
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
@@ -70,9 +74,6 @@ jobs:
           # Release sólo admite ficheros sueltos, así que se comprime;
           # el .exe de dentro sigue sin autoextraerse a %TEMP%.
           (cd artifacts/Sobrants-Windows && zip -rq ../../release/Sobrants-Windows.zip .)
-          cp artifacts/Sobrants-macOS/Sobrants release/Sobrants-macOS
-          cp artifacts/Sobrants-Linux/Sobrants release/Sobrants-Linux
-          chmod +x release/Sobrants-macOS release/Sobrants-Linux
       - name: Publicar release
         env:
           GH_TOKEN: ${{ github.token }}

@@ -182,14 +182,19 @@ posiciones del panel y los 3 buscadores) — ver `docs/VALIDACION.md`.
 
 Este repo incluye `.github/workflows/build.yml`. Al hacer push (o
 manualmente desde la pestaña Actions → "Compilar ejecutables" → "Run
-workflow"), se generan automáticamente:
+workflow") se ejecutan los tests y se compila `Sobrants-Windows` (carpeta
+con `Sobrants.exe` y `_internal/`), descargable como artifact del run. Al
+empujar un tag `vX.Y.Z` ese mismo ejecutable se publica, comprimido, como
+`Sobrants-Windows.zip` en una GitHub Release. No hace falta tener Windows
+para obtener el `.exe`.
 
-- `Sobrants-Windows.exe`
-- `Sobrants-macOS`
-- `Sobrants-Linux`
-
-como artifacts descargables del run. No hace falta tener Windows para
-obtener el `.exe`.
+**Solo se compila Windows**, que es donde se usa la aplicación; los tests
+también corren allí, en el mismo sistema que el usuario final. El código
+no tiene nada específico de ningún sistema y sigue arrancando en macOS y
+Linux con `python run_app.py`: para tener un *binario* de esos dos hay que
+compilarlo en cada uno (opción B), porque PyInstaller no compila de forma
+cruzada. Volver a generarlos aquí es devolver la matriz de sistemas al job
+`build` del workflow.
 
 ### Opción B — Compilar localmente en cada sistema operativo
 
