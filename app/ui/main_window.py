@@ -205,15 +205,8 @@ class MainWindow(QMainWindow):
             widget.refresh()
         self.refresh_piece_count()
 
-    def _menu(self, title: str):
-        """Un menú de la barra, ja preparat perquè se li vegin les
-        cantonades arrodonides (veure `theme.prepare_menu`)."""
-        menu = self.menuBar().addMenu(title)
-        theme.prepare_menu(menu)
-        return menu
-
     def _build_menu(self):
-        menu = self._menu(t("menu.file"))
+        menu = self.menuBar().addMenu(t("menu.file"))
 
         change_password_action = menu.addAction(t("menu.change_password"))
         change_password_action.triggered.connect(self._change_password)
@@ -242,7 +235,7 @@ class MainWindow(QMainWindow):
         version_action.setEnabled(False)  # només informatiu, no cal que faci res en clicar
 
         # Menú d'importació, entre Fitxer i Còpies de seguretat.
-        import_menu = self._menu(t("menu.import"))
+        import_menu = self.menuBar().addMenu(t("menu.import"))
         import_excel_action = import_menu.addAction(t("menu.import_excel"))
         import_excel_action.triggered.connect(self._import_from_excel)
         import_db_action = import_menu.addAction(t("menu.import_database"))
@@ -251,13 +244,13 @@ class MainWindow(QMainWindow):
         # Menú propi de còpies de seguretat, entre Fitxer i Idioma: tot el
         # que hi té a veure (fer-ne una ara i cada quantes hores es fan
         # soles) en un sol lloc, i les dues protegides amb la contrasenya.
-        backup_menu = self._menu(t("menu.backups"))
+        backup_menu = self.menuBar().addMenu(t("menu.backups"))
         backup_now_action = backup_menu.addAction(t("menu.backup_now"))
         backup_now_action.triggered.connect(self._manual_backup)
         interval_action = backup_menu.addAction(t("menu.backup_interval"))
         interval_action.triggered.connect(self._change_backup_interval)
 
-        lang_menu = self._menu(f"🌐 {t('app.language')}")
+        lang_menu = self.menuBar().addMenu(f"🌐 {t('app.language')}")
         group = QActionGroup(self)
         group.setExclusive(True)
         for code, name in i18n.LANGS.items():

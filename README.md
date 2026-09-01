@@ -113,7 +113,11 @@ tabla con un fondo un poco más oscuro que la tabla —para separarlas del
 contenido de un vistazo— pero planas, sin bordes verticales ni relieve;
 barras de desplazamiento sin flechas y con el pulgar redondeado, botones y
 campos con esquinas de 8 px, anillo de foco visible al entrar en un campo, y
-menús redondeados con aire.
+menús con aire (con las opciones resaltándose en redondeado al pasar por
+encima, pero el **marco del menú cuadrado**: un menú vive dentro de una
+ventanita del sistema que es rectangular, así que si se le redondea el borde
+asoman las esquinas de esa ventanita por detrás; marcarla como transparente,
+que es la salida habitual, en Windows las deja negras).
 
 **Botones: una sola familia**, con dos propiedades que se ponen desde el
 código, nunca con un color escrito a mano en el widget:

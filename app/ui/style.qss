@@ -429,11 +429,18 @@ QMenuBar::item:selected, QMenuBar::item:pressed {
     color: $text;
 }
 
+/* El menú va amb la cantonada QUADRADA a posta, i no s'ha d'arrodonir.
+   Un menú viu dins d'una finestreta pròpia del sistema, que és
+   rectangular: si se n'arrodoneix la vora, a les quatre cantonades s'hi
+   veu el fons d'aquella finestreta com un quadrat al darrere. La sortida
+   habitual (marcar la finestreta de fons transparent) es va provar i a
+   Windows deixa les cantonades NEGRES, que encara es veu pitjor. Els
+   ítems de dins sí que van arrodonits: aquells es pinten dins del menú i
+   no toquen la vora de la finestra. */
 QMenu {
     background-color: $surface;
     color: $text;
     border: 1px solid $border;
-    border-radius: 10px;
     padding: 6px;
 }
 
