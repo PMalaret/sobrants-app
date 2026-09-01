@@ -68,16 +68,7 @@ from app.logic.repository import (
     Repository,
     RuleViolation,
 )
-from app.ui import dialogs, theme
-
-# Marc fi només al voltant del botó de trasllat, a joc amb la vora del
-# panell: el separa d'Esborrar, que és a l'altra punta de la mateixa fila.
-_MOVE_GROUP_STYLE = """
-QFrame#moveGroup {
-    border: 1px solid $border;
-    border-radius: 8px;
-}
-"""
+from app.ui import dialogs, icons, theme
 
 # Alçada de cada fila de la taula de detall. Amb lletra de 10 px, 20 px hi
 # van sobrats, i deixar-la fixa és el que fa que el panell càpiga sencer
@@ -307,11 +298,6 @@ class PositionPanel(QFrame):
             shortcut.activated.connect(self._on_delete_shortcut)
             self._delete_shortcuts.append(shortcut)
 
-        # Botons compactes: menys padding que el QPushButton global.
-        # Botons compactes, però amb la lletra una mica més gran que abans
-        # (10 -> 12 px) per llegir-los millor sense inflar-los.
-        compact_button_style = "padding: 3px 10px; font-size: 12px;"
-
         move_row = QHBoxLayout()
         move_row.setSpacing(2)
         # (la separació concreta entre Esborrar i Moure es posa més avall)
@@ -322,40 +308,33 @@ class PositionPanel(QFrame):
         # quan la fila seleccionada és l'última peça (`_can_delete_row`).
         # Paperera a l'esquerra del text, amb el mateix sistema d'icones que
         # la resta de l'aplicació (emoji dins del text del botó).
-        self.delete_button = QPushButton(f"🗑️  {t('position.delete_button')}")
-        self.delete_button.setStyleSheet(compact_button_style)
+        self.delete_button = QPushButton(t("position.delete_button"))
+        self.delete_button.setProperty("compact", "true")
+        icons.apply_to(self.delete_button, "delete")
         self.delete_button.setEnabled(False)
         self.delete_button.clicked.connect(self._on_delete_last_piece)
         # S'activa/desactiva segons quina fila queda seleccionada.
         self.detail_table.currentCellChanged.connect(self._on_current_cell_changed)
-        # El trasllat, dins d'un marc fi, a joc amb la vora del panell (el
-        # marc és només per a ell: ni el cercador ni Esborrar en porten).
-        # La posició de destí ja no s'escriu en un número al costat: es
-        # demana amb un diàleg en clicar el botó (`_on_move_piece`), així no
-        # hi ha cap número posat per omissió esperant que algú el premi
-        # sense mirar-lo.
-        self.move_group = QFrame()
-        self.move_group.setObjectName("moveGroup")
-        self.move_group.setStyleSheet(theme.css(_MOVE_GROUP_STYLE))
-        move_group_row = QHBoxLayout(self.move_group)
-        move_group_row.setContentsMargins(6, 2, 6, 2)   # una mica d'aire per dins
-        move_group_row.setSpacing(6)
+        # El trasllat: la posició de destí no s'escriu en un número al
+        # costat, es demana amb un diàleg en clicar el botó
+        # (`_on_move_piece`), així no hi ha cap número posat per omissió
+        # esperant que algú el premi sense mirar-lo.
         self.move_button = QPushButton(t("position.move_button"))
-        self.move_button.setStyleSheet(compact_button_style)
+        self.move_button.setProperty("compact", "true")
+        icons.apply_to(self.move_button, "move")
         # Igual que Esborrar: surt desactivat i només s'activa quan la fila
         # seleccionada és l'última peça de la posició (`_can_delete_row`).
         self.move_button.setEnabled(False)
         self.move_button.clicked.connect(self._on_move_piece)
         # L'ample del botó s'ajusta al seu text, no s'estira.
         self.move_button.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
-        move_group_row.addWidget(self.move_button, 0)
 
         # Esborrar a una banda i el trasllat a l'altra, amb tot l'espai
         # sobrant entremig: són dues accions molt diferents i enganxades es
         # podien confondre en clicar.
         move_row.addWidget(self.delete_button, 0)
         move_row.addStretch(1)
-        move_row.addWidget(self.move_group, 0)
+        move_row.addWidget(self.move_button, 0)
         layout.addLayout(move_row)
         # Sense stretch aquí: l'espai sobrant s'ha de quedar tot avall de
         # tot el panell (sota el de cerca), no just després del trasllat.

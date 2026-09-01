@@ -102,9 +102,34 @@ va al papel tiene que leerse sobre blanco.
 ### Aspecto: qué hace la hoja de estilo
 
 Pestañas sin caja (subrayado del color de acción en la activa), cabeceras de
-tabla planas con una sola línea inferior, barras de desplazamiento sin
-flechas y con el pulgar redondeado, botones y campos con esquinas de 8 px,
-anillo de foco visible al entrar en un campo, y menús redondeados con aire.
+tabla con un fondo un poco más oscuro que la tabla —para separarlas del
+contenido de un vistazo— pero planas, sin bordes verticales ni relieve;
+barras de desplazamiento sin flechas y con el pulgar redondeado, botones y
+campos con esquinas de 8 px, anillo de foco visible al entrar en un campo, y
+menús redondeados con aire.
+
+**Botones: una sola familia**, con dos propiedades que se ponen desde el
+código, nunca con un color escrito a mano en el widget:
+
+| Propiedad | Valores | Para qué |
+|---|---|---|
+| `variant` | *(nada)* / `ghost` / `danger` | peso visual: acción principal, secundaria, o destructiva |
+| `compact` | `"true"` | sitios donde el espacio va justo (el panel del Tauler) |
+
+Así todos los botones de la aplicación tienen la misma forma, la misma
+altura y los mismos estados. El desactivado es un fondo claro con borde
+fino, no un bloque gris relleno.
+
+**Iconos: `app/ui/icons.py`.** Los emojis (`🗑️ Esborrar`) eran dibujos de
+color fijo: sobre un botón azul o rojo parecían una pegatina y no seguían el
+color del texto. Ahora se usan las icon fonts que ya trae Windows —**Segoe
+Fluent Icons** (11) o **Segoe MDL2 Assets** (10)—, dibujadas con QPainter al
+color que toque: blancas sobre un botón lleno, grises cuando está
+desactivado (las dos versiones se generan a mano, porque la que genera Qt
+solo con una desvanece el icono y sobre un fondo claro desaparecería). Si
+ninguna de las dos fuentes existe (macOS, Linux), el botón se queda solo con
+su texto, que siempre está. Los nombres de icono (`"print"`, `"delete"`…)
+los vigila un test, igual que los colores.
 
 Dos decisiones tomadas *contra* la moda, por ser un ordenador de taller:
 

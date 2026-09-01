@@ -268,8 +268,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "fr": "Position {position}",
     },
     "position.move_button": {
-        "ca": "📤 Moure peça visible a posició...", "es": "📤 Mover pieza visible a posición...",
-        "en": "📤 Move visible piece to position...", "fr": "📤 Déplacer la pièce visible vers la position...",
+        "ca": "Moure peça visible a posició...", "es": "Mover pieza visible a posición...",
+        "en": "Move visible piece to position...", "fr": "Déplacer la pièce visible vers la position...",
     },
     "position.move.ask.title": {
         "ca": "A quina posició?", "es": "¿A qué posición?",
@@ -673,10 +673,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
 
     # -- Panell de detall de posició (incrustat sota el tauler) --------------- #
     "position.panel.placeholder": {
-        "ca": "👆 Selecciona una posició a la taula per veure'n i editar-ne el detall.",
-        "es": "👆 Selecciona una posición en la tabla para ver y editar su detalle.",
-        "en": "👆 Select a position in the table to view and edit its detail.",
-        "fr": "👆 Sélectionnez une position dans le tableau pour voir et modifier son détail.",
+        "ca": "Selecciona una posició a la taula per veure'n i editar-ne el detall.",
+        "es": "Selecciona una posición en la tabla para ver y editar su detalle.",
+        "en": "Select a position in the table to view and edit its detail.",
+        "fr": "Sélectionnez une position dans le tableau pour voir et modifier son détail.",
     },
 
     # -- Targetes de resultats de cerca ---------------------------------------- #
@@ -686,8 +686,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "common.done": {"ca": "Fet", "es": "Hecho", "en": "Done", "fr": "Terminé"},
     "common.add": {"ca": "Afegir", "es": "Añadir", "en": "Add", "fr": "Ajouter"},
     "materials.add_button": {
-        "ca": "➕ Afegir material", "es": "➕ Añadir material",
-        "en": "➕ Add material", "fr": "➕ Ajouter un matériau",
+        "ca": "Afegir material", "es": "Añadir material",
+        "en": "Add material", "fr": "Ajouter un matériau",
     },
     "menu.import": {
         "ca": "&Importar", "es": "&Importar", "en": "&Import", "fr": "&Importer",
@@ -1130,8 +1130,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
 
     # -- Materials: baixa protegida amb contrasenya (mateix mecanisme que l'alta) -- #
     "materials.delete_button": {
-        "ca": "🗑️ Esborrar material", "es": "🗑️ Borrar material",
-        "en": "🗑️ Delete material", "fr": "🗑️ Supprimer le matériau",
+        "ca": "Esborrar material", "es": "Borrar material",
+        "en": "Delete material", "fr": "Supprimer le matériau",
     },
     "materials.password.label_delete": {
         "ca": "Introdueix la contrasenya per esborrar aquest material:",
@@ -1182,7 +1182,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "stats.from": {"ca": "Des de:", "es": "Desde:", "en": "From:", "fr": "Du :"},
     "stats.to": {"ca": "Fins a:", "es": "Hasta:", "en": "To:", "fr": "Au :"},
     "stats.apply": {
-        "ca": "🔎 Consultar", "es": "🔎 Consultar", "en": "🔎 Show", "fr": "🔎 Consulter",
+        "ca": "Consultar", "es": "Consultar", "en": "Show", "fr": "Consulter",
     },
     "stats.range.today": {"ca": "Avui", "es": "Hoy", "en": "Today", "fr": "Aujourd'hui"},
     "stats.range.week": {

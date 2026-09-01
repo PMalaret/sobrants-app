@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
 from app.i18n import t
 from app.logic.repository import Repository, RuleViolation
 from app.security import WORKER
-from app.ui import dialogs, theme
+from app.ui import dialogs, icons, theme
 from app.ui.password_dialog import ask_password
 
 
@@ -101,9 +101,12 @@ class MaterialsTab(QWidget):
         search_row.addWidget(self.search)
         search_row.addStretch()
         self.add_button = QPushButton(t("materials.add_button"))
+        icons.apply_to(self.add_button, "add")
         self.add_button.clicked.connect(self._on_add_material)
         search_row.addWidget(self.add_button)
         self.delete_button = QPushButton(t("materials.delete_button"))
+        self.delete_button.setProperty("variant", "danger")
+        icons.apply_to(self.delete_button, "delete")
         self.delete_button.clicked.connect(self._on_delete_material)
         search_row.addWidget(self.delete_button)
         layout.addLayout(search_row)

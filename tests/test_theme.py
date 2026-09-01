@@ -14,7 +14,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app.ui import theme
+from app.ui import icons, theme
 
 # Un codi de color escrit a mà: #abc o #aabbcc.
 COLOR_CODE = re.compile(r"#[0-9a-fA-F]{3}\b|#[0-9a-fA-F]{6}\b")
@@ -102,3 +102,48 @@ def test_an_unknown_theme_is_rejected():
     with pytest.raises(ValueError):
         theme.set_theme("neon")
     assert theme.get_theme() == theme.DEFAULT_THEME
+
+
+# ---------------------------------------------------------------- icones
+
+
+def test_every_icon_used_in_the_code_exists():
+    """Les icones es demanen pel nom (`icons.apply_to(button, "print")`): si
+    algú n'escriu un que no hi és, val més saber-ho aquí que trobar-se un
+    botó sense icona."""
+    used = set()
+    for path in (ROOT / "app").rglob("*.py"):
+        if path.name == "icons.py":
+            continue
+        for match in re.finditer(r'icons\.(?:apply_to\([^,]+,\s*|icon\()"([a-z_]+)"', path.read_text(encoding="utf-8")):
+            used.add(match.group(1))
+    assert used, "cap icona trobada al codi: ha canviat la manera de posar-les?"
+    assert used <= set(icons.GLYPHS), sorted(used - set(icons.GLYPHS))
+
+
+def test_every_glyph_is_one_character_of_the_icon_font():
+    """Cada icona és UN caràcter de la zona d'ús privat de la font (E000
+    endavant). Dos caràcters, o un de normal, voldria dir que s'hi ha
+    escrit un emoji o un text per equivocació."""
+    for name, glyph in icons.GLYPHS.items():
+        assert len(glyph) == 1, name
+        assert 0xE000 <= ord(glyph) <= 0xF8FF, f"{name}: {ord(glyph):04X}"
+
+
+def test_button_labels_have_no_emoji():
+    """Els textos dels botons ja no porten emoji: la icona la posa el botó
+    (monocroma i del color que li toqui), no el text."""
+    from app import i18n
+
+    emoji_ranges = ((0x1F300, 0x1FAFF), (0x2600, 0x27BF), (0x2190, 0x21FF))
+    with_emoji = {
+        key: entry
+        for key, entry in i18n.TRANSLATIONS.items()
+        if any(
+            any(low <= ord(ch) <= high for low, high in emoji_ranges)
+            for text in entry.values()
+            for ch in text
+        )
+    }
+    # El menú d'idioma és l'únic que en conserva (és un menú, no un botó).
+    assert set(with_emoji) <= {"app.language"}, sorted(with_emoji)

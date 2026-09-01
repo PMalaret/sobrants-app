@@ -93,14 +93,16 @@ QTableWidget, QTableView {
     alternate-background-color: $row_alt;
 }
 
-/* Capçalera plana: ni fons gris ni vores verticals, només una línia sota.
-   El text es queda fosc, per llegir-la de lluny. */
+/* Capçalera amb un fons una mica més fosc que la taula, perquè es
+   distingeixi del contingut d'un cop d'ull, però plana: sense vores
+   verticals ni relleu, només la línia de sota. El text, fosc, per
+   llegir-la de lluny. */
 QHeaderView::section {
-    background-color: $surface;
+    background-color: $surface_alt;
     color: $text;
     padding: 7px 4px;
     border: none;
-    border-bottom: 2px solid $border;
+    border-bottom: 1px solid $border;
     font-weight: 600;
 }
 
@@ -108,6 +110,10 @@ QHeaderView::section:hover {
     color: $accent;
 }
 
+/* El fons del WIDGET capçalera (no de les seccions) es queda blanc: és el
+   que es veu més enllà de l'última columna i sota l'últim número de fila, i
+   amb el gris de les seccions quedaria una franja grisa buida al costat
+   d'una taula amb poques línies. */
 QHeaderView {
     background: $surface;
     border: none;
@@ -120,7 +126,7 @@ QHeaderView::section:vertical {
     font-weight: 400;
     padding: 2px 8px;
     border: none;
-    border-bottom: 1px solid $grid;
+    border-bottom: 1px solid $border;
     border-right: 1px solid $border;
 }
 
@@ -165,12 +171,27 @@ QScrollBar::add-page, QScrollBar::sub-page {
     background: none;
 }
 
+/* ------------------------------------------------------------------ *
+ * Botons: una sola família, amb dues propietats.
+ *
+ *   variant = (res) | "ghost" | "danger"   -> quin pes visual té
+ *   compact = "true"                        -> més estret, per als llocs
+ *                                              on l'espai va just
+ *
+ * Es posen des del codi amb `setProperty`, mai amb un color escrit a mà
+ * al widget: així tots els botons de l'aplicació tenen la mateixa forma,
+ * la mateixa alçada i els mateixos estats.
+ *
+ * La vora hi és sempre (transparent quan no es veu) perquè el botó no
+ * canviï de mida en passar a desactivat, que sí que en porta.
+ * ------------------------------------------------------------------ */
 QPushButton {
     background-color: $accent;
     color: $on_accent;
-    border: none;
+    border: 1px solid transparent;
     border-radius: 8px;
     padding: 8px 18px;
+    min-height: 18px;
     font-weight: 600;
 }
 
@@ -180,6 +201,26 @@ QPushButton:hover {
 
 QPushButton:pressed {
     background-color: $accent_pressed;
+}
+
+QPushButton[compact="true"] {
+    padding: 5px 12px;
+    min-height: 16px;
+    font-size: 12px;
+    border-radius: 7px;
+}
+
+QPushButton[variant="danger"] {
+    background-color: $danger;
+    color: $on_accent;
+}
+
+QPushButton[variant="danger"]:hover {
+    background-color: $danger_hover;
+}
+
+QPushButton[variant="danger"]:pressed {
+    background-color: $danger_pressed;
 }
 
 /* Botó secundari (`setProperty("variant", "ghost")`): mateixa forma i
@@ -208,12 +249,15 @@ QPushButton[variant="ghost"]:disabled {
     border-color: $disabled_bg;
 }
 
-/* Sense aquesta regla, un botó desactivat es quedava exactament igual que
-   un d'actiu: com que QPushButton té aquí un fons fix, Qt ja no li aplica
-   el gris de deshabilitat que posaria l'estil natiu de la plataforma. */
-QPushButton:disabled {
-    background-color: $disabled_bg;
-    color: $disabled_text;
+/* Desactivat: com que el botó té aquí un fons fix, Qt ja no li aplica el
+   gris que posaria l'estil natiu i, sense aquesta regla, es veuria igual
+   que un d'actiu. Es marca amb un fons clar i una vora fina —no amb un
+   bloc gris ple, que pesa massa i s'assembla a un botó de fa trenta
+   anys—, i el text i la icona passen al gris de desactivat. */
+QPushButton:disabled, QPushButton[variant="danger"]:disabled {
+    background-color: $surface_alt;
+    color: $text_disabled;
+    border: 1px solid $border;
 }
 
 /* Radios i caselles: a alguns temes de Windows la marca de seleccionat

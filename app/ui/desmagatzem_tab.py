@@ -37,7 +37,7 @@ from app.logic import rules
 from app.logic.repository import Repository, RuleViolation
 from app.logic.rules import quantity_change_kind
 from app.export import ReportCell
-from app.ui import dialogs, theme
+from app.ui import dialogs, icons, theme
 
 
 # Amples del formulari de nova entrada, calculats sobre el que pot valer
@@ -267,7 +267,8 @@ class DesmagatzemTab(QWidget):
         self.new_qty_input = QSpinBox()
         self.new_qty_input.setRange(rules.DESMAGATZEM_QTY_MIN, rules.DESMAGATZEM_QTY_MAX)
         qty_row.addWidget(self.new_qty_input)
-        self.print_button = QPushButton(f"\U0001f5a8\ufe0f  {t('action.print_desmagatzem')}")
+        self.print_button = QPushButton(t("action.print_desmagatzem"))
+        icons.apply_to(self.print_button, "print")
         self.print_button.clicked.connect(self.print_requested.emit)
 
         self.update_qty_button = QPushButton(t("desmagatzem.apply_qty"))

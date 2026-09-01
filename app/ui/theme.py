@@ -73,6 +73,8 @@ LIGHT = {
     "disabled_text": "#7e838b",
     # -- Estats ------------------------------------------------------ #
     "danger": "#c62828",          # avisos, esborrar, "Materials tapats"
+    "danger_hover": "#a52020",
+    "danger_pressed": "#8b1a1a",
     "success": "#1a9c6d",         # USB connectat
     # -- Tauler: escala d'ocupació d'una posició --------------------- #
     # Els cinc colors de referència del propi Excel original (K12:K16):

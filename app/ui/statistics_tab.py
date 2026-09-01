@@ -41,7 +41,7 @@ from PySide6.QtWidgets import (
 
 from app.i18n import format_number, t
 from app.logic.repository import Repository
-from app.ui import theme
+from app.ui import icons, theme
 
 # Format en què es veuen i s'escriuen les dates dels dos camps (el de la
 # base de dades és sempre ISO, veure `_iso`).
@@ -117,6 +117,7 @@ class StatisticsTab(QWidget):
             row.addWidget(button)
 
         self.apply_button = QPushButton(t("stats.apply"))
+        icons.apply_to(self.apply_button, "search")
         self.apply_button.clicked.connect(self.refresh)
         row.addWidget(self.apply_button)
 

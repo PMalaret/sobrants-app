@@ -37,7 +37,7 @@ from PySide6.QtWidgets import (
 from app.i18n import t
 from app.logic.repository import Repository
 from app.logic.rules import OCCUPANCY_LEVELS
-from app.ui import theme
+from app.ui import icons, theme
 from app.ui.position_panel import DETAIL_ROW_HEIGHT, PositionPanel
 from app.ui.search_panel import SearchPanel
 
@@ -115,14 +115,10 @@ class _BoardGridDelegate(QStyledItemDelegate):
         painter.restore()
 
 
-# Els dos botons de sota del cercador comparteixen mida (ample, alçada i
-# padding) perquè quedin alineats; cadascun manté el seu color.
-FOOTER_BUTTON_STYLE = "padding: 5px 14px; font-size: 12px;"
-# "Materials tapats" manté el seu color propi (és una consulta que es fa
-# poc i no s'ha de confondre amb imprimir), ara des de la paleta.
-COVERED_BUTTON_STYLE = (
-    "QPushButton { " + FOOTER_BUTTON_STYLE + " background-color: $danger; color: $on_accent; }"
-)
+# Els dos botons de sota del cercador són "compactes" (l'espai del panell
+# va just) i comparteixen ample, així queden alineats; "Materials tapats"
+# manté el seu color propi amb la variant "danger", perquè és una consulta
+# que es fa poc i no s'ha de confondre amb imprimir.
 
 # Separació entre el cercador i la zona d'accions ("Imprimir tauler" i
 # "Materials tapats"): dues files de la taula de detall, perquè es vegi
@@ -244,14 +240,17 @@ class BoardTab(QWidget):
         footer_layout.addWidget(self.search_panel)
         # Compactes: l'ample just per al seu contingut (amb una mica de
         # marge) i una mica més alts per poder-los clicar còmodament.
-        self.print_button = QPushButton(f"\U0001f5a8\ufe0f  {t('action.print_board')}")
-        self.print_button.setStyleSheet(FOOTER_BUTTON_STYLE)
+        self.print_button = QPushButton(t("action.print_board"))
+        self.print_button.setProperty("compact", "true")
+        icons.apply_to(self.print_button, "print")
         self.print_button.clicked.connect(self.print_requested.emit)
 
         # "Materials tapats" a sota, amb la MATEIXA mida (perquè quedin
         # alineats) però conservant el seu color vermell i el seu ull.
-        self.covered_button = QPushButton(f"\U0001f441\ufe0f  {t('action.covered').replace(chr(10), ' ')}")
-        self.covered_button.setStyleSheet(theme.css(COVERED_BUTTON_STYLE))
+        self.covered_button = QPushButton(t("action.covered").replace("\n", " "))
+        self.covered_button.setProperty("compact", "true")
+        self.covered_button.setProperty("variant", "danger")
+        icons.apply_to(self.covered_button, "eye")
         self.covered_button.clicked.connect(self.covered_requested.emit)
 
         # Tots dos dins d'una zona pròpia, arrambats a la dreta.

@@ -36,7 +36,7 @@ from app.excel_export import export_historic_xlsx
 from app.i18n import t
 from app.logic.repository import Repository
 from app.security import ADMIN
-from app.ui import dialogs, theme
+from app.ui import dialogs, icons, theme
 from app.ui.password_dialog import ask_password
 
 # Ordre de les columnes de la taula i camp de la base de dades de cadascuna.
@@ -155,11 +155,13 @@ class HistoricTab(QWidget):
         # Ja no hi ha botó d'actualitzar (es refresca sola) ni botons
         # d'ordenar (es fa clicant les capçaleres).
         self.export_button = QPushButton(t("historic.export_excel"))
+        icons.apply_to(self.export_button, "export")
         self.export_button.clicked.connect(self._on_export_excel)
         filters.addWidget(self.export_button)
 
         self.clear_button = QPushButton(t("historic.clear"))
-        self.clear_button.setStyleSheet(theme.css("background-color: $danger;"))
+        self.clear_button.setProperty("variant", "danger")
+        icons.apply_to(self.clear_button, "clear")
         self.clear_button.clicked.connect(self._on_clear)
         filters.addWidget(self.clear_button)
 
