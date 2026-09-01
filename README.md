@@ -423,8 +423,12 @@ Los dos abren el diálogo de impresión **nativo** del sistema
 (`QPrintDialog`) —donde se puede elegir "imprimir a PDF"— y ninguno crea
 ficheros temporales. Cancelar no hace nada; un fallo de la impresora se
 avisa. Al documento se le pone nombre antes de enviarlo
-(`export.document_name`: "Sobrants - Tauler - AAAA-MM-DD"), que es el nombre
-de fichero que propone Windows si se elige "Imprimir a PDF".
+(`export.document_name`): **`AAAAMMDDHHMM_tauler`** y
+**`AAAAMMDDHHMM_desmagatzem`**, que es el nombre de fichero que propone
+Windows si se elige "Imprimir a PDF". La fecha va delante, y con ese
+formato, por el mismo motivo que en las copias de seguridad: ordenar por
+nombre es ordenar por fecha. El sufijo no se traduce — un nombre de fichero
+no debería cambiar según el idioma en que esté abierta la aplicación.
 
 Son dos formas distintas a propósito:
 

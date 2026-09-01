@@ -21,7 +21,13 @@ from PySide6.QtWidgets import (
 from app import i18n, settings
 from app.backup import create_backup, run_backup
 from app.data.db import connect
-from app.export import covered_materials_report_text, print_table_report, print_widget
+from app.export import (
+    BOARD_DOCUMENT,
+    DESMAGATZEM_DOCUMENT,
+    covered_materials_report_text,
+    print_table_report,
+    print_widget,
+)
 from app.i18n import t
 from app.logic.repository import Repository
 from app.security import ADMIN
@@ -403,7 +409,7 @@ class MainWindow(QMainWindow):
     # Imprimir
     # ------------------------------------------------------------------ #
     def _print_board(self):
-        self._print(self.board_tab, self.board_tab, t("tab.board"))
+        self._print(self.board_tab, self.board_tab, BOARD_DOCUMENT)
 
     def _print_desmagatzem(self):
         """Desmagatzem s'imprimeix com un INFORME, no com una captura: es
@@ -411,14 +417,16 @@ class MainWindow(QMainWindow):
         o no) i es componen en pàgines amb la capçalera repetida."""
         headers, rows = self.desmagatzem_tab.printable_rows()
         try:
-            printed = print_table_report(t("tab.desmagatzem"), headers, rows, self)
+            printed = print_table_report(
+                t("tab.desmagatzem"), headers, rows, DESMAGATZEM_DOCUMENT, self
+            )
         except Exception as exc:  # noqa: BLE001 - qualsevol problema de la impressora
             dialogs.error(self, t("print.error.title"), t("print.error.detail", error=exc))
             return
         if printed:
             self.statusBar().showMessage(t("print.sent"), 5000)
 
-    def _print(self, tab: QWidget, widget: QWidget, title: str):
+    def _print(self, tab: QWidget, widget: QWidget, doc_slug: str):
         """Flux d'impressió comú als dos botons: preparar el que s'ha
         d'imprimir, obrir el diàleg del sistema i imprimir-hi si s'accepta.
 
@@ -427,7 +435,7 @@ class MainWindow(QMainWindow):
         """
         self._ensure_tab_laid_out(tab)
         try:
-            printed = print_widget(widget, title, self)
+            printed = print_widget(widget, doc_slug, self)
         except Exception as exc:  # noqa: BLE001 - qualsevol problema de la impressora
             dialogs.error(self, t("print.error.title"), t("print.error.detail", error=exc))
             return

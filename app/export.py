@@ -21,7 +21,7 @@ widgets.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import date, datetime
+from datetime import datetime
 from html import escape
 from string import Template
 from typing import NamedTuple
@@ -33,6 +33,12 @@ from PySide6.QtWidgets import QApplication, QWidget
 
 # Marges de la pàgina, en mil·límetres.
 PAGE_MARGINS_MM = 10
+
+# Com s'anomena cada imprès (veure `document_name`). No es tradueixen: un
+# nom de fitxer no ha de canviar segons l'idioma en què estigui oberta
+# l'aplicació, i són els noms de sempre de les dues fulles.
+BOARD_DOCUMENT = "tauler"
+DESMAGATZEM_DOCUMENT = "desmagatzem"
 
 from app.i18n import t
 from app.logic.repository import Repository
@@ -146,18 +152,22 @@ def _print_widget_to_pdf(widget: QWidget, dest_path: str) -> None:
     _paint_widget_on_printer(widget, printer)
 
 
-def document_name(title: str) -> str:
-    """Nom del document que s'envia a imprimir, amb la data d'avui:
-    "Sobrants - Tauler - 2026-09-01".
+def document_name(slug: str) -> str:
+    """Nom del document que s'envia a imprimir: la data i l'hora al davant
+    i què és al darrere — "202609011423_tauler".
 
     No és cap detall menor: quan al diàleg d'impressió es tria "Imprimir a
     PDF", Windows fa servir aquest nom com a nom de fitxer que proposa en
     demanar on desar-lo. Sense això, proposava el nom intern de Qt.
+
+    La data va davant, i amb aquest format, pel mateix motiu que als noms
+    de les còpies de seguretat (`AAAAMMDDHHMM_nom`): ordenar els fitxers
+    per nom és ordenar-los per data.
     """
-    return f"Sobrants - {title} - {date.today().isoformat()}"
+    return f"{datetime.now():%Y%m%d%H%M}_{slug}"
 
 
-def print_widget(widget: QWidget, title: str, parent: QWidget | None = None) -> bool:
+def print_widget(widget: QWidget, doc_slug: str, parent: QWidget | None = None) -> bool:
     """Obre el diàleg d'impressió NATIU del sistema i, si s'accepta, hi
     imprimeix el widget amb el mateix format de sempre.
 
@@ -167,10 +177,11 @@ def print_widget(widget: QWidget, title: str, parent: QWidget | None = None) -> 
     directament a la impressora que s'hagi triat, així no queda res per
     netejar. Retorna False si s'ha cancel·lat (llavors no s'imprimeix res).
 
-    `title` és el nom que es donarà al document (veure `document_name`).
+    `doc_slug` diu QUÈ és el que s'imprimeix, per posar-li nom (veure
+    `document_name`).
     """
     printer = QPrinter(QPrinter.HighResolution)
-    printer.setDocName(document_name(title))
+    printer.setDocName(document_name(doc_slug))
     dialog = QPrintDialog(printer, parent)
     dialog.setWindowTitle(t("print.dialog.title"))
     if dialog.exec() != QPrintDialog.Accepted:
@@ -191,6 +202,7 @@ def print_table_report(
     title: str,
     headers: list[str],
     rows: list[list[ReportCell]],
+    doc_slug: str,
     parent: QWidget | None = None,
 ) -> bool:
     """Imprimeix una taula SENCERA com un informe, no com una captura.
@@ -207,7 +219,7 @@ def print_table_report(
     diàleg del sistema. Retorna False si s'ha cancel·lat.
     """
     printer = QPrinter(QPrinter.HighResolution)
-    printer.setDocName(document_name(title))
+    printer.setDocName(document_name(doc_slug))
     printer.setPageLayout(
         QPageLayout(QPageSize(QPageSize.A4), QPageLayout.Landscape, QMarginsF(12, 12, 12, 12))
     )
