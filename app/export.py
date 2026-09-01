@@ -172,6 +172,19 @@ def document_name(slug: str) -> str:
     return f"{datetime.now():%Y%m%d%H%M}_{slug}"
 
 
+def _name_document(printer: QPrinter, doc_slug: str) -> None:
+    """Posa el nom al document que s'enviarà a imprimir.
+
+    Es crida DUES vegades, abans i després del diàleg d'impressió, i no és
+    per despistat: el nom se li dona a la feina d'impressió quan comença a
+    pintar-se, però el diàleg del sistema reconfigura la impressora amb el
+    que s'hi ha triat i pot endur-se per davant el que s'hagués posat
+    abans. Posant-lo als dos moments, hi és segur — i posar-lo dues
+    vegades no costa res.
+    """
+    printer.setDocName(document_name(doc_slug))
+
+
 def print_widget(widget: QWidget, doc_slug: str, parent: QWidget | None = None) -> bool:
     """Obre el diàleg d'impressió NATIU del sistema i, si s'accepta, hi
     imprimeix el widget amb el mateix format de sempre.
@@ -186,11 +199,12 @@ def print_widget(widget: QWidget, doc_slug: str, parent: QWidget | None = None) 
     `document_name`).
     """
     printer = QPrinter(QPrinter.HighResolution)
-    printer.setDocName(document_name(doc_slug))
+    _name_document(printer, doc_slug)
     dialog = QPrintDialog(printer, parent)
     dialog.setWindowTitle(t("print.dialog.title"))
     if dialog.exec() != QPrintDialog.Accepted:
         return False  # cancel·lat: no es fa res, i no és cap error
+    _name_document(printer, doc_slug)   # veure `_name_document`
     _paint_widget_on_printer(widget, printer)
     return True
 
@@ -228,14 +242,15 @@ def print_table_report(
     de deixar-ho tot a `QTextDocument.print_`, que no en sap posar cap.
     """
     printer = QPrinter(QPrinter.HighResolution)
-    printer.setDocName(document_name(doc_slug))
     printer.setPageLayout(
         QPageLayout(QPageSize(QPageSize.A4), QPageLayout.Landscape, QMarginsF(12, 12, 12, 12))
     )
+    _name_document(printer, doc_slug)
     dialog = QPrintDialog(printer, parent)
     dialog.setWindowTitle(t("print.dialog.title"))
     if dialog.exec() != QPrintDialog.Accepted:
         return False
+    _name_document(printer, doc_slug)   # veure `_name_document`
 
     document = QTextDocument()
     document.setDefaultStyleSheet(_REPORT_STYLE)
