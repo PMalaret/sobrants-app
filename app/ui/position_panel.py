@@ -621,6 +621,7 @@ class PositionPanel(QFrame):
         surt igualment, però deshabilitada i amb el motiu al tooltip —
         així es veu que l'opció existeix i per què no s'hi pot fer."""
         menu = QMenu(self.detail_table)
+        theme.prepare_menu(menu)
         menu.setToolTipsVisible(True)
         delete_action = menu.addAction(t("position.delete_action"))
         delete_action.setEnabled(self._can_delete_row(row))

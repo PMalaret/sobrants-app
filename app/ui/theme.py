@@ -224,6 +224,24 @@ def search_qcolor(mode: str) -> QColor:
     return QColor(search_color(mode))
 
 
+def prepare_menu(menu) -> None:
+    """Deixa que les cantonades arrodonides d'un menú es vegin de debò.
+
+    El full d'estil arrodoneix la vora del menú, però el menú viu dins
+    d'una finestreta pròpia del sistema, que és RECTANGULAR: a les quatre
+    cantonades, fora de la vora arrodonida, s'hi veia el fons d'aquella
+    finestreta, com un quadrat al darrere. Marcant-la de fons transparent,
+    a les cantonades no s'hi pinta res i el menú es veu arrodonit sencer.
+
+    (Si en algun equip això es veiés malament, la solució de recanvi és
+    treure el `border-radius` de QMenu al full d'estil: llavors el menú
+    torna a ser quadrat, però mai desquadrat.)
+    """
+    from PySide6.QtCore import Qt
+
+    menu.setAttribute(Qt.WA_TranslucentBackground, True)
+
+
 def apply(app) -> None:
     """Deixa l'aplicació amb el tema actiu: estil Fusion, paleta i full
     d'estil. Es crida a l'arrencada i, quan hi hagi més d'una paleta,

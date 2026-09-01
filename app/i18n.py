@@ -193,8 +193,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
 
     # -- Tauler ------------------------------------------------------------ #
     "board.piece_count": {
-        "ca": "{count} peces", "es": "{count} piezas",
-        "en": "{count} pieces", "fr": "{count} pièces",
+        "ca": "Hi ha {count} peces", "es": "Hay {count} piezas",
+        "en": "There are {count} pieces", "fr": "Il y a {count} pièces",
     },
     "board.field.position": {"ca": "Pos.", "es": "Pos.", "en": "Pos.", "fr": "Pos."},
     "board.field.code": {

@@ -4,7 +4,7 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer, QUrl
+from PySide6.QtCore import QTimer, QUrl
 from PySide6.QtGui import QAction, QActionGroup, QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMainWindow,
-    QPushButton,
     QStackedWidget,
     QTabBar,
     QVBoxLayout,
@@ -51,14 +50,10 @@ MIN_BACKUP_INTERVAL_HOURS = 1
 MAX_BACKUP_INTERVAL_HOURS = 168
 BACKUP_INTERVAL_SETTING = "backup_interval_hours"
 
-# Botons grans d'accions (icona + text + color), per a gent a qui li costi
-# llegir un menú de text pla. (clau de traducció, emoji, color, mètode a cridar)
-# La còpia de seguretat ja no hi és: ara demana contrasenya i viu només al
-# menú Fitxer; al seu lloc, a la fila, hi ha l'indicador d'USB.
-# La fila de dalt ja no té cap botó: imprimir i materials tapats viuen dins
-# del Tauler (sota el cercador) i imprimir desmagatzem, a la seva pestanya,
-# que és on l'usuari els busca. Només hi queda l'indicador d'USB.
-ACTION_BUTTONS = []
+# Quina pestanya és el Tauler. La llegenda de colors de la barra d'estat
+# només té sentit quan es veu el Tauler (és el que explica), així que només
+# hi surt quan aquesta és la pestanya activa.
+BOARD_TAB_INDEX = 0
 
 
 class MainWindow(QMainWindow):
@@ -151,7 +146,10 @@ class MainWindow(QMainWindow):
         top_row_layout.setSpacing(8)
         top_row_layout.addWidget(tab_bar)
         top_row_layout.addStretch()
-        self._add_action_buttons(top_row_layout)
+        # A la dreta de la fila de pestanyes només hi ha l'indicador d'USB:
+        # el total de peces ha baixat a la barra d'estat.
+        self.usb_indicator = UsbIndicator()
+        top_row_layout.addWidget(self.usb_indicator)
 
         central = QWidget()
         central_layout = QVBoxLayout(central)
@@ -164,51 +162,42 @@ class MainWindow(QMainWindow):
         self.menuBar().clear()
         self._build_menu()
 
+        self._build_status_bar()
+
+    def _build_status_bar(self):
+        """La barra d'estat, d'esquerra a dreta: quantes peces hi ha al
+        Tauler, on és la base de dades i, a la dreta de tot, la llegenda de
+        colors d'ocupació (només mentre es veu el Tauler).
+
+        Es reconstrueix sencera quan canvia l'idioma, així que primer es
+        treu el que hi hagués posat abans."""
         status = self.statusBar()
-        # netegem widgets permanents anteriors (si es reconstrueix per canvi d'idioma)
         for child in status.findChildren(QWidget):
             if getattr(child, "_sobrants_status_widget", False):
                 status.removeWidget(child)
                 child.deleteLater()
-        legend = self.board_tab.build_legend_widget()
-        legend._sobrants_status_widget = True
-        status.addPermanentWidget(legend)
-        status.showMessage(t("status.db", path=self.db_path))
 
-    def _add_action_buttons(self, layout):
-        """El que va a la dreta de la fila de les pestanyes: el total de
-        peces del Tauler i, al seu costat, l'indicador d'USB."""
-        # Total de peces, a l'esquerra de la icona d'USB. Ve de la base de
-        # dades (`Repository.count_pieces`), no del que hi hagi pintat.
+        # Total de peces, a l'esquerra de tot. Ve de la base de dades
+        # (`Repository.count_pieces`), no del que hi hagi pintat.
         self.pieces_label = QLabel()
         self.pieces_label.setStyleSheet(
             theme.css("font-size: 13px; font-weight: 600; color: $text;")
         )
-        self.pieces_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        layout.addWidget(self.pieces_label)
         self.refresh_piece_count()
 
-        self.usb_indicator = UsbIndicator()
-        layout.addWidget(self.usb_indicator)
-        for label_key, emoji, color, slot_name in ACTION_BUTTONS:
-            label = t(label_key).replace("\n", " ")
-            button = QPushButton(f"{emoji}  {label}")
-            button.setToolTip(label)
-            button.setStyleSheet(
-                f"""
-                QPushButton {{
-                    background-color: {color};
-                    color: {theme.color("on_accent")};
-                    font-size: 12px;
-                    font-weight: 600;
-                    border: none;
-                    border-radius: 6px;
-                    padding: 4px 10px;
-                }}
-                """
-            )
-            button.clicked.connect(getattr(self, slot_name))
-            layout.addWidget(button)
+        self.db_label = QLabel(t("status.db", path=self.db_path))
+        # La llegenda explica els colors del Tauler: només hi surt quan la
+        # pestanya que es veu és aquella.
+        self.legend_widget = self.board_tab.build_legend_widget()
+        for widget in (self.pieces_label, self.db_label, self.legend_widget):
+            widget._sobrants_status_widget = True
+        status.addWidget(self.pieces_label)
+        status.addWidget(self.db_label)
+        status.addPermanentWidget(self.legend_widget)
+        self._update_legend_visibility(BOARD_TAB_INDEX)
+
+    def _update_legend_visibility(self, index: int):
+        self.legend_widget.setVisible(index == BOARD_TAB_INDEX)
 
     def refresh_piece_count(self):
         """Torna a comptar les peces i ho ensenya. Es crida cada cop que
@@ -219,13 +208,21 @@ class MainWindow(QMainWindow):
 
     def _on_tab_changed(self, index: int):
         self._stack.setCurrentIndex(index)
+        self._update_legend_visibility(index)
         widget = self._stack.widget(index)
         if hasattr(widget, "refresh"):
             widget.refresh()
         self.refresh_piece_count()
 
+    def _menu(self, title: str):
+        """Un menú de la barra, ja preparat perquè se li vegin les
+        cantonades arrodonides (veure `theme.prepare_menu`)."""
+        menu = self.menuBar().addMenu(title)
+        theme.prepare_menu(menu)
+        return menu
+
     def _build_menu(self):
-        menu = self.menuBar().addMenu(t("menu.file"))
+        menu = self._menu(t("menu.file"))
 
         change_password_action = menu.addAction(t("menu.change_password"))
         change_password_action.triggered.connect(self._change_password)
@@ -254,7 +251,7 @@ class MainWindow(QMainWindow):
         version_action.setEnabled(False)  # només informatiu, no cal que faci res en clicar
 
         # Menú d'importació, entre Fitxer i Còpies de seguretat.
-        import_menu = self.menuBar().addMenu(t("menu.import"))
+        import_menu = self._menu(t("menu.import"))
         import_excel_action = import_menu.addAction(t("menu.import_excel"))
         import_excel_action.triggered.connect(self._import_from_excel)
         import_db_action = import_menu.addAction(t("menu.import_database"))
@@ -263,13 +260,13 @@ class MainWindow(QMainWindow):
         # Menú propi de còpies de seguretat, entre Fitxer i Idioma: tot el
         # que hi té a veure (fer-ne una ara i cada quantes hores es fan
         # soles) en un sol lloc, i les dues protegides amb la contrasenya.
-        backup_menu = self.menuBar().addMenu(t("menu.backups"))
+        backup_menu = self._menu(t("menu.backups"))
         backup_now_action = backup_menu.addAction(t("menu.backup_now"))
         backup_now_action.triggered.connect(self._manual_backup)
         interval_action = backup_menu.addAction(t("menu.backup_interval"))
         interval_action.triggered.connect(self._change_backup_interval)
 
-        lang_menu = self.menuBar().addMenu(f"🌐 {t('app.language')}")
+        lang_menu = self._menu(f"🌐 {t('app.language')}")
         group = QActionGroup(self)
         group.setExclusive(True)
         for code, name in i18n.LANGS.items():
