@@ -26,8 +26,8 @@ jobs:
     # de línea) sale aquí y no en la máquina del usuario.
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
@@ -37,15 +37,15 @@ jobs:
     needs: test
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: pyinstaller sobrants.spec --noconfirm
       # En Windows dist/Sobrants es una carpeta (modo onedir): dentro van
       # Sobrants.exe y _internal/.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Sobrants-Windows
           path: dist/Sobrants
@@ -64,7 +64,7 @@ jobs:
       contents: write
       issues: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
       - name: Preparar assets
