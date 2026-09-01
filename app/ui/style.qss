@@ -445,6 +445,10 @@ QMenu {
 }
 
 QMenu::item {
+    /* El marge esquerre NO ha de deixar lloc a la icona: Qt ja reserva una
+       columna per a la icona (o per a la marca de seleccionat) abans
+       d'aplicar-lo. Pujant-lo, el que es fa és separar el text de la seva
+       pròpia icona. */
     padding: 8px 28px 8px 14px;
     border-radius: 6px;
     color: $text;
@@ -453,6 +457,28 @@ QMenu::item {
 QMenu::item:selected {
     background-color: $accent_soft;
     color: $text;
+}
+
+/* Opció triada (l'idioma actiu): a més de la marca, el text va del color
+   d'acció i en negreta, que és el que de debò es veu d'un cop d'ull. */
+QMenu::item:checked {
+    color: $accent;
+    font-weight: 600;
+}
+
+/* La marca de seleccionat. Fusion hi pinta una creueta petita i negra,
+   arraconada a l'esquerra; com que els idiomes són opcions EXCLUSIVES (només
+   se'n pot triar un), es canvia per un punt rodó del color d'acció, que és
+   com es marca una opció exclusiva a tot arreu. */
+QMenu::indicator {
+    width: 12px;
+    height: 12px;
+    left: 10px;
+}
+
+QMenu::indicator:checked {
+    background-color: $accent;
+    border-radius: 6px;
 }
 
 /* Mateix motiu que a QPushButton: el color fix de QMenu::item també
