@@ -7,6 +7,14 @@
  *
  * Les mides (mides de lletra, marges, radis) sí que són literals: no
  * depenen de la paleta.
+ *
+ * UNA REGLA QUE NO S'HA DE TRENCAR: aquí no hi pot haver cap regla
+ * `QTableView::item` / `QTableWidget::item`. En donar estil als ítems,
+ * Qt es fa càrrec de pintar-los i deixa d'aplicar el color de fons que
+ * posa el codi a cada cel·la — i en aquesta aplicació aquell color és
+ * informació (com d'ocupada està una posició, quines cel·les ha trobat
+ * un cercador), no decoració. L'aire de les files es dona amb l'alçada
+ * de fila des del codi, mai des d'aquí.
  */
 
 * {
@@ -19,68 +27,150 @@ QMainWindow, QWidget {
 }
 
 QTabWidget::pane {
-    border: 1px solid $border;
+    border: none;
     background: $surface;
 }
 
-/* MainWindow ja no fa servir QTabWidget (les pestanyes i els botons
-   d'acció comparteixen una sola fila amb QTabBar solt), però la vora
-   visual sota la barra de pestanyes és la mateixa. */
-QStackedWidget#tabStack {
-    border: 1px solid $border;
-    background: $surface;
-}
-
+/* Pestanyes sense caixa: la seleccionada es marca amb un subratllat del
+   color d'acció i el text del mateix color, no amb una vora al voltant.
+   El text de les no seleccionades es queda ben fosc (no gris clar): en un
+   monitor de taller, amb llum de sobres, un gris suau no es llegeix. */
 QTabBar::tab {
-    background: $surface_tab;
-    padding: 3px 18px;
-    border: 1px solid $border;
-    border-bottom: none;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 7px 18px;
     margin-right: 2px;
+    color: $text_secondary;
+    font-weight: 600;
+}
+
+QTabBar::tab:hover {
+    color: $text;
+    background: $surface_alt;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
 }
 
 QTabBar::tab:selected {
+    color: $accent;
+    border-bottom: 3px solid $accent;
+}
+
+/* MainWindow no fa servir QTabWidget (les pestanyes i el total de peces
+   comparteixen una sola fila amb QTabBar solt): la separació sota la
+   barra de pestanyes es fa amb una línia fina, no amb un marc. */
+QStackedWidget#tabStack {
+    border: none;
+    border-top: 1px solid $border;
     background: $surface;
-    font-weight: 600;
 }
 
 QGroupBox {
-    border: 1px solid $border;
-    border-radius: 4px;
-    margin-top: 10px;
-    padding-top: 10px;
+    border: 1px solid $grid;
+    border-radius: 10px;
+    margin-top: 14px;
+    padding: 14px 12px 10px 12px;
     background: $surface;
-    font-weight: 600;
+    font-weight: 700;
 }
 
 QGroupBox::title {
     subcontrol-origin: margin;
-    left: 10px;
+    left: 8px;
     padding: 0 4px;
+    color: $text_secondary;
 }
 
-QTableWidget {
+QTableWidget, QTableView {
     background: $surface;
     gridline-color: $grid;
+    border: none;
+    /* Selecció ben visible (fons ple del color d'acció, text a sobre en
+       clar): en un taller ha de quedar clar quina línia està triada. */
     selection-background-color: $accent;
     selection-color: $on_accent;
     alternate-background-color: $row_alt;
 }
 
+/* Capçalera plana: ni fons gris ni vores verticals, només una línia sota.
+   El text es queda fosc, per llegir-la de lluny. */
 QHeaderView::section {
-    background-color: $surface_alt;
-    padding: 6px;
+    background-color: $surface;
+    color: $text;
+    padding: 7px 4px;
     border: none;
-    border-bottom: 1px solid $border;
+    border-bottom: 2px solid $border;
     font-weight: 600;
+}
+
+QHeaderView::section:hover {
+    color: $accent;
+}
+
+QHeaderView {
+    background: $surface;
+    border: none;
+}
+
+/* La capçalera vertical són els números de fila: la mateixa línia fina que
+   la reixa, i el pes del text normal — no és un títol de columna. */
+QHeaderView::section:vertical {
+    color: $text_muted;
+    font-weight: 400;
+    padding: 2px 8px;
+    border: none;
+    border-bottom: 1px solid $grid;
+    border-right: 1px solid $border;
+}
+
+/* Barres de desplaçament primes i sense fletxes, però NO tan primes com
+   es porta: 14 px perquè es puguin agafar amb el ratolí sense apuntar
+   fi (i amb guants, o en una pantalla tàctil, encara més). */
+QScrollBar:vertical {
+    background: transparent;
+    width: 14px;
+    margin: 0;
+}
+
+QScrollBar:horizontal {
+    background: transparent;
+    height: 14px;
+    margin: 0;
+}
+
+QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
+    background: $border;
+    border-radius: 7px;
+    min-height: 40px;
+    min-width: 40px;
+}
+
+QScrollBar::handle:hover {
+    background: $text_muted;
+}
+
+QScrollBar::handle:pressed {
+    background: $accent;
+}
+
+QScrollBar::add-line, QScrollBar::sub-line {
+    height: 0px;
+    width: 0px;
+    border: none;
+    background: none;
+}
+
+QScrollBar::add-page, QScrollBar::sub-page {
+    background: none;
 }
 
 QPushButton {
     background-color: $accent;
     color: $on_accent;
     border: none;
-    border-radius: 4px;
-    padding: 7px 16px;
+    border-radius: 8px;
+    padding: 8px 18px;
     font-weight: 600;
 }
 
@@ -90,6 +180,32 @@ QPushButton:hover {
 
 QPushButton:pressed {
     background-color: $accent_pressed;
+}
+
+/* Botó secundari (`setProperty("variant", "ghost")`): mateixa forma i
+   mateixa mida que un de normal, però sense omplir-lo de color. Serveix
+   per als botons que acompanyen l'acció principal —els intervals fets de
+   les estadístiques, al costat de "Consultar"—, perquè es vegi d'un cop
+   d'ull quin és el botó important de la fila. */
+QPushButton[variant="ghost"] {
+    background-color: transparent;
+    color: $text;
+    border: 1px solid $border;
+}
+
+QPushButton[variant="ghost"]:hover {
+    background-color: $surface_alt;
+    border-color: $text_muted;
+}
+
+QPushButton[variant="ghost"]:pressed {
+    background-color: $accent_soft;
+}
+
+QPushButton[variant="ghost"]:disabled {
+    background-color: transparent;
+    color: $text_disabled;
+    border-color: $disabled_bg;
 }
 
 /* Sense aquesta regla, un botó desactivat es quedava exactament igual que
@@ -122,7 +238,7 @@ QRadioButton::indicator {
 }
 
 QCheckBox::indicator {
-    border-radius: 3px;
+    border-radius: 4px;
 }
 
 QRadioButton::indicator:hover, QCheckBox::indicator:hover {
@@ -149,15 +265,31 @@ QRadioButton::indicator:disabled, QCheckBox::indicator:disabled {
     background-color: $surface_alt;
 }
 
-QLineEdit, QSpinBox {
-    border: 1px solid $border_input;
-    border-radius: 4px;
-    padding: 5px 7px;
+/* Camps de text, números i dates: cantonada arrodonida i, en tenir el
+   focus, una vora del color d'acció més gruixuda. El "padding" baixa un
+   píxel quan la vora en puja un, així el camp no fa cap salt en clicar-hi. */
+QLineEdit, QSpinBox, QDateEdit, QComboBox {
+    border: 1px solid $border;
+    border-radius: 8px;
+    padding: 7px 10px;
     background: $surface;
+    color: $text;
+    selection-background-color: $accent;
+    selection-color: $on_accent;
 }
 
-QLineEdit:focus, QSpinBox:focus {
-    border: 1px solid $accent;
+QLineEdit:hover, QSpinBox:hover, QDateEdit:hover, QComboBox:hover {
+    border-color: $text_muted;
+}
+
+QLineEdit:focus, QSpinBox:focus, QDateEdit:focus, QComboBox:focus {
+    border: 2px solid $accent;
+    padding: 6px 9px;
+}
+
+QLineEdit:disabled, QSpinBox:disabled, QDateEdit:disabled {
+    background: $surface_alt;
+    color: $text_disabled;
 }
 
 /* Sense fletxes amunt/avall als camps numèrics: el valor es continua
@@ -167,25 +299,46 @@ QSpinBox::up-button, QSpinBox::down-button {
     border: none;
 }
 
+QDateEdit::drop-down, QComboBox::drop-down {
+    border: none;
+    width: 22px;
+}
+
 QStatusBar {
-    background: $surface_alt;
-    border-top: 1px solid $border;
+    background: $window;
+    border: none;
+    color: $text_secondary;
+}
+
+QStatusBar::item {
+    border: none;   /* sense les vores de separació que hi posa Qt */
+}
+
+QToolTip {
+    background-color: $surface;
+    color: $text;
+    border: 1px solid $border;
+    border-radius: 6px;
+    padding: 5px 8px;
 }
 
 QMenuBar {
     background-color: $window;
     color: $text;
+    border: none;
+    padding: 2px 4px;
 }
 
 QMenuBar::item {
     background: transparent;
     color: $text;
-    padding: 4px 10px;
+    padding: 6px 12px;
+    border-radius: 6px;
 }
 
-/* Al pasar el ratón sólo cambia el fondo; el texto se queda siempre con el
-   color de texto normal (si no se fija "color" aquí, algunos estilos de
-   plataforma lo ponen blanco y se vuelve ilegible sobre un fondo claro). */
+/* Al passar el ratolí només canvia el fons; el text es queda sempre amb el
+   color de text normal (si no es fixa "color" aquí, alguns estils de
+   plataforma el posen blanc i es torna il·legible sobre un fons clar). */
 QMenuBar::item:selected, QMenuBar::item:pressed {
     background-color: $accent_soft;
     color: $text;
@@ -195,10 +348,13 @@ QMenu {
     background-color: $surface;
     color: $text;
     border: 1px solid $border;
+    border-radius: 10px;
+    padding: 6px;
 }
 
 QMenu::item {
-    padding: 6px 24px 6px 14px;
+    padding: 8px 28px 8px 14px;
+    border-radius: 6px;
     color: $text;
 }
 
@@ -212,4 +368,10 @@ QMenu::item:selected {
    sobre una peça que no és l'última), i no es distingien de les actives. */
 QMenu::item:disabled {
     color: $text_disabled;
+}
+
+QMenu::separator {
+    height: 1px;
+    background: $border;
+    margin: 5px 8px;
 }

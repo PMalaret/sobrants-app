@@ -135,8 +135,8 @@ ACTIONS_ZONE_TOP_GAP = 2 * DETAIL_ROW_HEIGHT
 ACTIONS_ZONE_STYLE = """
 QFrame#boardActions {
     background-color: $surface_alt;
-    border: 1px solid $grid;
-    border-radius: 6px;
+    border: none;
+    border-radius: 10px;
 }
 """
 
@@ -182,9 +182,14 @@ class BoardTab(QWidget):
         self.table.verticalHeader().setDefaultSectionSize(BOARD_ROW_HEIGHT)
         # Capçalera més prima: es redueix el padding vertical de la secció,
         # no la mida de la lletra (que es queda igual, a 12px).
+        # Capçalera compacta pròpia: la general té 7 px de marge vertical
+        # (que a la resta de taules va bé), però aquí cada píxel que es
+        # menja la capçalera el perden les 27 files, que han de cabre
+        # totes sense scroll.
         self.table.setStyleSheet(
             f"QTableWidget {{ font-size: {BOARD_FONT_PX}px; }}"
-            f"QHeaderView::section {{ font-size: {BOARD_FONT_PX}px; padding: 1px 4px; }}"
+            f"QHeaderView::section {{ font-size: {BOARD_FONT_PX}px; padding: 1px 4px;"
+            f" border-bottom: 1px solid {theme.color('border')}; }}"
         )
         # El tauler sempre té exactament 61 posicions (mai més, mai menys),
         # però ara que la taula s'expandeix per ocupar l'espai vertical

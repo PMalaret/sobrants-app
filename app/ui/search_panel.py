@@ -143,7 +143,7 @@ class SearchPanel(QWidget):
             f"background-color: {bg_color}; color: {theme.color('text')}; "
             f"border: 1px solid {theme.color('border_mid')}; "
             f"border-left: 4px solid {theme.search_color(mode)}; "
-            f"border-radius: 3px; padding: 1px 6px; font-size: 12px;"
+            f"border-radius: 6px; padding: 2px 7px; font-size: 12px;"
         )
 
     def set_result(self, mode: str, count, oldest, qty, has_match: bool = False):

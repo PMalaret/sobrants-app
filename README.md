@@ -99,6 +99,34 @@ decisión de aspecto y vive en la paleta. Los informes impresos
 (`app/export.py`) toman siempre los colores de la paleta **clara**: lo que
 va al papel tiene que leerse sobre blanco.
 
+### Aspecto: qué hace la hoja de estilo
+
+Pestañas sin caja (subrayado del color de acción en la activa), cabeceras de
+tabla planas con una sola línea inferior, barras de desplazamiento sin
+flechas y con el pulgar redondeado, botones y campos con esquinas de 8 px,
+anillo de foco visible al entrar en un campo, y menús redondeados con aire.
+
+Dos decisiones tomadas *contra* la moda, por ser un ordenador de taller:
+
+- **Barras de desplazamiento de 14 px**, no de 8-10: tienen que poder
+  agarrarse con el ratón sin apuntar fino (y con guantes, o en una pantalla
+  táctil, todavía más).
+- **Cabeceras y pestañas con texto oscuro**, no en gris suave: con luz de
+  nave, un gris claro no se lee.
+
+La **jerarquía de botones** se marca con una propiedad, no con un color a
+mano: `setProperty("variant", "ghost")` deja el botón con el mismo tamaño
+pero sin rellenar, para los que acompañan a la acción principal (los
+intervalos hechos de Estadísticas, al lado de "Consultar").
+
+**Lo que la hoja de estilo NO puede tocar: `QTableView::item`.** En cuanto
+se le da estilo a los ítems, Qt se encarga de pintarlos y deja de aplicar el
+color de fondo que pone el código en cada celda — y aquí ese color es
+información (ocupación de la posición, coincidencias de los buscadores), no
+decoración. Está avisado al principio de `style.qss`. El aire de las filas,
+si hace falta, se da con la altura de fila desde el código; en el Tauler ni
+eso, porque sus 61 posiciones tienen que caber sin scroll.
+
 ### Desmagatzem: contador de piezas y mismos colores de búsqueda
 
 A la izquierda del botón **Imprimir desmagatzem** va el total de piezas

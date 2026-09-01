@@ -110,6 +110,9 @@ class StatisticsTab(QWidget):
         # és el que es vol el 90% de les vegades.
         for label_key, days in QUICK_RANGES:
             button = QPushButton(t(label_key))
+            # Secundaris: acompanyen "Consultar", que és l'acció principal
+            # de la fila i l'únic botó que va ple de color.
+            button.setProperty("variant", "ghost")
             button.clicked.connect(lambda _checked=False, d=days: self._apply_quick_range(d))
             row.addWidget(button)
 

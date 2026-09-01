@@ -74,8 +74,8 @@ from app.ui import dialogs, theme
 # panell: el separa d'Esborrar, que és a l'altra punta de la mateixa fila.
 _MOVE_GROUP_STYLE = """
 QFrame#moveGroup {
-    border: 1px solid $border_input;
-    border-radius: 6px;
+    border: 1px solid $border;
+    border-radius: 8px;
 }
 """
 
@@ -95,7 +95,7 @@ _PANEL_STYLE = """
 QFrame#positionPanel {
     background-color: $surface;
     border: 1px solid $border;
-    border-radius: 8px;
+    border-radius: 10px;
 }
 """
 
@@ -244,7 +244,14 @@ class PositionPanel(QFrame):
         # que és el que passava a les posicions amb poques peces.
         self.detail_table.verticalHeader().setMinimumSectionSize(DETAIL_ROW_HEIGHT)
         self.detail_table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
-        self.detail_table.setStyleSheet("font-size: 10px;")
+        # Lletra petita i capçalera compacta: aquesta taula ha d'encabir
+        # sempre les seves 5 línies dins del panell, que té l'alçada
+        # comptada (veure `_fit_detail_table_height`).
+        self.detail_table.setStyleSheet(
+            theme.css("QTableWidget { font-size: 10px; }"
+                      "QHeaderView::section { font-size: 10px; padding: 2px 4px;"
+                      " border-bottom: 1px solid $border; }")
+        )
         # Un delegat per columna editable: Núm. màxim 6 xifres
         # (rules.MATERIAL_CODE_MAX = 999999), Notes màxim 8 caràcters,
         # Mides sense límit. Tots tres avisen quan s'hi prem Enter, perquè
