@@ -157,20 +157,24 @@ def oldest_matching_position(matches: list[dict]) -> int | str | None:
     return best["position"]
 
 
-# Escala de color per ocupació d'una posició (AplicarColorsPerCoincidencies /
-# AplicarColorSegonsFilaIValorK12): el color de referència es prenia de les
-# cel·les K12:K16 del mateix Excel. Valors extrets del fitxer original:
-# 0-1 peça=blanc, 2=groc clar, 3=verd clar, 4=blau clar, 5+=vermell.
-FILL_COLOR_SCALE = ["#FFFFFF", "#FFF2CC", "#C6E0B4", "#B4C6E7", "#FF0000"]
+# Escala d'ocupació d'una posició (AplicarColorsPerCoincidencies /
+# AplicarColorSegonsFilaIValorK12): l'Excel original pintava la cel·la amb
+# un dels cinc colors de referència de K12:K16 segons quantes peces hi
+# hagués. Aquí en queda el NIVELL (1..5), que és la regla; quin color li
+# toca a cada nivell ho decideix la paleta (`app/ui/theme.py`), perquè és
+# una decisió d'aspecte i canvia amb el tema.
+OCCUPANCY_LEVELS = (1, 2, 3, 4, 5)
 
 
-def fill_color_for_count(piece_count: int) -> str:
-    """Color de "com d'ocupada" està una posició, igual que la referència K12:K16."""
+def occupancy_level(piece_count: int) -> int:
+    """Com d'ocupada està una posició, d'1 a 5, amb els mateixos trams que
+    la referència K12:K16: buida o amb 1 peça = 1, i de 5 peces en amunt =
+    5 (plena)."""
     if piece_count <= 1:
-        return FILL_COLOR_SCALE[0]
+        return OCCUPANCY_LEVELS[0]
     if piece_count >= 5:
-        return FILL_COLOR_SCALE[4]
-    return FILL_COLOR_SCALE[piece_count - 1]
+        return OCCUPANCY_LEVELS[-1]
+    return piece_count
 
 
 def has_material_inconsistency(material_codes: list) -> bool:

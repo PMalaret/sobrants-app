@@ -36,7 +36,7 @@ from app.backup import (
     sanitize_prefix,
 )
 from app.i18n import t
-from app.ui import dialogs
+from app.ui import dialogs, theme
 from app.ui.usb_indicator import removable_drives
 
 # Claus de preferències (les mateixes que llegeix `MainWindow`).
@@ -99,7 +99,7 @@ class BackupSettingsDialog(QDialog):
         form.addRow(t("backup.settings.name"), self.prefix_input)
 
         self.example_label = QLabel()
-        self.example_label.setStyleSheet("color: #555;")
+        self.example_label.setStyleSheet(theme.css("color: $text_secondary;"))
         form.addRow("", self.example_label)
 
         self.interval_input = QSpinBox()
@@ -122,7 +122,7 @@ class BackupSettingsDialog(QDialog):
             t("backup.settings.usb_found", drives=", ".join(drives)) if drives
             else t("backup.settings.usb_missing")
         )
-        usb_label.setStyleSheet("color: %s;" % ("#1a9c6d" if drives else "#c62828"))
+        usb_label.setStyleSheet("color: %s;" % theme.color("success" if drives else "danger"))
         form.addRow(t("backup.settings.usb"), usb_label)
 
         layout.addLayout(form)

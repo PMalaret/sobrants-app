@@ -151,7 +151,7 @@ class Repository:
                     "dimensions": piece["dimensions"] if piece else None,
                     "notes": piece["notes"] if piece else None,
                     "piece_count": len(pieces),
-                    "fill_color": rules.fill_color_for_count(len(pieces)),
+                    "occupancy": rules.occupancy_level(len(pieces)),
                     "inconsistent": rules.has_material_inconsistency([p["material_code"] for p in pieces]),
                 }
             )

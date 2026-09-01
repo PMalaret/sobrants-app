@@ -36,8 +36,10 @@ from PySide6.QtWidgets import (
 
 from app.i18n import t
 from app.logic.repository import Repository
+from app.logic.rules import OCCUPANCY_LEVELS
+from app.ui import theme
 from app.ui.position_panel import DETAIL_ROW_HEIGHT, PositionPanel
-from app.ui.search_panel import SEARCH_COLORS, SearchPanel
+from app.ui.search_panel import SearchPanel
 
 # (posició inicial, nombre de posicions) de cada bloc de columnes, igual que
 # els blocs A/F/K de Hoja1.
@@ -87,9 +89,7 @@ class _BoardGridDelegate(QStyledItemDelegate):
       per poder comptar posicions de 5 en 5 sense haver de mirar el número.
     """
 
-    _LEFT_COLOR = QColor("#6b7280")
     _LEFT_WIDTH = 3
-    _BOTTOM_COLOR = QColor("#9aa0a8")
     _BOTTOM_WIDTH = 2
 
     def __init__(self, position_columns: set[int], parent=None):
@@ -101,13 +101,13 @@ class _BoardGridDelegate(QStyledItemDelegate):
         rect = option.rect
         painter.save()
         if index.column() in self._position_columns:
-            pen = QPen(self._LEFT_COLOR)
+            pen = QPen(theme.qcolor("grid_block"))
             pen.setWidth(self._LEFT_WIDTH)
             painter.setPen(pen)
             x = rect.left()
             painter.drawLine(x, rect.top(), x, rect.bottom())
         if (index.row() + 1) % 5 == 0:
-            pen = QPen(self._BOTTOM_COLOR)
+            pen = QPen(theme.qcolor("grid_row"))
             pen.setWidth(self._BOTTOM_WIDTH)
             painter.setPen(pen)
             y = rect.bottom()
@@ -118,6 +118,11 @@ class _BoardGridDelegate(QStyledItemDelegate):
 # Els dos botons de sota del cercador comparteixen mida (ample, alçada i
 # padding) perquè quedin alineats; cadascun manté el seu color.
 FOOTER_BUTTON_STYLE = "padding: 5px 14px; font-size: 12px;"
+# "Materials tapats" manté el seu color propi (és una consulta que es fa
+# poc i no s'ha de confondre amb imprimir), ara des de la paleta.
+COVERED_BUTTON_STYLE = (
+    "QPushButton { " + FOOTER_BUTTON_STYLE + " background-color: $danger; color: $on_accent; }"
+)
 
 # Separació entre el cercador i la zona d'accions ("Imprimir tauler" i
 # "Materials tapats"): dues files de la taula de detall, perquè es vegi
@@ -129,8 +134,8 @@ ACTIONS_ZONE_TOP_GAP = 2 * DETAIL_ROW_HEIGHT
 # cercador). Discret, a joc amb la resta de la interfície.
 ACTIONS_ZONE_STYLE = """
 QFrame#boardActions {
-    background-color: #eef0f3;
-    border: 1px solid #e2e4e8;
+    background-color: $surface_alt;
+    border: 1px solid $grid;
     border-radius: 6px;
 }
 """
@@ -241,15 +246,13 @@ class BoardTab(QWidget):
         # "Materials tapats" a sota, amb la MATEIXA mida (perquè quedin
         # alineats) però conservant el seu color vermell i el seu ull.
         self.covered_button = QPushButton(f"\U0001f441\ufe0f  {t('action.covered').replace(chr(10), ' ')}")
-        self.covered_button.setStyleSheet(
-            f"QPushButton {{ {FOOTER_BUTTON_STYLE} background-color: #c62828; color: white; }}"
-        )
+        self.covered_button.setStyleSheet(theme.css(COVERED_BUTTON_STYLE))
         self.covered_button.clicked.connect(self.covered_requested.emit)
 
         # Tots dos dins d'una zona pròpia, arrambats a la dreta.
         self.actions_zone = QFrame()
         self.actions_zone.setObjectName("boardActions")
-        self.actions_zone.setStyleSheet(ACTIONS_ZONE_STYLE)
+        self.actions_zone.setStyleSheet(theme.css(ACTIONS_ZONE_STYLE))
         actions_layout = QVBoxLayout(self.actions_zone)
         actions_layout.setContentsMargins(6, 4, 6, 4)
         actions_layout.setSpacing(4)
@@ -298,23 +301,21 @@ class BoardTab(QWidget):
         row = QHBoxLayout(legend)
         row.setContentsMargins(0, 0, 0, 0)
         row.addWidget(QLabel(f"{t('legend.title')}:"))
-        steps = [
-            ("#FFFFFF", t("legend.piece_1")),
-            ("#FFF2CC", "2"),
-            ("#C6E0B4", "3"),
-            ("#B4C6E7", "4"),
-            ("#FF0000", t("legend.piece_5")),
-        ]
-        for color, text in steps:
-            swatch = QLabel(f" {text} ")
+        # Un quadret per nivell d'ocupació, amb el mateix parell de
+        # colors (fons i text) que la taula: la llegenda no pot dir un
+        # color diferent del que es veu a les posicions.
+        names = {1: t("legend.piece_1"), 5: t("legend.piece_5")}
+        for level in OCCUPANCY_LEVELS:
+            background, foreground = theme.occupancy_colors(level)
+            swatch = QLabel(f" {names.get(level, level)} ")
             swatch.setStyleSheet(
-                f"background-color: {color}; border: 1px solid #999; border-radius: 3px;"
-                + ("color: white;" if color == "#FF0000" else "color: black;")
+                f"background-color: {background}; color: {foreground}; "
+                f"border: 1px solid {theme.color('border_mid')}; border-radius: 3px;"
             )
             row.addWidget(swatch)
         row.addSpacing(12)
         warn = QLabel(t("legend.warning"))
-        warn.setStyleSheet("color: #c62828;")
+        warn.setStyleSheet(theme.css("color: $danger;"))
         row.addWidget(warn)
         return legend
 
@@ -347,10 +348,12 @@ class BoardTab(QWidget):
                 entry["dimensions"] or "",
                 notes_full[:NOTES_MAX_CHARS],
             ]
-            fill = QColor(entry["fill_color"])
-            # El fons vermell (posició plena) necessita text blanc per
-            # seguir sent llegible.
-            fill_text_color = QColor(Qt.white) if entry["fill_color"] == "#FF0000" else QColor(Qt.black)
+            # El NIVELL d'ocupació (1..5) el diu la regla de negoci; amb
+            # quins colors es pinta, la paleta (el text hi va a joc: clar
+            # sobre el vermell de posició plena, fosc sobre la resta).
+            background, foreground = theme.occupancy_colors(entry["occupancy"])
+            fill = QColor(background)
+            fill_text_color = QColor(foreground)
 
             for field_idx, v in enumerate(values):
                 item = QTableWidgetItem(str(v))
@@ -368,7 +371,7 @@ class BoardTab(QWidget):
                     item.setFont(font)
                 if entry["inconsistent"]:
                     if field_idx != 0:
-                        item.setForeground(QColor("#c62828"))
+                        item.setForeground(theme.qcolor("danger"))
                     item.setToolTip(t("board.tooltip.inconsistent"))
                 elif field_idx == 2 and entry["material_desc"]:
                     item.setToolTip(entry["material_desc"])
@@ -441,7 +444,10 @@ class BoardTab(QWidget):
             has_match=bool(result["count"]),
         )
         positions = {m["position"] for m in result["matches"]}
-        self._highlight_field(positions, self._SEARCH_FIELD[mode], self._SEARCH_COLOR[mode])
+        # Un color fix per cercador, el mateix que fan servir el panell de
+        # cerca i Desmagatzem (`theme.search_qcolor`), no un color derivat
+        # del material trobat.
+        self._highlight_field(positions, self._SEARCH_FIELD[mode], theme.search_qcolor(mode))
 
     @staticmethod
     def _oldest_text(mode: str, oldest) -> str:
@@ -459,10 +465,6 @@ class BoardTab(QWidget):
     # Camp del tauler que es ressalta per a cada cercador (igual que
     # l'original pintava B/G/L per M20, C/H/M per M22, E/J/O per M24).
     _SEARCH_FIELD = {"code": 1, "description": 2, "notes": 4}
-    # Un color fix per cercador, el mateix que fa servir el propi panell de
-    # cerca (i Desmagatzem): es deriva de `SEARCH_COLORS` en comptes de
-    # repetir-hi els codis, així no poden acabar dient coses diferents.
-    _SEARCH_COLOR = {mode: QColor(color) for mode, color in SEARCH_COLORS.items()}
     # Columnes amb el color fix d'ocupació (una per bloc); mai es toquen en
     # pintar/netejar ressaltats de cerca.
     _POSITION_COLUMNS = {block_idx * FIELDS_PER_BLOCK for block_idx in range(len(BLOCKS))}

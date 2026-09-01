@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from html import escape
+from string import Template
 from typing import NamedTuple
 
 from PySide6.QtCore import QMarginsF, Qt
@@ -31,6 +32,7 @@ from PySide6.QtWidgets import QWidget
 
 from app.i18n import t
 from app.logic.repository import Repository
+from app.ui import theme
 
 
 def export_board_pdf(board_tab_widget: QWidget, dest_path: str) -> None:
@@ -150,13 +152,17 @@ def print_table_report(
     return True
 
 
-_REPORT_STYLE = """
+# L'informe imprès agafa els colors de la paleta CLARA (`theme.LIGHT`)
+# expressament, no els de la paleta activa: el que es veu a la pantalla pot
+# ser fosc, però el que va al paper s'ha de llegir bé sobre blanc i no
+# s'ha de menjar la tinta de la impressora.
+_REPORT_STYLE = Template("""
 h1 { font-size: 13pt; font-family: sans-serif; }
-p.subtitle { font-size: 8pt; color: #444; font-family: sans-serif; }
+p.subtitle { font-size: 8pt; color: $text_secondary; font-family: sans-serif; }
 table { border-collapse: collapse; font-family: sans-serif; font-size: 8pt; }
-th { background-color: #eef0f3; border: 1px solid #9aa0a8; padding: 3px 5px; text-align: left; }
-td { border: 1px solid #c7cad1; padding: 2px 5px; }
-"""
+th { background-color: $surface_alt; border: 1px solid $grid_row; padding: 3px 5px; text-align: left; }
+td { border: 1px solid $border_input; padding: 2px 5px; }
+""").substitute(theme.LIGHT)
 
 
 def _cell_html(cell) -> str:

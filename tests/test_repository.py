@@ -165,15 +165,15 @@ def test_search_by_description_partial_and_oldest(repo):
     assert res["oldest_position"] in (1, 2)  # ambas tienen entered_at casi simultáneo
 
 
-def test_board_fill_color_reflects_piece_count(repo):
+def test_board_occupancy_reflects_piece_count(repo):
     repo.add_piece(position=6, material_code=999)
     board = repo.get_board()
     row6 = next(b for b in board if b["position"] == 6)
-    assert row6["fill_color"] == "#FFFFFF"  # 1 pieza
+    assert row6["occupancy"] == 1  # 1 pieza
 
     repo.add_piece(position=6, material_code=999)
     row6 = next(b for b in repo.get_board() if b["position"] == 6)
-    assert row6["fill_color"] == "#FFF2CC"  # 2 piezas
+    assert row6["occupancy"] == 2  # 2 piezas
 
 
 def test_board_marks_inconsistent_when_mixed_materials(repo):

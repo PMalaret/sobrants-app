@@ -36,7 +36,7 @@ from app.excel_export import export_historic_xlsx
 from app.i18n import t
 from app.logic.repository import Repository
 from app.security import ADMIN
-from app.ui import dialogs
+from app.ui import dialogs, theme
 from app.ui.password_dialog import ask_password
 
 # Ordre de les columnes de la taula i camp de la base de dades de cadascuna.
@@ -75,10 +75,10 @@ class _HistoricModel(QAbstractTableModel):
         self._rows: list[dict] = []
         self._headers = [t(key) for key, _field in COLUMNS]
         self._kind_labels = {
-            "in": (t("historic.kind.in"), QColor("#1a7f37")),
-            "out": (t("historic.kind.out"), QColor("#c62828")),
-            "move_out": (t("historic.kind.move_out"), QColor("#b48c64")),
-            "move_in": (t("historic.kind.move_in"), QColor("#78460f")),
+            "in": (t("historic.kind.in"), theme.qcolor("movement_in")),
+            "out": (t("historic.kind.out"), theme.qcolor("movement_out")),
+            "move_out": (t("historic.kind.move_out"), theme.qcolor("movement_move_out")),
+            "move_in": (t("historic.kind.move_in"), theme.qcolor("movement_move_in")),
         }
 
     # -- dades ------------------------------------------------------- #
@@ -159,7 +159,7 @@ class HistoricTab(QWidget):
         filters.addWidget(self.export_button)
 
         self.clear_button = QPushButton(t("historic.clear"))
-        self.clear_button.setStyleSheet("background-color: #c62828;")
+        self.clear_button.setStyleSheet(theme.css("background-color: $danger;"))
         self.clear_button.clicked.connect(self._on_clear)
         filters.addWidget(self.clear_button)
 

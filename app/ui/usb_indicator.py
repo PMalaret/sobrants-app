@@ -29,11 +29,9 @@ from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import QWidget
 
 from app.i18n import t
+from app.ui import theme
 
 _POLL_MS = 3000
-
-_CONNECTED_COLOR = "#1a9c6d"
-_DISCONNECTED_COLOR = "#c62828"
 
 # Windows: valor de GetDriveTypeW per a una unitat extraïble (llapis USB).
 _DRIVE_REMOVABLE = 2
@@ -117,7 +115,7 @@ class UsbIndicator(QWidget):
         # mida del widget: així no depèn de cap fitxer d'icona ni de cap
         # tipus de lletra de la plataforma, es veu igual a qualsevol
         # escalat de pantalla i es pinta directament del color que toca.
-        color = QColor(_CONNECTED_COLOR if self.connected else _DISCONNECTED_COLOR)
+        color = QColor(theme.color("success") if self.connected else theme.color("danger"))
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 

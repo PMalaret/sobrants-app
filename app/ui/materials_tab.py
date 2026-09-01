@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
 from app.i18n import t
 from app.logic.repository import Repository, RuleViolation
 from app.security import WORKER
-from app.ui import dialogs
+from app.ui import dialogs, theme
 from app.ui.password_dialog import ask_password
 
 
@@ -129,7 +129,7 @@ class MaterialsTab(QWidget):
         layout.addWidget(self.table)
 
         self.count_label = QLabel("")
-        self.count_label.setStyleSheet("color: #666;")
+        self.count_label.setStyleSheet(theme.css("color: $text_secondary;"))
         layout.addWidget(self.count_label)
 
     def refresh(self):

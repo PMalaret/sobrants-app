@@ -68,13 +68,13 @@ from app.logic.repository import (
     Repository,
     RuleViolation,
 )
-from app.ui import dialogs
+from app.ui import dialogs, theme
 
 # Marc fi només al voltant del botó de trasllat, a joc amb la vora del
 # panell: el separa d'Esborrar, que és a l'altra punta de la mateixa fila.
 _MOVE_GROUP_STYLE = """
 QFrame#moveGroup {
-    border: 1px solid #c7cad1;
+    border: 1px solid $border_input;
     border-radius: 6px;
 }
 """
@@ -93,8 +93,8 @@ DETAIL_TABLE_BOTTOM_GAP = 10
 
 _PANEL_STYLE = """
 QFrame#positionPanel {
-    background-color: #ffffff;
-    border: 1px solid #d0d3d9;
+    background-color: $surface;
+    border: 1px solid $border;
     border-radius: 8px;
 }
 """
@@ -153,7 +153,7 @@ class PositionPanel(QFrame):
         # haver-la de tornar a escriure si se'n mouen unes quantes seguides.
         self._last_move_target: int | None = None
         self.setObjectName("positionPanel")
-        self.setStyleSheet(_PANEL_STYLE)
+        self.setStyleSheet(theme.css(_PANEL_STYLE))
         self.setFrameShape(QFrame.NoFrame)
         self._build_ui()
 
@@ -168,7 +168,7 @@ class PositionPanel(QFrame):
         placeholder = QLabel(t("position.panel.placeholder"))
         placeholder.setAlignment(Qt.AlignCenter)
         placeholder.setWordWrap(True)
-        placeholder.setStyleSheet("color: #8a8f98; font-size: 11px;")
+        placeholder.setStyleSheet(theme.css("color: $text_muted; font-size: 11px;"))
         self._stack.addWidget(placeholder)  # índex 0
 
         self._stack.addWidget(self._build_detail_page())  # índex 1
@@ -196,7 +196,9 @@ class PositionPanel(QFrame):
         self.title_label = QLabel()
         # Títol de la posició, el text més gran del panell: és el que diu
         # de quina posició s'està parlant.
-        self.title_label.setStyleSheet("font-weight: 700; font-size: 19px; color: #1a1a1a;")
+        self.title_label.setStyleSheet(
+            theme.css("font-weight: 700; font-size: 19px; color: $text;")
+        )
         self.title_label.setAlignment(Qt.AlignCenter)
         self.title_label.setWordWrap(True)
         layout.addWidget(self.title_label)
@@ -327,7 +329,7 @@ class PositionPanel(QFrame):
         # sense mirar-lo.
         self.move_group = QFrame()
         self.move_group.setObjectName("moveGroup")
-        self.move_group.setStyleSheet(_MOVE_GROUP_STYLE)
+        self.move_group.setStyleSheet(theme.css(_MOVE_GROUP_STYLE))
         move_group_row = QHBoxLayout(self.move_group)
         move_group_row.setContentsMargins(6, 2, 6, 2)   # una mica d'aire per dins
         move_group_row.setSpacing(6)

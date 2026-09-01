@@ -7,11 +7,12 @@ directament a la taula de detall), amb els dos números més rellevants
 (coincidències i unitats a Desmagatzem) més destacats — sense targetes ni
 botons; per netejar un camp n'hi ha prou a buidar-ne el text.
 
-Cada cercador té UN color propi i fix (`SEARCH_COLORS`), el mateix amb
-què pinta les coincidències al Tauler i a Desmagatzem: la vora esquerra
-del camp sempre, i el fons del camp quan hi ha alguna coincidència. El
-color identifica el cercador, mai el material o la posició trobats — dos
-materials diferents cercats pel mateix camp surten sempre igual.
+Cada cercador té UN color propi i fix (`theme.search_color`), el mateix
+amb què pinta les coincidències al Tauler i a Desmagatzem: la vora
+esquerra del camp sempre, i el fons del camp quan hi ha alguna
+coincidència. El color identifica el cercador, mai el material o la
+posició trobats — dos materials diferents cercats pel mateix camp surten
+sempre igual.
 
 Distribució de cada cercador: el títol a sobre i, en UNA sola fila, el
 camp de text (curt: no li cal més) i els tres resultats (coincidències,
@@ -27,20 +28,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
 
 from app.i18n import t
-
-# Vora esquerra de cada camp (identifica quin cercador és, sempre visible);
-# mateixos colors que BoardTab._SEARCH_COLOR i DesmagatzemTab per pintar
-# les coincidències a les taules.
-SEARCH_COLORS = {
-    "code": "#ffe08a",
-    "description": "#a8e6a1",
-    # Rosa de l'Excel ("Light Red Fill"), una mica més pujat que el seu
-    # #ffc7ce perquè es distingeixi millor sense arribar a cridar: és el
-    # color del cercador per notes a tot arreu (camp, tauler i Desmagatzem).
-    "notes": "#ffa8b4",
-}
-
-_NO_MATCH_BG = "#ffffff"  # per defecte, sense cap coincidència: sense color
+from app.ui import theme
 
 # Ample del camp de text. Curt a propòsit: el que s'hi escriu són números
 # de material o trossos de text curts, i l'espai que sobra és més útil per
@@ -50,14 +38,15 @@ _EDIT_WIDTH = 105
 
 # Nom de cada resultat a dalt, amb el mateix estil que el títol del
 # cercador ("Per núm.:"), i el valor a sota molt més gran.
-_STAT_TITLE_STYLE = "font-size: 12px; font-weight: 600; color: #1a1a1a;"
+_STAT_TITLE_STYLE = "font-size: 12px; font-weight: 600; color: $text;"
 _STAT_VALUE_STYLE = "font-size: 17px; font-weight: 700; color: {color};"
-# Coincidències i unitats a Desmagatzem, en vermell (són els dos números
-# que interessen més); la posició més antiga, en el color del text normal.
+# Coincidències i unitats a Desmagatzem, amb el color d'avís (són els dos
+# números que interessen més); la posició més antiga, amb el color del text
+# normal. Es guarda el NOM del color, no el color.
 _STATS = (
-    ("matches", "search.stat.matches", "#c62828"),
-    ("oldest", "search.stat.oldest", "#1a1a1a"),
-    ("desmagatzem", "search.stat.desmagatzem", "#c62828"),
+    ("matches", "search.stat.matches", "danger"),
+    ("oldest", "search.stat.oldest", "text"),
+    ("desmagatzem", "search.stat.desmagatzem", "danger"),
 )
 _NO_VALUE = "—"
 
@@ -101,7 +90,7 @@ class SearchPanel(QWidget):
         # curt no hi cabria sencer.
         edit.setToolTip(placeholder)
         edit.setFixedWidth(_EDIT_WIDTH)
-        self._style_edit(edit, mode, _NO_MATCH_BG)
+        self._style_edit(edit, mode, theme.color("search_empty"))
         edit.textChanged.connect(lambda text, m=mode: self.search_changed.emit(m, text))
         # El títol del cercador ("Per núm.:") és el títol d'aquest bloc,
         # just a sobre del seu camp.
@@ -110,9 +99,9 @@ class SearchPanel(QWidget):
         # Els tres resultats, cadascun amb el seu nom a dalt i el número
         # gran a sota; s'enduen tot l'ample que deixa lliure el camp.
         self._stat_values[mode] = {}
-        for key, title_key, color in _STATS:
+        for key, title_key, token in _STATS:
             value = QLabel(_NO_VALUE)
-            value.setStyleSheet(_STAT_VALUE_STYLE.format(color=color))
+            value.setStyleSheet(_STAT_VALUE_STYLE.format(color=theme.color(token)))
             self._stat_values[mode][key] = value
             block, title_width = self._build_block(t(title_key), value)
             # Cada bloc creix en proporció al que ocupa el seu nom: així,
@@ -140,7 +129,7 @@ class SearchPanel(QWidget):
         column.setSpacing(0)
 
         title = QLabel(title_text)
-        title.setStyleSheet(_STAT_TITLE_STYLE)
+        title.setStyleSheet(theme.css(_STAT_TITLE_STYLE))
         title_width = title.sizeHint().width()  # abans d'activar el wrap
         title.setWordWrap(True)
         column.addWidget(title)
@@ -150,18 +139,22 @@ class SearchPanel(QWidget):
 
     @staticmethod
     def _style_edit(edit: QLineEdit, mode: str, bg_color: str):
-        accent = SEARCH_COLORS[mode]
         edit.setStyleSheet(
-            f"background-color: {bg_color}; color: #1a1a1a; border: 1px solid #999; "
-            f"border-left: 4px solid {accent}; border-radius: 3px; padding: 1px 6px; font-size: 12px;"
+            f"background-color: {bg_color}; color: {theme.color('text')}; "
+            f"border: 1px solid {theme.color('border_mid')}; "
+            f"border-left: 4px solid {theme.search_color(mode)}; "
+            f"border-radius: 3px; padding: 1px 6px; font-size: 12px;"
         )
 
     def set_result(self, mode: str, count, oldest, qty, has_match: bool = False):
         """`has_match` només decideix SI el camp es pinta; el color amb què
-        es pinta és sempre el del cercador (`SEARCH_COLORS[mode]`), no un
-        color derivat del material o de la posició trobats."""
+        es pinta és sempre el del cercador (`theme.search_color(mode)`), no
+        un color derivat del material o de la posició trobats."""
         edit = {"code": self.code_edit, "description": self.desc_edit, "notes": self.notes_edit}[mode]
-        self._style_edit(edit, mode, SEARCH_COLORS[mode] if has_match else _NO_MATCH_BG)
+        self._style_edit(
+            edit, mode,
+            theme.search_color(mode) if has_match else theme.color("search_empty"),
+        )
         values = self._stat_values[mode]
         for key, value in (("matches", count), ("oldest", oldest), ("desmagatzem", qty)):
             values[key].setText(str(value))

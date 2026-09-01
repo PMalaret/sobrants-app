@@ -67,6 +67,38 @@ tooltip. El botón de mover pregunta la posición de destino en un diálogo
 siempre — confirmación y `Repository.move_piece`, que es quien saca la
 pieza, la coloca y escribe las dos líneas de histórico.
 
+### Colores: una sola paleta, en `app/ui/theme.py`
+
+Ningún color se escribe dentro de un widget. Todos viven con nombre en la
+paleta de `app/ui/theme.py` (`accent`, `danger`, `surface`, los cinco
+niveles de ocupación, los tres colores de buscador, los de movimiento del
+histórico…) y se piden desde el código:
+
+- `theme.color("accent")` / `theme.qcolor("accent")` — un color suelto.
+- `theme.css("color: $text_muted;")` — un fragmento de hoja de estilo con
+  los nombres sustituidos; es lo que usan los widgets con estilo propio.
+- `theme.stylesheet()` — `style.qss` entero, que lleva `$nombre` en vez de
+  códigos de color.
+- `theme.apply(app)` — lo que hace el arranque: estilo **Fusion**, paleta de
+  Qt y hoja de estilo.
+
+Se usa Fusion y no el estilo nativo de Windows porque Fusion pinta todos los
+widgets estándar a partir de la `QPalette`: el estilo nativo se salta buena
+parte de sus colores, y con una paleta distinta dejaría menús, calendarios,
+barras de desplazamiento y diálogos sin cambiar.
+
+Los nombres dicen **qué** es cada color, no de qué color es (`danger`, no
+`red`), así una paleta puede usar otro tono para lo mismo sin que el nombre
+mienta. La regla —cero `#rrggbb` fuera de la paleta— la vigila un test
+(`tests/test_theme.py`), igual que otro vigila que las 270 claves de
+traducción estén en los 4 idiomas.
+
+El nivel de ocupación de una posición (1 a 5) es una **regla de negocio** y
+vive en `rules.occupancy_level`; qué color le toca a cada nivel es una
+decisión de aspecto y vive en la paleta. Los informes impresos
+(`app/export.py`) toman siempre los colores de la paleta **clara**: lo que
+va al papel tiene que leerse sobre blanco.
+
 ### Desmagatzem: contador de piezas y mismos colores de búsqueda
 
 A la izquierda del botón **Imprimir desmagatzem** va el total de piezas

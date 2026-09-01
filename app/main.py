@@ -11,7 +11,7 @@ from app import i18n
 from app.data.db import connect
 from app.i18n import t
 from app.logic.repository import Repository
-from app.ui import dialogs
+from app.ui import dialogs, theme
 from app.ui.import_actions import import_from_excel
 
 
@@ -61,9 +61,8 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Sobrants")
     app.setWindowIcon(_app_icon())
-    style_path = Path(__file__).with_name("ui") / "style.qss"
-    if style_path.exists():
-        app.setStyleSheet(style_path.read_text(encoding="utf-8"))
+    # Estil, paleta i full d'estil: tot ve de la paleta activa.
+    theme.apply(app)
 
     data_dir = _data_dir()
     i18n.init_settings_path(data_dir)

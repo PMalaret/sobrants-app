@@ -122,14 +122,16 @@ def test_oldest_matching_position_none_when_no_dates():
     assert rules.oldest_matching_position([{"position": 1, "entered_at": None}]) is None
 
 
-def test_fill_color_for_count_matches_original_scale():
-    assert rules.fill_color_for_count(0) == "#FFFFFF"
-    assert rules.fill_color_for_count(1) == "#FFFFFF"
-    assert rules.fill_color_for_count(2) == "#FFF2CC"
-    assert rules.fill_color_for_count(3) == "#C6E0B4"
-    assert rules.fill_color_for_count(4) == "#B4C6E7"
-    assert rules.fill_color_for_count(5) == "#FF0000"
-    assert rules.fill_color_for_count(9) == "#FF0000"
+def test_occupancy_level_matches_original_scale():
+    """Els mateixos trams que els cinc colors de referència K12:K16 de
+    l'Excel; quin color li toca a cada nivell ja no és cosa de les regles."""
+    assert rules.occupancy_level(0) == 1
+    assert rules.occupancy_level(1) == 1
+    assert rules.occupancy_level(2) == 2
+    assert rules.occupancy_level(3) == 3
+    assert rules.occupancy_level(4) == 4
+    assert rules.occupancy_level(5) == 5
+    assert rules.occupancy_level(9) == 5
 
 
 def test_has_material_inconsistency_multiple_distinct_codes():

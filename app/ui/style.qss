@@ -1,44 +1,55 @@
+/* Full d'estil global de l'aplicació.
+ *
+ * Els colors no s'escriuen aquí: hi van els NOMS de la paleta
+ * (`app/ui/theme.py`), que es substitueixen en carregar el fitxer
+ * (`theme.stylesheet()`). Així el mateix full serveix per a qualsevol
+ * paleta i no hi ha cap codi de color repetit en dos llocs.
+ *
+ * Les mides (mides de lletra, marges, radis) sí que són literals: no
+ * depenen de la paleta.
+ */
+
 * {
     font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     font-size: 13px;
 }
 
 QMainWindow, QWidget {
-    background-color: #f5f6f8;
+    background-color: $window;
 }
 
 QTabWidget::pane {
-    border: 1px solid #d0d3d9;
-    background: #ffffff;
+    border: 1px solid $border;
+    background: $surface;
 }
 
 /* MainWindow ja no fa servir QTabWidget (les pestanyes i els botons
    d'acció comparteixen una sola fila amb QTabBar solt), però la vora
    visual sota la barra de pestanyes és la mateixa. */
 QStackedWidget#tabStack {
-    border: 1px solid #d0d3d9;
-    background: #ffffff;
+    border: 1px solid $border;
+    background: $surface;
 }
 
 QTabBar::tab {
-    background: #e8eaee;
+    background: $surface_tab;
     padding: 3px 18px;
-    border: 1px solid #d0d3d9;
+    border: 1px solid $border;
     border-bottom: none;
     margin-right: 2px;
 }
 
 QTabBar::tab:selected {
-    background: #ffffff;
+    background: $surface;
     font-weight: 600;
 }
 
 QGroupBox {
-    border: 1px solid #d0d3d9;
+    border: 1px solid $border;
     border-radius: 4px;
     margin-top: 10px;
     padding-top: 10px;
-    background: #ffffff;
+    background: $surface;
     font-weight: 600;
 }
 
@@ -49,24 +60,24 @@ QGroupBox::title {
 }
 
 QTableWidget {
-    background: #ffffff;
-    gridline-color: #e2e4e8;
-    selection-background-color: #2f6fed;
-    selection-color: #ffffff;
-    alternate-background-color: #fafbfc;
+    background: $surface;
+    gridline-color: $grid;
+    selection-background-color: $accent;
+    selection-color: $on_accent;
+    alternate-background-color: $row_alt;
 }
 
 QHeaderView::section {
-    background-color: #eef0f3;
+    background-color: $surface_alt;
     padding: 6px;
     border: none;
-    border-bottom: 1px solid #d0d3d9;
+    border-bottom: 1px solid $border;
     font-weight: 600;
 }
 
 QPushButton {
-    background-color: #2f6fed;
-    color: white;
+    background-color: $accent;
+    color: $on_accent;
     border: none;
     border-radius: 4px;
     padding: 7px 16px;
@@ -74,19 +85,19 @@ QPushButton {
 }
 
 QPushButton:hover {
-    background-color: #2559c9;
+    background-color: $accent_hover;
 }
 
 QPushButton:pressed {
-    background-color: #1e47a3;
+    background-color: $accent_pressed;
 }
 
 /* Sense aquesta regla, un botó desactivat es quedava exactament igual que
    un d'actiu: com que QPushButton té aquí un fons fix, Qt ja no li aplica
    el gris de deshabilitat que posaria l'estil natiu de la plataforma. */
 QPushButton:disabled {
-    background-color: #c9cdd4;
-    color: #7e838b;
+    background-color: $disabled_bg;
+    color: $disabled_text;
 }
 
 /* Radios i caselles: a alguns temes de Windows la marca de seleccionat
@@ -96,14 +107,14 @@ QPushButton:disabled {
    no el comportament ni l'accessibilitat. */
 QRadioButton, QCheckBox {
     spacing: 8px;
-    color: #1a1a1a;
+    color: $text;
 }
 
 QRadioButton::indicator, QCheckBox::indicator {
     width: 16px;
     height: 16px;
-    background-color: #ffffff;
-    border: 2px solid #8a8f98;
+    background-color: $surface;
+    border: 2px solid $text_muted;
 }
 
 QRadioButton::indicator {
@@ -115,38 +126,38 @@ QCheckBox::indicator {
 }
 
 QRadioButton::indicator:hover, QCheckBox::indicator:hover {
-    border-color: #2f6fed;
+    border-color: $accent;
 }
 
-/* Seleccionat: vora blava i un punt blau ben visible a dins. */
+/* Seleccionat: vora del color d'acció i un punt ben visible a dins. */
 QRadioButton::indicator:checked {
-    border: 2px solid #2f6fed;
+    border: 2px solid $accent;
     background-color: qradialgradient(cx:0.5, cy:0.5, radius:0.5,
                                       fx:0.5, fy:0.5,
-                                      stop:0 #2f6fed, stop:0.5 #2f6fed,
-                                      stop:0.55 #ffffff, stop:1 #ffffff);
+                                      stop:0 $accent, stop:0.5 $accent,
+                                      stop:0.55 $surface, stop:1 $surface);
 }
 
 QCheckBox::indicator:checked {
-    border: 2px solid #2f6fed;
-    background-color: #2f6fed;
+    border: 2px solid $accent;
+    background-color: $accent;
     image: none;
 }
 
 QRadioButton::indicator:disabled, QCheckBox::indicator:disabled {
-    border-color: #c9cdd4;
-    background-color: #eef0f3;
+    border-color: $disabled_bg;
+    background-color: $surface_alt;
 }
 
 QLineEdit, QSpinBox {
-    border: 1px solid #c7cad1;
+    border: 1px solid $border_input;
     border-radius: 4px;
     padding: 5px 7px;
-    background: #ffffff;
+    background: $surface;
 }
 
 QLineEdit:focus, QSpinBox:focus {
-    border: 1px solid #2f6fed;
+    border: 1px solid $accent;
 }
 
 /* Sense fletxes amunt/avall als camps numèrics: el valor es continua
@@ -157,48 +168,48 @@ QSpinBox::up-button, QSpinBox::down-button {
 }
 
 QStatusBar {
-    background: #eef0f3;
-    border-top: 1px solid #d0d3d9;
+    background: $surface_alt;
+    border-top: 1px solid $border;
 }
 
 QMenuBar {
-    background-color: #f5f6f8;
-    color: #1a1a1a;
+    background-color: $window;
+    color: $text;
 }
 
 QMenuBar::item {
     background: transparent;
-    color: #1a1a1a;
+    color: $text;
     padding: 4px 10px;
 }
 
-/* Al pasar el ratón sólo cambia el fondo; el texto se queda siempre oscuro
-   (si no se fija "color" aquí, algunos estilos de plataforma lo ponen
-   blanco y se vuelve ilegible sobre un fondo claro). */
+/* Al pasar el ratón sólo cambia el fondo; el texto se queda siempre con el
+   color de texto normal (si no se fija "color" aquí, algunos estilos de
+   plataforma lo ponen blanco y se vuelve ilegible sobre un fondo claro). */
 QMenuBar::item:selected, QMenuBar::item:pressed {
-    background-color: #d8e2fb;
-    color: #1a1a1a;
+    background-color: $accent_soft;
+    color: $text;
 }
 
 QMenu {
-    background-color: #ffffff;
-    color: #1a1a1a;
-    border: 1px solid #d0d3d9;
+    background-color: $surface;
+    color: $text;
+    border: 1px solid $border;
 }
 
 QMenu::item {
     padding: 6px 24px 6px 14px;
-    color: #1a1a1a;
+    color: $text;
 }
 
 QMenu::item:selected {
-    background-color: #d8e2fb;
-    color: #1a1a1a;
+    background-color: $accent_soft;
+    color: $text;
 }
 
 /* Mateix motiu que a QPushButton: el color fix de QMenu::item també
    s'aplicava a les opcions desactivades (p. ex. "Esborrar aquesta peça"
    sobre una peça que no és l'última), i no es distingien de les actives. */
 QMenu::item:disabled {
-    color: #9aa0a8;
+    color: $text_disabled;
 }

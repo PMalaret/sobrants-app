@@ -41,6 +41,7 @@ from PySide6.QtWidgets import (
 
 from app.i18n import format_number, t
 from app.logic.repository import Repository
+from app.ui import theme
 
 # Format en què es veuen i s'escriuen les dates dels dos camps (el de la
 # base de dades és sempre ISO, veure `_iso`).
@@ -83,7 +84,7 @@ class StatisticsTab(QWidget):
         layout.addWidget(self._build_filters())
 
         note = QLabel(t("stats.note"))
-        note.setStyleSheet("color: #8a8f98; font-size: 11px;")
+        note.setStyleSheet(theme.css("color: $text_muted; font-size: 11px;"))
         layout.addWidget(note)
 
         tables = QHBoxLayout()
@@ -118,7 +119,9 @@ class StatisticsTab(QWidget):
 
         row.addStretch()
         self.summary_label = QLabel()
-        self.summary_label.setStyleSheet("font-size: 13px; font-weight: 600; color: #1a1a1a;")
+        self.summary_label.setStyleSheet(
+            theme.css("font-size: 13px; font-weight: 600; color: $text;")
+        )
         row.addWidget(self.summary_label)
         return box
 

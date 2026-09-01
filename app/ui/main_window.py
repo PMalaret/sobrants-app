@@ -26,7 +26,7 @@ from app.export import covered_materials_report_text, print_table_report, print_
 from app.i18n import t
 from app.logic.repository import Repository
 from app.security import ADMIN
-from app.ui import dialogs
+from app.ui import dialogs, theme
 from app.ui.about_dialog import AboutDialog
 from app.ui.backup_dialog import BackupSettingsDialog, backup_folder, backup_keep, backup_prefix
 from app.ui.import_actions import import_from_database, import_from_excel
@@ -181,7 +181,9 @@ class MainWindow(QMainWindow):
         # Total de peces, a l'esquerra de la icona d'USB. Ve de la base de
         # dades (`Repository.count_pieces`), no del que hi hagi pintat.
         self.pieces_label = QLabel()
-        self.pieces_label.setStyleSheet("font-size: 13px; font-weight: 600; color: #1a1a1a;")
+        self.pieces_label.setStyleSheet(
+            theme.css("font-size: 13px; font-weight: 600; color: $text;")
+        )
         self.pieces_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         layout.addWidget(self.pieces_label)
         self.refresh_piece_count()
@@ -196,7 +198,7 @@ class MainWindow(QMainWindow):
                 f"""
                 QPushButton {{
                     background-color: {color};
-                    color: white;
+                    color: {theme.color("on_accent")};
                     font-size: 12px;
                     font-weight: 600;
                     border: none;

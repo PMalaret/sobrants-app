@@ -3,8 +3,8 @@
 Els cercadors del Tauler (M20/M22/M24 a l'Excel original) també pintaven
 les cel·les coincidents de la fulla desmagatzem amb el mateix color del
 cercador (`BuscaCoincidenciesDesmagatzem_Q20/M22/M24`); aquí es reprodueix
-exactament igual, reutilitzant els mateixos colors que `SearchPanel`
-(`SEARCH_COLORS`) — mai es crea una paleta nova.
+exactament igual, reutilitzant els mateixos colors que el cercador
+(`theme.search_qcolor`) — mai es crea una paleta nova.
 
 L'ordenació es fa clicant la capçalera de cada columna (mode natiu de
 QTableWidget, alterna ascendent/descendent), no amb botons a part. Per
@@ -37,8 +37,7 @@ from app.logic import rules
 from app.logic.repository import Repository, RuleViolation
 from app.logic.rules import quantity_change_kind
 from app.export import ReportCell
-from app.ui import dialogs
-from app.ui.search_panel import SEARCH_COLORS
+from app.ui import dialogs, theme
 
 
 # Amples del formulari de nova entrada, calculats sobre el que pot valer
@@ -297,7 +296,9 @@ class DesmagatzemTab(QWidget):
         # del Tauler (mateixa mida, mateix pes i mateix separador de
         # milers), perquè els dos comptadors es llegeixin igual.
         self.piece_count_label = QLabel()
-        self.piece_count_label.setStyleSheet("font-size: 13px; font-weight: 600; color: #1a1a1a;")
+        self.piece_count_label.setStyleSheet(
+            theme.css("font-size: 13px; font-weight: 600; color: $text;")
+        )
         qty_row.addWidget(self.piece_count_label)
         qty_row.addWidget(self.print_button)
         layout.addLayout(qty_row)
@@ -408,7 +409,7 @@ class DesmagatzemTab(QWidget):
         self._clear_column(column)
         if not text.strip():
             return
-        color = QColor(SEARCH_COLORS[mode])
+        color = theme.search_qcolor(mode)
         for r in range(self.table.rowCount()):
             item = self.table.item(r, column)
             if item is None or not item.text():
