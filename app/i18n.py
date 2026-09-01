@@ -787,6 +787,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Nothing has been printed.\n\n{error}",
         "fr": "Rien n'a été imprimé.\n\n{error}",
     },
+    "print.page": {
+        "ca": "Pàgina {page} de {total}", "es": "Página {page} de {total}",
+        "en": "Page {page} of {total}", "fr": "Page {page} sur {total}",
+    },
     "print.sent": {
         "ca": "Enviat a la impressora.", "es": "Enviado a la impresora.",
         "en": "Sent to the printer.", "fr": "Envoyé à l'imprimante.",

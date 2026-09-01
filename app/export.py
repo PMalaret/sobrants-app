@@ -26,13 +26,18 @@ from html import escape
 from string import Template
 from typing import NamedTuple
 
-from PySide6.QtCore import QMarginsF, QPoint, Qt
-from PySide6.QtGui import QPageLayout, QPageSize, QPainter, QRegion, QTextDocument
+from PySide6.QtCore import QMarginsF, QPoint, QRectF, Qt
+from PySide6.QtGui import QFont, QPageLayout, QPageSize, QPainter, QRegion, QTextDocument
 from PySide6.QtPrintSupport import QPrintDialog, QPrinter
 from PySide6.QtWidgets import QApplication, QWidget
 
 # Marges de la pàgina, en mil·límetres.
 PAGE_MARGINS_MM = 10
+
+# Peu de pàgina dels informes: quanta alçada se li reserva (en punts, que és
+# com es mesura el paper) i amb quina lletra s'escriu.
+FOOTER_HEIGHT_PT = 26
+FOOTER_FONT_PT = 8
 
 # Com s'anomena cada imprès (veure `document_name`). No es tradueixen: un
 # nom de fitxer no ha de canviar segons l'idioma en què estigui oberta
@@ -217,6 +222,10 @@ def print_table_report(
     Surt apaïsat (les taules són més amples que altes) i no crea cap fitxer
     temporal: es pinta directament a la impressora que triï l'usuari al
     diàleg del sistema. Retorna False si s'ha cancel·lat.
+
+    Cada pàgina va numerada al peu ("Pàgina 2 de 7"), i per això les
+    pàgines es pinten una a una (`_print_document_with_footer`) en comptes
+    de deixar-ho tot a `QTextDocument.print_`, que no en sap posar cap.
     """
     printer = QPrinter(QPrinter.HighResolution)
     printer.setDocName(document_name(doc_slug))
@@ -231,9 +240,65 @@ def print_table_report(
     document = QTextDocument()
     document.setDefaultStyleSheet(_REPORT_STYLE)
     document.setHtml(_report_html(title, headers, rows))
-    document.setPageSize(printer.pageRect(QPrinter.Point).size())
-    document.print_(printer)
+    _print_document_with_footer(document, printer)
     return True
+
+
+def _print_document_with_footer(document: QTextDocument, printer: QPrinter) -> None:
+    """Imprimeix el document pàgina a pàgina, amb el número al peu.
+
+    `QTextDocument.print_` reparteix el text en pàgines sol, però no hi sap
+    afegir res: ni capçalera ni peu. Per posar-hi el número de pàgina cal
+    fer el repartiment aquí, que no té més misteri que:
+
+      1. dir-li al document que la seva pàgina és una mica més baixa que la
+         del paper (l'alçada que es reserva per al peu);
+      2. per a cada pàgina, moure el pintor tants "salts de pàgina" com
+         calgui i demanar-li al document que dibuixi aquell tros;
+      3. escriure el peu a la franja que s'ha reservat.
+
+    El nombre total de pàgines ja el sap el document un cop se li ha donat
+    la mida de pàgina, així que el peu pot dir "de quantes" des de la
+    primera.
+    """
+    page_rect = printer.pageRect(QPrinter.DevicePixel)
+    # Les mides del document es donen en les mateixes unitats amb què es
+    # pinta (píxels del dispositiu), perquè el que es dibuixi encaixi
+    # exactament amb el que s'ha comptat.
+    footer_height = FOOTER_HEIGHT_PT * printer.resolution() / 72
+    body_height = page_rect.height() - footer_height
+    document.setPageSize(QRectF(0, 0, page_rect.width(), body_height).size())
+
+    painter = QPainter()
+    if not painter.begin(printer):
+        raise RuntimeError(t("print.error.text"))
+    try:
+        footer_font = QFont(painter.font())
+        footer_font.setPointSize(FOOTER_FONT_PT)
+        total = max(document.pageCount(), 1)
+        for page in range(total):
+            if page:
+                printer.newPage()
+            painter.save()
+            body = QRectF(0, 0, page_rect.width(), body_height)
+            painter.setClipRect(body)
+            painter.translate(0, -page * body_height)
+            document.drawContents(
+                painter, QRectF(0, page * body_height, page_rect.width(), body_height)
+            )
+            painter.restore()
+
+            painter.save()
+            painter.setFont(footer_font)
+            painter.setPen(theme.qcolor("text_secondary"))
+            painter.drawText(
+                QRectF(0, body_height, page_rect.width(), footer_height),
+                Qt.AlignRight | Qt.AlignVCenter,
+                t("print.page", page=page + 1, total=total),
+            )
+            painter.restore()
+    finally:
+        painter.end()
 
 
 # L'informe imprès agafa els colors de la paleta CLARA (`theme.LIGHT`)

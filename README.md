@@ -453,7 +453,16 @@ Son dos formas distintas a propósito:
   haya elegido el usuario en las cabeceras. Cada celda viaja como
   `ReportCell(texto, color)`, así que **los fondos de color de la tabla**
   (por ejemplo los resaltados de búsqueda) salen también impresos, en una
-  página o en veinte.
+  página o en veinte. Cada página lleva su **número al pie** ("Página 2 de
+  7"): `QTextDocument.print_` reparte el texto en páginas pero no sabe
+  añadir nada, así que el reparto se hace a mano
+  (`_print_document_with_footer`) reservando una franja para el pie.
+
+  Al ser texto compuesto y no una captura, este PDF es **vectorial**: unas
+  decenas de kB, nítido a cualquier zoom y con el texto buscable. El del
+  Tauler no puede serlo: Qt sólo sabe imprimir un widget como imagen (hasta
+  una etiqueta suelta acaba rasterizada), así que sale como una imagen a
+  1200 ppp — impecable en papel, pero imagen.
 
 En Desmagatzem, **Mides y Notes se editan directamente en la tabla** (un
 clic abre el editor; Enter guarda, Escape cancela). El valor va a la base
