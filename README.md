@@ -5,7 +5,7 @@ reglas de negocio, sin necesidad de Microsoft Excel. Construida en
 Python + PySide6 (Qt), con los datos en una base de datos SQLite local
 (`SobrantsData/sobrants.db`, junto al ejecutable). **Interfaz en 4 idiomas
 (catalán, castellano, inglés, francés)**, con selector en el menú
-"🌐 Idioma/Language/Langue" (se recuerda entre arranques en
+"Idioma/Language/Langue" (se recuerda entre arranques en
 `SobrantsData/settings.json`); toda la traducción vive en `app/i18n.py`,
 con las 270 claves siempre en los 4 idiomas a la vez (cualquier cadena
 nueva que se añada debe seguir esa misma regla). Esta documentación y los
