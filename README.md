@@ -422,12 +422,25 @@ de USB.
 Los dos abren el diálogo de impresión **nativo** del sistema
 (`QPrintDialog`) —donde se puede elegir "imprimir a PDF"— y ninguno crea
 ficheros temporales. Cancelar no hace nada; un fallo de la impresora se
-avisa.
+avisa. Al documento se le pone nombre antes de enviarlo
+(`export.document_name`: "Sobrants - Tauler - AAAA-MM-DD"), que es el nombre
+de fichero que propone Windows si se elige "Imprimir a PDF".
 
 Son dos formas distintas a propósito:
 
-- El **Tauler** es una imagen: se imprime tal como se ve
-  (`export._paint_widget_on_printer`, el mismo dibujo que ya generaba el PDF).
+- El **Tauler** se imprime tal como se ve
+  (`export._paint_widget_on_printer`), con dos detalles que importan en el
+  papel. Primero, **llena la página**: el Tauler es mucho más apaisado (2,2
+  de ancho por 1 de alto) que un A4 apaisado (1,4), así que antes tenía que
+  encajar por el ancho y dejaba vacío un tercio largo de la hoja; ahora,
+  mientras dura la impresión, se le da la forma de la página
+  (`_shaped_like_the_page`) y el contenido se expande para ocuparla entera
+  —siguen siendo las 61 posiciones, solo que con las filas más altas— y
+  vuelve a su tamaño al terminar. Segundo, **no es una captura de
+  pantalla**: se le pide al widget que se dibuje sobre la página
+  (`QWidget.render`) con el pintor escalado, así que el texto y las líneas
+  se generan a la resolución de la impresora en vez de ampliar una imagen
+  del tamaño de la pantalla, que salía borrosa.
 - **Desmagatzem** es un **informe**: `export.print_table_report` compone
   todas las filas de la tabla en un `QTextDocument` (HTML con `<thead>`),
   así que Qt las reparte en páginas, repite la cabecera en cada una y no

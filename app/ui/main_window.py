@@ -403,7 +403,7 @@ class MainWindow(QMainWindow):
     # Imprimir
     # ------------------------------------------------------------------ #
     def _print_board(self):
-        self._print(self.board_tab, self.board_tab)
+        self._print(self.board_tab, self.board_tab, t("tab.board"))
 
     def _print_desmagatzem(self):
         """Desmagatzem s'imprimeix com un INFORME, no com una captura: es
@@ -418,7 +418,7 @@ class MainWindow(QMainWindow):
         if printed:
             self.statusBar().showMessage(t("print.sent"), 5000)
 
-    def _print(self, tab: QWidget, widget: QWidget):
+    def _print(self, tab: QWidget, widget: QWidget, title: str):
         """Flux d'impressió comú als dos botons: preparar el que s'ha
         d'imprimir, obrir el diàleg del sistema i imprimir-hi si s'accepta.
 
@@ -427,7 +427,7 @@ class MainWindow(QMainWindow):
         """
         self._ensure_tab_laid_out(tab)
         try:
-            printed = print_widget(widget, self)
+            printed = print_widget(widget, title, self)
         except Exception as exc:  # noqa: BLE001 - qualsevol problema de la impressora
             dialogs.error(self, t("print.error.title"), t("print.error.detail", error=exc))
             return

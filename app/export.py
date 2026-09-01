@@ -20,15 +20,19 @@ widgets.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from contextlib import contextmanager
+from datetime import date, datetime
 from html import escape
 from string import Template
 from typing import NamedTuple
 
-from PySide6.QtCore import QMarginsF, Qt
-from PySide6.QtGui import QPageLayout, QPageSize, QPainter, QTextDocument
+from PySide6.QtCore import QMarginsF, QPoint, Qt
+from PySide6.QtGui import QPageLayout, QPageSize, QPainter, QRegion, QTextDocument
 from PySide6.QtPrintSupport import QPrintDialog, QPrinter
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QApplication, QWidget
+
+# Marges de la pàgina, en mil·límetres.
+PAGE_MARGINS_MM = 10
 
 from app.i18n import t
 from app.logic.repository import Repository
@@ -47,39 +51,92 @@ def export_desmagatzem_pdf(table_widget: QWidget, dest_path: str) -> None:
     _print_widget_to_pdf(table_widget, dest_path)
 
 
+def _relayout(widget: QWidget) -> None:
+    """Fa que el widget torni a col·locar el seu contingut ARA, sense
+    esperar-se al següent repàs de Qt."""
+    if widget.layout() is not None:
+        widget.layout().activate()
+    QApplication.processEvents()
+
+
+@contextmanager
+def _shaped_like_the_page(widget: QWidget, page_rect):
+    """Mentre dura el bloc, el widget té la FORMA de la pàgina.
+
+    Sense això, el Tauler (molt més apaïsat que un A4: 2,2 d'ample per 1
+    d'alt, contra 1,4) s'havia d'encabir per l'ample i deixava buit un
+    terç llarg de la pàgina, a dalt i a baix, amb tot el contingut més
+    petit del que podria sortir. Donant-li l'alçada que fa que la seva
+    forma sigui la de la pàgina, el contingut s'expandeix per omplir-la
+    (les 61 posicions es queden, només es fan més altes les files) i
+    s'imprimeix tan gran com hi càpiga.
+
+    Només s'ESTIRA, mai s'encongeix: si el widget ja és més alt del que
+    tocaria, es deixa estar. I es torna a la mida que tenia en sortir,
+    passi el que passi pel camí.
+    """
+    original = widget.size()
+    target_height = round(widget.width() * page_rect.height() / page_rect.width())
+    stretched = target_height > widget.height()
+    if stretched:
+        widget.resize(widget.width(), target_height)
+        _relayout(widget)
+    try:
+        yield
+    finally:
+        if stretched:
+            widget.resize(original)
+            _relayout(widget)
+
+
 def _paint_widget_on_printer(widget: QWidget, printer: QPrinter) -> None:
-    """Captura el widget tal com es veu (colors inclosos) i l'encabeix,
-    centrat i mantenint la relació d'aspecte, en una pàgina A4. L'orientació
-    (vertical o apaïsada) es tria segons la forma del propi widget capturat,
-    perquè ocupi el màxim possible de la pàgina en comptes de deixar
-    marges buits grans a dalt/baix o als costats.
+    """Dibuixa el widget (colors inclosos) omplint una pàgina A4, centrat i
+    sense deformar-lo. L'orientació (vertical o apaïsada) es tria segons la
+    forma del widget, i abans de dibuixar-lo se li dona la forma de la
+    pàgina perquè ocupi tota la que hi ha (veure `_shaped_like_the_page`).
+
+    No es fa cap captura de pantalla: es demana al widget que es DIBUIXI
+    sobre la pàgina (`QWidget.render`), amb el pintor escalat. La diferència
+    es veu al paper: una captura és una imatge de la mida de la pantalla i,
+    ampliada a la resolució d'una impressora (1200 punts per polzada, unes
+    set vegades més), surt borrosa; dibuixant-lo, el text i les línies es
+    generen a la resolució de la impressora i surten nets. De passada, el
+    PDF ocupa molt menys i s'hi pot buscar text.
 
     És el mateix dibuix tant si la pàgina va a un PDF com si va a una
     impressora de debò: el contingut i el format no canvien.
     """
-    pixmap = widget.grab()
-
     orientation = (
-        QPageLayout.Landscape if pixmap.width() >= pixmap.height() else QPageLayout.Portrait
+        QPageLayout.Landscape if widget.width() >= widget.height() else QPageLayout.Portrait
     )
     printer.setPageLayout(
-        QPageLayout(QPageSize(QPageSize.A4), orientation, QMarginsF(10, 10, 10, 10))
-    )
-
-    painter = QPainter()
-    if not painter.begin(printer):
-        # Impressora no disponible, sense permisos, fitxer bloquejat...
-        raise RuntimeError(t("print.error.text"))
-    try:
-        page_rect = printer.pageRect(QPrinter.DevicePixel)
-        scaled = pixmap.scaled(
-            page_rect.size().toSize(), Qt.KeepAspectRatio, Qt.SmoothTransformation
+        QPageLayout(
+            QPageSize(QPageSize.A4),
+            orientation,
+            QMarginsF(PAGE_MARGINS_MM, PAGE_MARGINS_MM, PAGE_MARGINS_MM, PAGE_MARGINS_MM),
         )
-        x = (page_rect.width() - scaled.width()) / 2
-        y = (page_rect.height() - scaled.height()) / 2
-        painter.drawPixmap(int(x), int(y), scaled)
-    finally:
-        painter.end()
+    )
+    page_rect = printer.pageRect(QPrinter.DevicePixel)
+
+    with _shaped_like_the_page(widget, page_rect):
+        painter = QPainter()
+        if not painter.begin(printer):
+            # Impressora no disponible, sense permisos, fitxer bloquejat...
+            raise RuntimeError(t("print.error.text"))
+        try:
+            painter.setRenderHint(QPainter.Antialiasing, True)
+            painter.setRenderHint(QPainter.TextAntialiasing, True)
+            scale = min(
+                page_rect.width() / widget.width(), page_rect.height() / widget.height()
+            )
+            painter.translate(
+                (page_rect.width() - widget.width() * scale) / 2,
+                (page_rect.height() - widget.height() * scale) / 2,
+            )
+            painter.scale(scale, scale)
+            widget.render(painter, QPoint(), QRegion(), QWidget.DrawChildren)
+        finally:
+            painter.end()
 
 
 def _print_widget_to_pdf(widget: QWidget, dest_path: str) -> None:
@@ -89,7 +146,18 @@ def _print_widget_to_pdf(widget: QWidget, dest_path: str) -> None:
     _paint_widget_on_printer(widget, printer)
 
 
-def print_widget(widget: QWidget, parent: QWidget | None = None) -> bool:
+def document_name(title: str) -> str:
+    """Nom del document que s'envia a imprimir, amb la data d'avui:
+    "Sobrants - Tauler - 2026-09-01".
+
+    No és cap detall menor: quan al diàleg d'impressió es tria "Imprimir a
+    PDF", Windows fa servir aquest nom com a nom de fitxer que proposa en
+    demanar on desar-lo. Sense això, proposava el nom intern de Qt.
+    """
+    return f"Sobrants - {title} - {date.today().isoformat()}"
+
+
+def print_widget(widget: QWidget, title: str, parent: QWidget | None = None) -> bool:
     """Obre el diàleg d'impressió NATIU del sistema i, si s'accepta, hi
     imprimeix el widget amb el mateix format de sempre.
 
@@ -98,8 +166,11 @@ def print_widget(widget: QWidget, parent: QWidget | None = None) -> bool:
     còpies, pàgines... No es genera cap fitxer temporal pel camí: es pinta
     directament a la impressora que s'hagi triat, així no queda res per
     netejar. Retorna False si s'ha cancel·lat (llavors no s'imprimeix res).
+
+    `title` és el nom que es donarà al document (veure `document_name`).
     """
     printer = QPrinter(QPrinter.HighResolution)
+    printer.setDocName(document_name(title))
     dialog = QPrintDialog(printer, parent)
     dialog.setWindowTitle(t("print.dialog.title"))
     if dialog.exec() != QPrintDialog.Accepted:
@@ -136,6 +207,7 @@ def print_table_report(
     diàleg del sistema. Retorna False si s'ha cancel·lat.
     """
     printer = QPrinter(QPrinter.HighResolution)
+    printer.setDocName(document_name(title))
     printer.setPageLayout(
         QPageLayout(QPageSize(QPageSize.A4), QPageLayout.Landscape, QMarginsF(12, 12, 12, 12))
     )
