@@ -140,6 +140,19 @@ así vale en los 4 idiomas; y el icono ya no es el círculo relleno del
 sistema sino el de la misma familia de líneas que los botones, con su color
 (azul para preguntar/informar, ámbar para avisar, rojo para error).
 
+Los **menús** llevan icono en cada opción (candado en "Cambiar contraseña",
+impresora en las de imprimir, disquete en "Copia ahora", engranaje en la
+configuración…), de la misma familia y con el color del texto. En la **barra**
+de menús, en cambio, solo va texto: al ponerle icono a una entrada de la
+barra, Qt deja de mostrar su texto y quedaba un símbolo suelto sin decir de
+qué era.
+
+Los títulos de los menús llevan su tecla de atajo marcada desde siempre
+(`&Fitxer` = Alt+F). El estilo nativo de Windows solo pinta el subrayado
+mientras se tiene pulsado Alt, pero **Fusion lo pinta siempre**, así que la
+aplicación le dice que no lo pinte nunca (`_AppStyle`, en `theme.py`): los
+atajos siguen funcionando igual, solo que sin la raya permanente.
+
 **Iconos: `app/ui/icons.py`.** Los emojis (`🗑️ Esborrar`) eran dibujos de
 color fijo: sobre un botón azul o rojo parecían una pegatina y no seguían el
 color del texto. Ahora se usan las icon fonts que ya trae Windows —**Segoe

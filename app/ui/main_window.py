@@ -25,7 +25,7 @@ from app.export import covered_materials_report_text, print_table_report, print_
 from app.i18n import t
 from app.logic.repository import Repository
 from app.security import ADMIN
-from app.ui import dialogs, theme
+from app.ui import dialogs, icons, theme
 from app.ui.about_dialog import AboutDialog
 from app.ui.backup_dialog import BackupSettingsDialog, backup_folder, backup_keep, backup_prefix
 from app.ui.import_actions import import_from_database, import_from_excel
@@ -205,30 +205,32 @@ class MainWindow(QMainWindow):
             widget.refresh()
         self.refresh_piece_count()
 
+    @staticmethod
+    def _action(menu, label: str, icon_name: str, slot):
+        """Una opció de menú amb la seva icona. Les icones dels menús van
+        amb el color del text (no són botons de color): les dibuixa
+        `app.ui.icons` a partir de la font d'icones del sistema."""
+        action = menu.addAction(label)
+        action.setIcon(icons.icon(icon_name, "text"))
+        action.triggered.connect(slot)
+        return action
+
     def _build_menu(self):
         menu = self.menuBar().addMenu(t("menu.file"))
 
-        change_password_action = menu.addAction(t("menu.change_password"))
-        change_password_action.triggered.connect(self._change_password)
+        self._action(menu, t("menu.change_password"), "lock", self._change_password)
 
         menu.addSeparator()
 
-        print_board_action = menu.addAction(t("menu.print_board"))
-        print_board_action.triggered.connect(self._print_board)
-
-        print_desmagatzem_action = menu.addAction(t("menu.print_desmagatzem"))
-        print_desmagatzem_action.triggered.connect(self._print_desmagatzem)
-
-        report_action = menu.addAction(t("menu.report_covered"))
-        report_action.triggered.connect(self._show_covered_report)
+        self._action(menu, t("menu.print_board"), "print", self._print_board)
+        self._action(menu, t("menu.print_desmagatzem"), "print", self._print_desmagatzem)
+        self._action(menu, t("menu.report_covered"), "eye", self._show_covered_report)
 
         menu.addSeparator()
-        exit_action = menu.addAction(t("menu.exit"))
-        exit_action.triggered.connect(self.close)
+        self._action(menu, t("menu.exit"), "exit", self.close)
 
         menu.addSeparator()
-        about_action = menu.addAction(t("menu.about"))
-        about_action.triggered.connect(self._show_about)
+        self._action(menu, t("menu.about"), "info", self._show_about)
 
         menu.addSeparator()
         version_action = menu.addAction(t("menu.version", version=APP_VERSION))
@@ -236,21 +238,21 @@ class MainWindow(QMainWindow):
 
         # Menú d'importació, entre Fitxer i Còpies de seguretat.
         import_menu = self.menuBar().addMenu(t("menu.import"))
-        import_excel_action = import_menu.addAction(t("menu.import_excel"))
-        import_excel_action.triggered.connect(self._import_from_excel)
-        import_db_action = import_menu.addAction(t("menu.import_database"))
-        import_db_action.triggered.connect(self._import_from_database)
+        self._action(import_menu, t("menu.import_excel"), "open_file", self._import_from_excel)
+        self._action(import_menu, t("menu.import_database"), "database", self._import_from_database)
 
         # Menú propi de còpies de seguretat, entre Fitxer i Idioma: tot el
         # que hi té a veure (fer-ne una ara i cada quantes hores es fan
         # soles) en un sol lloc, i les dues protegides amb la contrasenya.
         backup_menu = self.menuBar().addMenu(t("menu.backups"))
-        backup_now_action = backup_menu.addAction(t("menu.backup_now"))
-        backup_now_action.triggered.connect(self._manual_backup)
-        interval_action = backup_menu.addAction(t("menu.backup_interval"))
-        interval_action.triggered.connect(self._change_backup_interval)
+        self._action(backup_menu, t("menu.backup_now"), "save", self._manual_backup)
+        self._action(backup_menu, t("menu.backup_interval"), "settings", self._change_backup_interval)
 
-        lang_menu = self.menuBar().addMenu(f"🌐 {t('app.language')}")
+        # Només text, com les altres tres entrades de la barra: posant-hi
+        # una icona, Qt deixa d'ensenyar-hi el text i queda un globus solt
+        # sense dir de què és. Les icones van a les opcions de dins, que és
+        # on es veuen bé.
+        lang_menu = self.menuBar().addMenu(t("app.language"))
         group = QActionGroup(self)
         group.setExclusive(True)
         for code, name in i18n.LANGS.items():

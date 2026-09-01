@@ -641,6 +641,7 @@ class PositionPanel(QFrame):
         menu = QMenu(self.detail_table)
         menu.setToolTipsVisible(True)
         delete_action = menu.addAction(t("position.delete_action"))
+        delete_action.setIcon(icons.icon("delete", "text"))
         delete_action.setEnabled(self._can_delete_row(row))
         if not delete_action.isEnabled():
             delete_action.setToolTip(t("position.only_last.text"))

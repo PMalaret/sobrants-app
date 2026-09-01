@@ -40,7 +40,7 @@ from pathlib import Path
 from string import Template
 
 from PySide6.QtGui import QColor, QPalette
-from PySide6.QtWidgets import QStyleFactory
+from PySide6.QtWidgets import QProxyStyle, QStyle
 
 STYLESHEET_PATH = Path(__file__).with_name("style.qss")
 
@@ -224,10 +224,27 @@ def search_qcolor(mode: str) -> QColor:
     return QColor(search_color(mode))
 
 
+class _AppStyle(QProxyStyle):
+    """Fusion amb un sol canvi: no subratllar la lletra de drecera.
+
+    Els títols dels menús porten la seva drecera marcada des de sempre
+    ("&Fitxer" = Alt+F). L'estil natiu de Windows només en pinta el
+    subratllat mentre es té premuda la tecla Alt, però Fusion el pinta
+    SEMPRE, i els menús es veien amb la primera lletra subratllada tota
+    l'estona. Aquí es diu que no el pinti mai: les dreceres segueixen
+    funcionant igual (Alt+F obre Fitxer), només no es veu la ratlla.
+    """
+
+    def styleHint(self, hint, option=None, widget=None, return_data=None):
+        if hint == QStyle.SH_UnderlineShortcut:
+            return 0
+        return super().styleHint(hint, option, widget, return_data)
+
+
 def apply(app) -> None:
     """Deixa l'aplicació amb el tema actiu: estil Fusion, paleta i full
     d'estil. Es crida a l'arrencada i, quan hi hagi més d'una paleta,
     cada vegada que se'n canviï."""
-    app.setStyle(QStyleFactory.create("Fusion"))
+    app.setStyle(_AppStyle("Fusion"))
     app.setPalette(qt_palette())
     app.setStyleSheet(stylesheet())

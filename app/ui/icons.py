@@ -37,6 +37,15 @@ GLYPHS = {
     "add": "",       # més
     "export": "",    # fletxa cap avall (exportar)
     "clear": "",     # goma d'esborrar (netejar l'històric)
+    # Les dels menús.
+    "lock": "\uE72E",         # cadenat (contrasenya)
+    "exit": "\uE7E8",         # sortir de l'aplicació
+    "save": "\uE74E",         # desar (còpia de seguretat ara)
+    "clock": "\uE121",        # rellotge (cada quantes hores)
+    "settings": "\uE713",     # engranatges (configuració)
+    "open_file": "\uE8E5",    # full amb fletxa (importar d'un fitxer)
+    "database": "\uEDA2",     # base de dades
+    "globe": "\uE774",        # idioma
     # Les quatre dels dialegs (veure `app.ui.dialogs`).
     "info": "",      # "i" dins d'un cercle
     "question": "",  # "?" dins d'un cercle
