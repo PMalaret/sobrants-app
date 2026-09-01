@@ -34,7 +34,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.i18n import t
+from app.i18n import format_number, t
 from app.logic.repository import Repository
 from app.logic.rules import OCCUPANCY_LEVELS
 from app.ui import icons, theme
@@ -133,6 +133,21 @@ QFrame#boardActions {
     background-color: $surface_alt;
     border: none;
     border-radius: 10px;
+}
+"""
+
+# El total de peces, dins d'un requadre propi a l'altra punta de la mateixa
+# franja que els botons: és un número que es consulta, no una acció, i el
+# requadre és el que ho diu.
+PIECE_COUNT_STYLE = """
+QLabel#pieceCount {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: $text;
 }
 """
 
@@ -257,12 +272,23 @@ class BoardTab(QWidget):
         self.actions_zone = QFrame()
         self.actions_zone.setObjectName("boardActions")
         self.actions_zone.setStyleSheet(theme.css(ACTIONS_ZONE_STYLE))
-        actions_layout = QVBoxLayout(self.actions_zone)
+        # La franja es reparteix en dos: a l'esquerra, quantes peces hi ha
+        # al tauler; a la dreta, els dos botons, un damunt de l'altre.
+        actions_layout = QHBoxLayout(self.actions_zone)
         actions_layout.setContentsMargins(6, 4, 6, 4)
-        actions_layout.setSpacing(4)
+        actions_layout.setSpacing(8)
+        self.piece_count_label = QLabel()
+        self.piece_count_label.setObjectName("pieceCount")
+        self.piece_count_label.setStyleSheet(theme.css(PIECE_COUNT_STYLE))
+        actions_layout.addWidget(self.piece_count_label, 0, Qt.AlignVCenter)
+        actions_layout.addStretch(1)
+        buttons_column = QVBoxLayout()
+        buttons_column.setContentsMargins(0, 0, 0, 0)
+        buttons_column.setSpacing(4)
         for button in (self.print_button, self.covered_button):
             button.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
-            actions_layout.addWidget(button, 0, Qt.AlignRight)
+            buttons_column.addWidget(button, 0, Qt.AlignRight)
+        actions_layout.addLayout(buttons_column, 0)
         # Dues files de separació entre el cercador i la zona d'accions:
         # són coses diferents i, enganxades, es podia clicar "Imprimir" o
         # "Materials tapats" pensant que encara s'era al cercador.
@@ -274,6 +300,7 @@ class BoardTab(QWidget):
             button.setFixedWidth(shared_width)
         self.position_panel.add_footer(footer)
         self._search_state: dict[str, str] = {}
+        self.refresh_piece_count()
 
     def _configure_column_widths(self):
         header = self.table.horizontalHeader()
@@ -410,6 +437,18 @@ class BoardTab(QWidget):
     def _on_search_changed(self, mode: str, text: str):
         self._search_state[mode] = text
         self._run_search(mode, text)
+
+    def refresh_piece_count(self):
+        """Quantes peces hi ha al tauler, sumant les de totes les posicions.
+        Ve de la base de dades (`Repository.count_pieces`), no del que hi
+        hagi pintat: no depèn de l'scroll ni de cap cerca."""
+        count = self.repo.count_pieces()
+        text = (
+            t("board.piece_count_one")
+            if count == 1
+            else t("board.piece_count", count=format_number(count))
+        )
+        self.piece_count_label.setText(text)
 
     def refresh_searches(self):
         """Torna a executar els cercadors que hi hagi actius i a repintar-ne

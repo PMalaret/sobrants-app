@@ -165,9 +165,8 @@ class MainWindow(QMainWindow):
         self._build_status_bar()
 
     def _build_status_bar(self):
-        """La barra d'estat, d'esquerra a dreta: quantes peces hi ha al
-        Tauler, on és la base de dades i, a la dreta de tot, la llegenda de
-        colors d'ocupació (només mentre es veu el Tauler).
+        """La barra d'estat: on és la base de dades i, a la dreta de tot, la
+        llegenda de colors d'ocupació (només mentre es veu el Tauler).
 
         Es reconstrueix sencera quan canvia l'idioma, així que primer es
         treu el que hi hagués posat abans."""
@@ -177,21 +176,12 @@ class MainWindow(QMainWindow):
                 status.removeWidget(child)
                 child.deleteLater()
 
-        # Total de peces, a l'esquerra de tot. Ve de la base de dades
-        # (`Repository.count_pieces`), no del que hi hagi pintat.
-        self.pieces_label = QLabel()
-        self.pieces_label.setStyleSheet(
-            theme.css("font-size: 13px; font-weight: 600; color: $text;")
-        )
-        self.refresh_piece_count()
-
         self.db_label = QLabel(t("status.db", path=self.db_path))
         # La llegenda explica els colors del Tauler: només hi surt quan la
         # pestanya que es veu és aquella.
         self.legend_widget = self.board_tab.build_legend_widget()
-        for widget in (self.pieces_label, self.db_label, self.legend_widget):
+        for widget in (self.db_label, self.legend_widget):
             widget._sobrants_status_widget = True
-        status.addWidget(self.pieces_label)
         status.addWidget(self.db_label)
         status.addPermanentWidget(self.legend_widget)
         self._update_legend_visibility(BOARD_TAB_INDEX)
@@ -200,11 +190,12 @@ class MainWindow(QMainWindow):
         self.legend_widget.setVisible(index == BOARD_TAB_INDEX)
 
     def refresh_piece_count(self):
-        """Torna a comptar les peces i ho ensenya. Es crida cada cop que
-        alguna cosa pot haver-les canviat (altes, baixes, trasllats, canvis
-        de quantitat, importacions...) i en canviar de pestanya."""
-        count = self.repo.count_pieces()
-        self.pieces_label.setText(t("board.piece_count", count=i18n.format_number(count)))
+        """Torna a comptar les peces del Tauler. El número es veu dins de la
+        seva pestanya (`BoardTab.refresh_piece_count`); això només diu quan
+        s'ha de refrescar: cada cop que alguna cosa pot haver-les canviat
+        (altes, baixes, trasllats, canvis de quantitat, importacions...) i
+        en canviar de pestanya."""
+        self.board_tab.refresh_piece_count()
 
     def _on_tab_changed(self, index: int):
         self._stack.setCurrentIndex(index)

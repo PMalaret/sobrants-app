@@ -28,12 +28,16 @@ Ver `docs/ANALISIS_VBA.md` para el mapeo detallado macro por macro.
 
 ### Diseño del Tauler
 
-En la **barra de estado**, a la izquierda del todo, va "Hay N piezas": el
-total del tablero (`Repository.count_pieces`, un `COUNT(*)` sobre `pieces`),
-la suma de las piezas de todas las posiciones, no cuántas posiciones hay
-ocupadas. Sale de la base de datos, así que no depende del scroll ni de lo
-que esté pintado, y se recalcula solo con cualquier cambio de datos y al
-cambiar de pestaña. A su lado, la ruta de la base de datos; y a la derecha
+En la franja de acciones (debajo del buscador), a la izquierda y dentro de
+su propio recuadro, va **"Hay N piezas"**: el total del tablero
+(`Repository.count_pieces`, un `COUNT(*)` sobre `pieces`), la suma de las
+piezas de todas las posiciones, no cuántas posiciones hay ocupadas. Sale de
+la base de datos, así que no depende del scroll ni de lo que esté pintado, y
+se recalcula solo con cualquier cambio de datos y al cambiar de pestaña; con
+una sola pieza la frase va en singular, en los 4 idiomas. Enfrente, al otro
+lado de esa misma franja, los botones de imprimir y materiales tapados.
+
+En la **barra de estado** queda la ruta de la base de datos y, a la derecha
 del todo, la **leyenda de colores de ocupación**, que solo aparece mientras
 se está viendo el Tauler, porque es lo que explica. Arriba a la derecha solo
 queda el indicador de USB.

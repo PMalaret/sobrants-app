@@ -196,6 +196,13 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ca": "Hi ha {count} peces", "es": "Hay {count} piezas",
         "en": "There are {count} pieces", "fr": "Il y a {count} pièces",
     },
+    # Amb una sola peça la frase canvia en els 4 idiomes ("Hi ha 1 peces"
+    # estava mal dit). És l'únic comptador que ho necessita: els altres
+    # ensenyen el número entre parèntesis, sense fer frase.
+    "board.piece_count_one": {
+        "ca": "Hi ha 1 peça", "es": "Hay 1 pieza",
+        "en": "There is 1 piece", "fr": "Il y a 1 pièce",
+    },
     "board.field.position": {"ca": "Pos.", "es": "Pos.", "en": "Pos.", "fr": "Pos."},
     "board.field.code": {
         "ca": "Núm.", "es": "Núm.", "en": "No.", "fr": "N°",
