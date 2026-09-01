@@ -73,6 +73,7 @@ class _AddMaterialDialog(QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+        dialogs.prepare_dialog(self)
 
     def values(self) -> tuple[int, str]:
         return self.code_input.value(), self.description_input.text().strip()

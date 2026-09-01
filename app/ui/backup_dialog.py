@@ -133,6 +133,7 @@ class BackupSettingsDialog(QDialog):
         buttons.accepted.connect(self._on_accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+        dialogs.prepare_dialog(self)
 
         self._update_example()
 

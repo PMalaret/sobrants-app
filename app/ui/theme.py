@@ -76,6 +76,7 @@ LIGHT = {
     "danger_hover": "#a52020",
     "danger_pressed": "#8b1a1a",
     "success": "#1a9c6d",         # USB connectat
+    "warning": "#b26a00",         # avisos que no són errors
     # -- Tauler: escala d'ocupació d'una posició --------------------- #
     # Els cinc colors de referència del propi Excel original (K12:K16):
     # 0-1 peça blanc, 2 groc clar, 3 verd clar, 4 blau clar, 5 (plena) vermell.

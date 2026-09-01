@@ -69,11 +69,14 @@ def t(key: str, **kwargs) -> str:
 
 TRANSLATIONS: dict[str, dict[str, str]] = {
     # -- Finestra principal --------------------------------------------- #
+    # El nom de l'aplicació. És un nom propi: igual en els 4 idiomes, i per
+    # això no hi ha cap descripció al costat (abans hi deia "— control
+    # d'inventari"): el títol de la finestra és el nom, i prou.
     "app.title": {
-        "ca": "Sobrants — control d'inventari",
-        "es": "Sobrants — control de inventario",
-        "en": "Sobrants — inventory control",
-        "fr": "Sobrants — contrôle d'inventaire",
+        "ca": "Sobrants by Luvnus",
+        "es": "Sobrants by Luvnus",
+        "en": "Sobrants by Luvnus",
+        "fr": "Sobrants by Luvnus",
     },
     "app.language": {"ca": "Idioma", "es": "Idioma", "en": "Language", "fr": "Langue"},
     "menu.file": {"ca": "&Fitxer", "es": "&Archivo", "en": "&File", "fr": "&Fichier"},
@@ -103,8 +106,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Version {version}", "fr": "Version {version}",
     },
     "menu.about": {
-        "ca": "Sobre Sobrants", "es": "Sobre Sobrants",
-        "en": "About Sobrants", "fr": "À propos de Sobrants",
+        "ca": "Sobre Sobrants by Luvnus", "es": "Sobre Sobrants by Luvnus",
+        "en": "About Sobrants by Luvnus", "fr": "À propos de Sobrants by Luvnus",
     },
     "about.creator": {
         "ca": "Creador: <a href=\"{url}\">{url}</a>",

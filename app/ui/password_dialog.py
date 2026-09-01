@@ -83,6 +83,7 @@ class ChangePasswordDialog(QDialog):
         buttons.accepted.connect(self._on_accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+        dialogs.prepare_dialog(self)
 
     @staticmethod
     def _password_field() -> QLineEdit:

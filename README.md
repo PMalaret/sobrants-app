@@ -1,4 +1,4 @@
-# Sobrants — aplicación de control de inventario
+# Sobrants by Luvnus — aplicación de control de inventario
 
 Reemplazo independiente de **SobrantsV4.74.xlsm**: misma lógica, mismas
 reglas de negocio, sin necesidad de Microsoft Excel. Construida en
@@ -119,6 +119,15 @@ código, nunca con un color escrito a mano en el widget:
 Así todos los botones de la aplicación tienen la misma forma, la misma
 altura y los mismos estados. El desactivado es un fondo claro con borde
 fino, no un bloque gris relleno.
+
+**Diálogos** (`app/ui/dialogs.py`, por donde ya pasaban todos para tener los
+botones traducidos): fondo blanco como el resto de superficies de contenido,
+más margen interior, y dos cosas nuevas —el botón que continúa la acción
+(Aceptar, Sí) va relleno y el que la deja correr (Cancelar, No) va vacío,
+decidido por el **papel** de cada botón (`ButtonRole`) y no por su texto,
+así vale en los 4 idiomas; y el icono ya no es el círculo relleno del
+sistema sino el de la misma familia de líneas que los botones, con su color
+(azul para preguntar/informar, ámbar para avisar, rojo para error).
 
 **Iconos: `app/ui/icons.py`.** Los emojis (`🗑️ Esborrar`) eran dibujos de
 color fijo: sobre un botón azul o rojo parecían una pegatina y no seguían el

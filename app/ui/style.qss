@@ -35,12 +35,23 @@ QTabWidget::pane {
    color d'acció i el text del mateix color, no amb una vora al voltant.
    El text de les no seleccionades es queda ben fosc (no gris clar): en un
    monitor de taller, amb llum de sobres, un gris suau no es llegeix. */
+/* El subratllat de sota la pestanya és del color del fons mentre no està
+   seleccionada (no "transparent": així no s'hi veu cap franja d'un altre
+   color) i passa al color d'acció quan ho està. */
+QTabBar {
+    background: $window;
+    border: none;
+}
+
 QTabBar::tab {
     background: transparent;
     border: none;
-    border-bottom: 3px solid transparent;
+    border-bottom: 3px solid $window;
     padding: 7px 18px;
-    margin-right: 2px;
+    /* Sense separació entre pestanyes: al buit entre l'una i l'altra
+       s'hi veia el trosset de línia que Qt pinta sota la barra, com uns
+       guionets. El padding ja les separa de sobres. */
+    margin: 0;
     color: $text_secondary;
     font-weight: 600;
 }
@@ -59,11 +70,31 @@ QTabBar::tab:selected {
 
 /* MainWindow no fa servir QTabWidget (les pestanyes i el total de peces
    comparteixen una sola fila amb QTabBar solt): la separació sota la
-   barra de pestanyes es fa amb una línia fina, no amb un marc. */
+   barra de pestanyes es fa amb una línia fina, no amb un marc.
+
+   El fons de la zona de contingut és el MATEIX que el de la fila de
+   pestanyes: si fos blanc, entre la pestanya i la taula s'hi veuria una
+   franja blanca (l'espai dels marges de la pestanya) que semblava una
+   vora blanca sota les pestanyes no seleccionades. Amb el mateix gris, el
+   que es veu és el que ha de veure's: la línia fina i, a la pestanya
+   activa, el seu subratllat de color. Les taules i els quadres, que sí
+   que són blancs, queden com a targetes damunt d'aquest fons. */
 QStackedWidget#tabStack {
     border: none;
     border-top: 1px solid $border;
-    background: $surface;
+    background: $window;
+}
+
+QDialog, QMessageBox {
+    background-color: $surface;
+}
+
+/* Les etiquetes, els radis i les caselles no pinten fons propi: agafen el
+   del que hi ha a sota. Sense això, la regla general de QWidget els donava
+   el gris de la finestra i es veien com un rectangle gris a sobre del
+   blanc d'un diàleg o d'un quadre. */
+QLabel, QRadioButton, QCheckBox {
+    background-color: transparent;
 }
 
 QGroupBox {

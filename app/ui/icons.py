@@ -37,6 +37,11 @@ GLYPHS = {
     "add": "",       # més
     "export": "",    # fletxa cap avall (exportar)
     "clear": "",     # goma d'esborrar (netejar l'històric)
+    # Les quatre dels dialegs (veure `app.ui.dialogs`).
+    "info": "",      # "i" dins d'un cercle
+    "question": "",  # "?" dins d'un cercle
+    "warning": "",   # triangle d'avis
+    "error": "",     # aspa dins d'un cercle
 }
 
 # Mida en punts de la icona dins del botó. Es dibuixa al doble de resolució
@@ -90,6 +95,17 @@ def icon(name: str, color_token: str = "on_accent", disabled_token: str = "text_
     result.addPixmap(_pixmap(glyph, theme.color(color_token), ICON_SIZE), QIcon.Normal)
     result.addPixmap(_pixmap(glyph, theme.color(disabled_token), ICON_SIZE), QIcon.Disabled)
     return result
+
+
+def pixmap(name: str, color_token: str, size: int) -> QPixmap:
+    """La icona `name` dibuixada a la mida que es demani, per als llocs on
+    no va dins d'un botó (la icona gran dels diàlegs). Torna un mapa de
+    píxels buit si no hi ha cap font d'icones."""
+    if name not in GLYPHS:
+        raise KeyError(f"Icona desconeguda: {name}")
+    if font_family() is None:
+        return QPixmap()
+    return _pixmap(GLYPHS[name], theme.color(color_token), size)
 
 
 def apply_to(button, name: str, color_token: str = "on_accent") -> None:

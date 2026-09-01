@@ -59,7 +59,7 @@ def _app_icon() -> QIcon:
 
 def main():
     app = QApplication(sys.argv)
-    app.setApplicationName("Sobrants")
+    app.setApplicationName("Sobrants by Luvnus")
     app.setWindowIcon(_app_icon())
     # Estil, paleta i full d'estil: tot ve de la paleta activa.
     theme.apply(app)
