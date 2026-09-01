@@ -244,11 +244,15 @@ class BoardTab(QWidget):
         # Públic (no "_search_panel"): MainWindow hi connecta el ressaltat
         # creuat de Desmagatzem (mateixos colors de cerca que el tauler).
         self.search_panel = SearchPanel()
+        # (el nom serveix perquè el panell de posició li pugui treure el
+        # fons propi: veure `_PANEL_STYLE`)
+        self.search_panel.setObjectName("boardSearch")
         self.search_panel.search_changed.connect(self._on_search_changed)
         # Sota el cercador, el botó d'imprimir el tauler: viu aquí dins (no
         # a la fila d'accions de la finestra) i, com que la pestanya és
         # visible quan s'hi clica, el que s'imprimeix ja té la mida bona.
         footer = QWidget()
+        footer.setObjectName("boardFooter")
         footer_layout = QVBoxLayout(footer)
         footer_layout.setContentsMargins(0, 0, 0, 0)
         footer_layout.setSpacing(4)

@@ -160,6 +160,12 @@ mano: `setProperty("variant", "ghost")` deja el botón con el mismo tamaño
 pero sin rellenar, para los que acompañan a la acción principal (los
 intervalos hechos de Estadísticas, al lado de "Consultar").
 
+Dos detalles de las tablas que se editan en línea: el **editor de celda**
+(el `QLineEdit` que Qt mete dentro al editar) lleva su propio margen —con el
+de los campos de formulario no cabía en la fila y el texto salía cortado—, y
+las filas del detalle de posición tienen la altura justa para que el texto
+respire **también mientras se escribe**.
+
 **Lo que la hoja de estilo NO puede tocar: `QTableView::item`.** En cuanto
 se le da estilo a los ítems, Qt se encarga de pintarlos y deja de aplicar el
 color de fondo que pone el código en cada celda — y aquí ese color es

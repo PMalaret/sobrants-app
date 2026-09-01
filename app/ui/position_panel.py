@@ -70,23 +70,39 @@ from app.logic.repository import (
 )
 from app.ui import dialogs, icons, theme
 
-# Alçada de cada fila de la taula de detall. Amb lletra de 10 px, 20 px hi
-# van sobrats, i deixar-la fixa és el que fa que el panell càpiga sencer
-# (amb els botons de sota) sense haver de fer scroll.
-DETAIL_ROW_HEIGHT = 20
+# Alçada de cada fila de la taula de detall. Ha de deixar respirar el text
+# TAMBÉ mentre s'edita (quan Qt hi posa un camp a dins amb la seva vora):
+# amb 20 px el que s'escrivia quedava escanyat. Deixar-la fixa és el que fa
+# que el panell càpiga sencer (amb els botons de sota) sense haver de fer
+# scroll, així que puja el mínim que fa falta, no més.
+DETAIL_ROW_HEIGHT = 26
 # Files de la taula de detall: sempre 5 (el màxim de peces per posició),
 # tinguin dades o no.
 DETAIL_ROWS = 5
 # Separació entre la taula de detall i la fila d'Esborrar/Moure. Baixa una
 # mica els botons (i tot el que ve a sota: el cercador i la zona d'accions)
 # perquè les 5 línies mai quedin justes contra ells.
-DETAIL_TABLE_BOTTOM_GAP = 10
+DETAIL_TABLE_BOTTOM_GAP = 6
 
 _PANEL_STYLE = """
 QFrame#positionPanel {
     background-color: $surface;
     border: 1px solid $border;
     border-radius: 10px;
+}
+
+/* Els contenidors de dins no pinten fons propi: el panell és una sola
+   superfície blanca. Sense això, la regla general de QWidget els donava el
+   gris de la finestra i el panell sortia a trossos —blanc on hi havia una
+   taula i gris a la resta—, amb una franja grisa ben visible sota el
+   cercador. Les taules i la franja d'accions sí que porten el seu color,
+   perquè cadascuna té el seu propi full d'estil. */
+QStackedWidget#positionStack,
+QWidget#positionPage,
+QWidget#boardFooter,
+QWidget#boardSearch,
+QWidget#boardSearch QWidget {
+    background-color: transparent;
 }
 """
 
@@ -154,6 +170,7 @@ class PositionPanel(QFrame):
         self._outer.setSpacing(3)
 
         self._stack = QStackedWidget()
+        self._stack.setObjectName("positionStack")
         self._outer.addWidget(self._stack)
 
         placeholder = QLabel(t("position.panel.placeholder"))
@@ -180,6 +197,7 @@ class PositionPanel(QFrame):
         # l'ample d'un sol bloc de columnes del tauler (el 3r, posicions
         # 55-61), no dins tot l'ample de la finestra.
         page = QWidget()
+        page.setObjectName("positionPage")
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
@@ -239,8 +257,8 @@ class PositionPanel(QFrame):
         # sempre les seves 5 línies dins del panell, que té l'alçada
         # comptada (veure `_fit_detail_table_height`).
         self.detail_table.setStyleSheet(
-            theme.css("QTableWidget { font-size: 10px; }"
-                      "QHeaderView::section { font-size: 10px; padding: 2px 4px;"
+            theme.css("QTableWidget { font-size: 11px; }"
+                      "QHeaderView::section { font-size: 11px; padding: 2px 4px;"
                       " border-bottom: 1px solid $border; }")
         )
         # Un delegat per columna editable: Núm. màxim 6 xifres

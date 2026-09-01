@@ -369,6 +369,16 @@ QLineEdit:disabled, QSpinBox:disabled, QDateEdit:disabled {
 
 /* Sense fletxes amunt/avall als camps numèrics: el valor es continua
    podent canviar escrivint-lo o amb les fletxes del teclat. */
+/* Quan s'edita una cel·la, Qt hi posa un QLineEdit a dins: amb el marge
+   dels camps de formulari (7 px amunt i avall) no hi cabia i el text
+   quedava tallat. Dins d'una taula, l'editor ha de ser tan alt com la
+   fila. */
+QAbstractItemView QLineEdit {
+    padding: 0px 4px;
+    border-radius: 4px;
+    border: 1px solid $accent;
+}
+
 QSpinBox::up-button, QSpinBox::down-button {
     width: 0px;
     border: none;
