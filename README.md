@@ -7,7 +7,7 @@ Python + PySide6 (Qt), con los datos en una base de datos SQLite local
 (catalán, castellano, inglés, francés)**, con selector en el menú
 "🌐 Idioma/Language/Langue" (se recuerda entre arranques en
 `SobrantsData/settings.json`); toda la traducción vive en `app/i18n.py`,
-con las 243 claves siempre en los 4 idiomas a la vez (cualquier cadena
+con las 270 claves siempre en los 4 idiomas a la vez (cualquier cadena
 nueva que se añada debe seguir esa misma regla). Esta documentación y los
 comentarios del código quedan en castellano por continuidad con el resto
 del proyecto.
@@ -21,6 +21,7 @@ del proyecto.
 | històric (auditoría) | Pestaña **Històric** + tabla `historic` |
 | Materials (catálogo) | Pestaña **Materials** + tabla `materials` |
 | desmagatzem | Pestaña **Desmagatzem** + tabla `desmagatzem` |
+| (no existía) | Pestaña **Estadísticas**, calculada desde `historic` |
 | Macros VBA (~4.800 líneas) | `app/logic/rules.py` + `app/logic/repository.py` |
 
 Ver `docs/ANALISIS_VBA.md` para el mapeo detallado macro por macro.
@@ -41,15 +42,40 @@ exactamente esas 61 posiciones (no hay lógica para un número variable), así
 que la tabla tiene una altura fija y el espacio que queda justo debajo se
 aprovecha para el **panel de detalle de la posición seleccionada**
 (`app/ui/position_panel.py`): alta/baja/traslado de piezas, incrustado de
-forma permanente (ya no es una ventana emergente). Los tres buscadores
+forma permanente (ya no es una ventana emergente). El detalle enseña
+**siempre sus 5 líneas** (el máximo de piezas por posición), tenga piezas o
+no: la altura se calcula sumando la altura *real* de las filas y de la
+cabecera (`_fit_detail_table_height`), así que la interfaz no cambia de
+tamaño según cuántas piezas haya. Los tres buscadores
 (`app/ui/search_panel.py`) viven debajo, siempre visibles: cada uno ocupa una
 sola fila de bloques con el mismo formato —título encima, contenido debajo—,
 el campo de texto primero y después sus tres resultados (coincidencias,
 posición más antigua, unidades en Desmagatzem) con el número en grande. El
 color de resaltado es fijo por buscador (`SEARCH_COLORS`), nunca depende del
-material encontrado.
+material encontrado. Sus tres resultados se recalculan por el mismo camino
+(`BoardTab.refresh_searches`) siempre que cambian datos, se toquen en el
+Tauler o en Desmagatzem: "unidades en Desmagatzem" sale de esa otra tabla,
+así que un alta o un cambio de cantidad allí también los actualiza, haya
+búsqueda activa o no.
 
-### Desmagatzem: mismos colores de búsqueda que el Tauler
+**Borrar** y **Mover pieza visible a posición** son las dos acciones sobre
+la última pieza de la posición y se activan con la misma condición
+(`_can_delete_row`, la regla `rules.can_delete_slot` del original): con
+cualquier otra fila seleccionada salen desactivados, con el motivo en el
+tooltip. El botón de mover pregunta la posición de destino en un diálogo
+(`dialogs.ask_int`) y, una vez elegida, sigue exactamente por el camino de
+siempre — confirmación y `Repository.move_piece`, que es quien saca la
+pieza, la coloca y escribe las dos líneas de histórico.
+
+### Desmagatzem: contador de piezas y mismos colores de búsqueda
+
+A la izquierda del botón **Imprimir desmagatzem** va el total de piezas
+que hay ahora mismo en Desmagatzem (`Repository.count_desmagatzem_pieces`):
+la **suma de las cantidades** de todas las líneas, no el número de líneas
+(una línea de 5 unidades son 5 piezas, igual que cuenta el histórico, que
+deja una entrada por unidad). Sale de la base de datos, así que no depende
+del orden de la tabla ni de si hay una búsqueda resaltando filas, y se
+recalcula con cada alta, baja o cambio de cantidad.
 
 Los 3 buscadores del Tauler también resaltan, con el mismo color, las filas
 de Desmagatzem que coinciden (igual que `BuscaCoincidenciesDesmagatzem_Q20/
@@ -64,7 +90,8 @@ Hay **dos contraseñas independientes** (`app/security.py`), las dos `1234`
 de partida:
 
 - `security.ADMIN` — *contraseña administrador*: copias de seguridad
-  (manual e intervalo) y limpiar el histórico.
+  (manual e intervalo), limpiar el histórico e **importar datos** (de
+  Excel o de otra base de datos).
 - `security.WORKER` — *contraseña trabajador*: alta y borrado de
   materiales.
 
@@ -235,7 +262,13 @@ esperando a nadie cuando toca hacer una.
 ## Importar datos
 
 Menú **Importar** (entre Archivo y Copias de seguridad),
-`app/ui/import_actions.py`:
+`app/ui/import_actions.py`. Las dos opciones sustituyen datos que ya están
+guardados, así que las dos **piden primero la contraseña de administrador**
+(`MainWindow._ask_import_password`, por el mismo `ask_password` que el
+resto de acciones protegidas): si no es correcta o se cancela el diálogo,
+no se abre ningún fichero y no se toca nada. El primer arranque —cuando
+todavía no hay ninguna base de datos que proteger— sigue pudiendo importar
+sin contraseña.
 
 - **Importar de Excel** — el mismo flujo que el primer arranque; de hecho
   `main._ensure_database` llama a esa misma función, no a una copia.
@@ -303,6 +336,31 @@ entrada de cada material que sigue en el Tauler**: los materiales son los
 con el `ts` más alto (desempatando por `id`, porque `ts` va por segundos) —
 no el orden en que se ve la tabla. Todo dentro de una transacción: si algo
 falla, rollback y el histórico queda intacto (`Repository.clear_historic`).
+
+## Estadísticas
+
+Pestaña **Estadísticas** (`app/ui/statistics_tab.py`): cuántos movimientos
+ha habido y cuándo. Se calcula **sólo leyendo** el histórico
+(`Repository.movement_stats` y `movement_stats_by_destination`), que es la
+única fuente de verdad de los movimientos; esta pestaña no escribe ni borra
+nada.
+
+Se elige un **intervalo de fechas** (dos campos con calendario, más los
+intervalos hechos: hoy, últimos 7 / 30 días, último año) y sale, día a día:
+
+- **Entradas** — líneas `in` (piezas colocadas en el Tauler y unidades
+  registradas en Desmagatzem: una por unidad).
+- **Salidas** — líneas `out` (piezas borradas y unidades retiradas).
+- **Traslados** — líneas `move_in`, es decir el lado del **destino**. Un
+  traslado deja dos líneas en el histórico (origen y destino) y contando
+  sólo la del destino sale **un movimiento por traslado**, no dos, y además
+  se puede decir a qué posición ha ido a parar la pieza: eso es la tabla de
+  la derecha, "Traslados por posición de destino".
+
+Los días sin ningún movimiento no ocupan fila, y al final va la fila de
+totales. Es la primera versión, a propósito sencilla: cualquier estadística
+nueva debería salir de aquí mismo, del mismo intervalo y de las mismas
+consultas.
 
 ## Guardado: cada cambio va al disco al momento
 

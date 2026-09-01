@@ -12,12 +12,20 @@ L'alta d'una peça ja no es fa amb un formulari a part: s'escriu el núm.
 de material directament a la primera fila buida de la taula de detall i
 Enter va encadenant els camps de la mateixa fila (Núm. → Mides → Notes;
 des de Notes, a la línia següent); el trasllat continua tenint el seu
-propi botó.
+propi botó, que pregunta a quina posició va la peça.
 
-La baixa només es pot fer sobre l'ÚLTIMA peça de la posició (mateixa
-regla que `rules.can_delete_slot`, el 'ORDRE INCORRECTE' de l'original).
-Hi ha dues maneres de demanar-la i totes dues comparteixen la mateixa
-comprovació (`_last_piece_row`, rellegida sempre de la base de dades):
+La taula de detall ensenya SEMPRE les seves 5 línies (el màxim de peces
+per posició), tingui peces o no: l'alçada es calcula perquè hi càpiguen
+totes (`_fit_detail_table_height`) i no canvia amb el contingut, així la
+interfície no es mou segons quantes peces hi hagi.
+
+La baixa i el trasllat només es poden fer sobre l'ÚLTIMA peça de la
+posició (mateixa regla que `rules.can_delete_slot`, el 'ORDRE INCORRECTE'
+de l'original): els dos botons s'activen amb la mateixa comprovació
+(`_can_delete_row`, feta en un sol lloc a `_update_action_buttons`).
+La baixa es pot demanar de tres maneres i totes tres comparteixen la
+mateixa comprovació (`_last_piece_row`, rellegida sempre de la base de
+dades):
 
   - Botó "Esborrar", al costat del de trasllat: desactivat mentre la fila
     seleccionada no sigui l'última peça.
@@ -43,7 +51,6 @@ from PySide6.QtWidgets import (
     QMenu,
     QPushButton,
     QSizePolicy,
-    QSpinBox,
     QStackedWidget,
     QStyledItemDelegate,
     QTableWidget,
@@ -54,11 +61,17 @@ from PySide6.QtWidgets import (
 
 from app.i18n import t
 from app.logic import rules
-from app.logic.repository import DuplicateMaterialError, PositionFullError, Repository, RuleViolation
+from app.logic.repository import (
+    BOARD_POSITIONS,
+    DuplicateMaterialError,
+    PositionFullError,
+    Repository,
+    RuleViolation,
+)
 from app.ui import dialogs
 
-# Marc fi només al voltant del trasllat (número + botó), a joc amb la
-# vora del panell.
+# Marc fi només al voltant del botó de trasllat, a joc amb la vora del
+# panell: el separa d'Esborrar, que és a l'altra punta de la mateixa fila.
 _MOVE_GROUP_STYLE = """
 QFrame#moveGroup {
     border: 1px solid #c7cad1;
@@ -70,6 +83,13 @@ QFrame#moveGroup {
 # van sobrats, i deixar-la fixa és el que fa que el panell càpiga sencer
 # (amb els botons de sota) sense haver de fer scroll.
 DETAIL_ROW_HEIGHT = 20
+# Files de la taula de detall: sempre 5 (el màxim de peces per posició),
+# tinguin dades o no.
+DETAIL_ROWS = 5
+# Separació entre la taula de detall i la fila d'Esborrar/Moure. Baixa una
+# mica els botons (i tot el que ve a sota: el cercador i la zona d'accions)
+# perquè les 5 línies mai quedin justes contra ells.
+DETAIL_TABLE_BOTTOM_GAP = 10
 
 _PANEL_STYLE = """
 QFrame#positionPanel {
@@ -129,6 +149,9 @@ class PositionPanel(QFrame):
         super().__init__(parent)
         self.repo = repo
         self.position: int | None = None
+        # Última posició de destí triada al diàleg de trasllat, per no
+        # haver-la de tornar a escriure si se'n mouen unes quantes seguides.
+        self._last_move_target: int | None = None
         self.setObjectName("positionPanel")
         self.setStyleSheet(_PANEL_STYLE)
         self.setFrameShape(QFrame.NoFrame)
@@ -189,7 +212,7 @@ class PositionPanel(QFrame):
             t("board.field.notes"),
         ]
         self._DETAIL_CODE_COL, self._DETAIL_MATERIAL_COL, self._DETAIL_DIMS_COL, self._DETAIL_NOTES_COL = range(4)
-        self.detail_table = QTableWidget(5, len(detail_columns))
+        self.detail_table = QTableWidget(DETAIL_ROWS, len(detail_columns))
         self.detail_table.setHorizontalHeaderLabels(detail_columns)
         # Sempre les 5 files senceres i sense scroll: l'alçada ja es fixa
         # exactament a `_fit_detail_table_height`, però sense això Qt hi
@@ -211,6 +234,13 @@ class PositionPanel(QFrame):
         # a encabir els botons de sota. Amb lletra de 10 px, 20 px de fila
         # van sobrats.
         self.detail_table.verticalHeader().setDefaultSectionSize(DETAIL_ROW_HEIGHT)
+        # I que 20 px sigui de debò l'alçada de la fila: per defecte Qt no
+        # deixa cap secció per sota d'un mínim que surt de la lletra del
+        # sistema (uns 22-25 px), així que les files acabaven sent més
+        # altes del que es donava per fet i la 5a línia no cabia dins de
+        # l'alçada calculada — es veia tallada, o directament no es veia,
+        # que és el que passava a les posicions amb poques peces.
+        self.detail_table.verticalHeader().setMinimumSectionSize(DETAIL_ROW_HEIGHT)
         self.detail_table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
         self.detail_table.setStyleSheet("font-size: 10px;")
         # Un delegat per columna editable: Núm. màxim 6 xifres
@@ -242,6 +272,11 @@ class PositionPanel(QFrame):
         # scroll intern: mesurat en viu (no amb una xifra fixa en pixels),
         # perquè l'alçada real de la lletra varia segons la plataforma.
         self._fit_detail_table_height()
+        # Una mica d'aire entre la taula de detall i els botons de sota:
+        # separa les 5 línies (que sempre hi són, amb peces o sense) de les
+        # accions, i deixa clar que la 5a línia buida encara forma part de
+        # la taula i no és un espai perdut.
+        layout.addSpacing(DETAIL_TABLE_BOTTOM_GAP)
 
         # Botó dret sobre una fila: opció d'esborrar la peça, activada
         # només a l'última (a les primeres hi surt deshabilitada).
@@ -284,9 +319,12 @@ class PositionPanel(QFrame):
         self.delete_button.clicked.connect(self._on_delete_last_piece)
         # S'activa/desactiva segons quina fila queda seleccionada.
         self.detail_table.currentCellChanged.connect(self._on_current_cell_changed)
-        # El trasllat, dins d'un marc fi: el botó i el número al qual
-        # s'envia la peça són una sola cosa i es llegeixen millor agrupats.
-        # El marc és només per a aquests dos (ni el cercador ni Esborrar).
+        # El trasllat, dins d'un marc fi, a joc amb la vora del panell (el
+        # marc és només per a ell: ni el cercador ni Esborrar en porten).
+        # La posició de destí ja no s'escriu en un número al costat: es
+        # demana amb un diàleg en clicar el botó (`_on_move_piece`), així no
+        # hi ha cap número posat per omissió esperant que algú el premi
+        # sense mirar-lo.
         self.move_group = QFrame()
         self.move_group.setObjectName("moveGroup")
         self.move_group.setStyleSheet(_MOVE_GROUP_STYLE)
@@ -295,13 +333,13 @@ class PositionPanel(QFrame):
         move_group_row.setSpacing(6)
         self.move_button = QPushButton(t("position.move_button"))
         self.move_button.setStyleSheet(compact_button_style)
+        # Igual que Esborrar: surt desactivat i només s'activa quan la fila
+        # seleccionada és l'última peça de la posició (`_can_delete_row`).
+        self.move_button.setEnabled(False)
         self.move_button.clicked.connect(self._on_move_piece)
-        self.move_target = QSpinBox()
-        self.move_target.setRange(1, 61)
         # L'ample del botó s'ajusta al seu text, no s'estira.
         self.move_button.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
         move_group_row.addWidget(self.move_button, 0)
-        move_group_row.addWidget(self.move_target)
 
         # Esborrar a una banda i el trasllat a l'altra, amb tot l'espai
         # sobrant entremig: són dues accions molt diferents i enganxades es
@@ -315,19 +353,33 @@ class PositionPanel(QFrame):
         return page
 
     def _fit_detail_table_height(self):
-        """Alçada exacta per a capçalera + 5 files.
+        """Alçada exacta per a capçalera + les 5 files, sempre.
 
         Les files es fixen a `DETAIL_ROW_HEIGHT`: si es deixa que creixin
         amb el contingut, cada fila s'endú uns quants píxels de més i el
         panell ja no arriba a encabir els botons que van a sota. De la
-        capçalera sí que se'n mesura l'alçada real, que depèn de la lletra
-        de cada plataforma.
+        capçalera i del marc sí que se'n mesura l'alçada real, que depèn de
+        la lletra i de l'estil de cada plataforma.
+
+        De la capçalera es pren la MÉS GRAN entre l'alçada que té ara i la
+        que demana (`sizeHint`): la primera vegada que es crida —mentre es
+        construeix el panell— encara no s'ha disposat res i `height()` pot
+        anar curta; quedar-se curt aquí voldria dir tallar l'última línia
+        de la taula, que és justament la que ha de continuar veient-se
+        encara que no tingui cap peça.
+
+        I de les files se'n suma l'alçada REAL, la que han acabat tenint
+        després de demanar-la, no la que se'ls ha demanat: així, si Qt no
+        les deixés baixar de cap mínim seu, l'alçada de la taula creix amb
+        elles i les 5 línies hi continuen cabent senceres.
         """
-        row_h = DETAIL_ROW_HEIGHT
         for row in range(self.detail_table.rowCount()):
-            self.detail_table.setRowHeight(row, row_h)
-        header_h = self.detail_table.horizontalHeader().height()
-        self.detail_table.setFixedHeight(header_h + row_h * 5 + 2)
+            self.detail_table.setRowHeight(row, DETAIL_ROW_HEIGHT)
+        header = self.detail_table.horizontalHeader()
+        header_h = max(header.height(), header.sizeHint().height())
+        rows_h = sum(self.detail_table.rowHeight(row) for row in range(DETAIL_ROWS))
+        frame = 2 * self.detail_table.frameWidth()
+        self.detail_table.setFixedHeight(header_h + rows_h + frame)
 
     # ------------------------------------------------------------------ #
     def load_position(self, position: int):
@@ -339,7 +391,7 @@ class PositionPanel(QFrame):
         # següent núm. de material (si n'hi ha, cap fila buida si és plena):
         # amb 2 peces ja fetes, s'arma la 3a; amb 4, la 5a.
         next_free_row = len(self.repo.get_position_detail(position))
-        if next_free_row < 5:
+        if next_free_row < DETAIL_ROWS:
             self._start_editing(next_free_row, self._DETAIL_CODE_COL)
 
     def _on_editor_enter(self, row: int, col: int):
@@ -382,13 +434,23 @@ class PositionPanel(QFrame):
         self._start_editing(next_row, column)
 
     def _on_current_cell_changed(self, row, column, previous_row, previous_column):
-        self._update_delete_button()
+        self._update_action_buttons()
 
-    def _update_delete_button(self):
-        """El botó Esborrar només s'activa quan la fila seleccionada és
+    def _update_action_buttons(self):
+        """Esborrar i Moure només s'activen quan la fila seleccionada és
         l'última peça de la posició — exactament la mateixa condició que fa
-        servir el menú del botó dret (`_can_delete_row`)."""
-        self.delete_button.setEnabled(self._can_delete_row(self.detail_table.currentRow()))
+        servir el menú del botó dret (`_can_delete_row`), en un sol lloc
+        per als dos botons.
+
+        Les dues accions treballen sobre la mateixa peça (l'última de la
+        posició), així que no tindria sentit que una es pogués fer des
+        d'una fila des d'on l'altra no. Mentre estan desactivats, el
+        tooltip diu per què.
+        """
+        enabled = self._can_delete_row(self.detail_table.currentRow())
+        for button in (self.delete_button, self.move_button):
+            button.setEnabled(enabled)
+            button.setToolTip("" if enabled else t("position.move.only_last.tooltip"))
 
     def _start_editing(self, row: int, col: int):
         item = self.detail_table.item(row, col)
@@ -404,7 +466,7 @@ class PositionPanel(QFrame):
     def clear_selection(self):
         self.position = None
         self._stack.setCurrentIndex(0)
-        self._update_delete_button()
+        self._update_action_buttons()
 
     def refresh(self):
         if self.position is None:
@@ -417,9 +479,9 @@ class PositionPanel(QFrame):
         # itemChanged i intentaria desar-ho com si l'usuari ho hagués
         # editat (a més de ser innecessari, petaria a les files buides).
         self.detail_table.blockSignals(True)
-        self.detail_table.setRowCount(5)
+        self.detail_table.setRowCount(DETAIL_ROWS)
         next_free_row = len(detail)  # primera fila buida: hi accepta un núm. nou
-        for r in range(5):
+        for r in range(DETAIL_ROWS):
             occupied = r < len(detail)
             if occupied:
                 p = detail[r]
@@ -441,7 +503,7 @@ class PositionPanel(QFrame):
                 self.detail_table.setItem(r, c, item)
         self.detail_table.blockSignals(False)
         self._fit_detail_table_height()
-        self._update_delete_button()
+        self._update_action_buttons()
 
     def _on_detail_item_changed(self, item):
         if self.position is None:
@@ -525,6 +587,18 @@ class PositionPanel(QFrame):
         # Un cop escrit el núm. i fet Retorn, salta directament a Mides de
         # la mateixa fila per poder-les editar tot seguit.
         self._start_editing(row, self._DETAIL_DIMS_COL)
+
+    def _default_move_target(self) -> int:
+        """Número que surt escrit al diàleg de destí: l'últim que s'hi va
+        fer servir (és habitual moure unes quantes peces al mateix lloc)
+        i, la primera vegada, la primera posició del tauler. Mai la
+        posició on és ara la peça, que no és un destí vàlid: en aquest cas
+        se'n proposa una altra."""
+        first, last = min(BOARD_POSITIONS), max(BOARD_POSITIONS)
+        target = self._last_move_target if self._last_move_target is not None else first
+        if target == self.position:
+            target = last if self.position == first else first
+        return target
 
     def _last_piece_row(self) -> int | None:
         """Fila de l'ÚLTIMA peça de la posició (None si la posició és buida).
@@ -623,7 +697,28 @@ class PositionPanel(QFrame):
         self.changed.emit()
 
     def _on_move_piece(self):
-        target = self.move_target.value()
+        """Trasllat de la peça: primer es demana a quina posició ha d'anar.
+
+        La posició de destí es tria en un diàleg (`dialogs.ask_int`, el
+        mateix estil que la resta de diàlegs de l'aplicació, amb els botons
+        traduïts) i, un cop triada, es continua exactament pel camí de
+        sempre: confirmació, `Repository.move_piece` —que és qui treu la
+        peça, la col·loca i escriu les dues línies d'històric— i refresc.
+        Aquí no hi ha cap lògica de moviment pròpia. Si es cancel·la el
+        diàleg no es toca res.
+        """
+        if self.position is None:
+            return
+        target, chosen = dialogs.ask_int(
+            self,
+            t("position.move.ask.title"),
+            t("position.move.ask.label", from_pos=self.position),
+            value=self._default_move_target(),
+            minimum=min(BOARD_POSITIONS),
+            maximum=max(BOARD_POSITIONS),
+        )
+        if not chosen:
+            return
         # Moure una peça de lloc no es desfà: primer es pregunta. El
         # diàleg és el mateix de tota l'aplicació (`dialogs.confirm`, amb
         # Cancel·lar per defecte), i si es cancel·la no es toca res.
@@ -645,6 +740,7 @@ class PositionPanel(QFrame):
         except RuleViolation as exc:
             dialogs.error(self, t("position.cannot_move"), str(exc))
             return
+        self._last_move_target = target
         dialogs.info(
             self,
             t("position.moved.title"),

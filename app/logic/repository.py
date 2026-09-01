@@ -431,6 +431,58 @@ class Repository:
         rows = self.conn.execute(sql, params).fetchall()
         return [dict(r) for r in rows]
 
+    # Moviments que compta la pestanya d'Estadístiques i com es compten.
+    # Un trasllat deixa DUES línies a l'històric (move_out a l'origen i
+    # move_in al destí): només es compta la del DESTÍ, així un trasllat és
+    # un moviment i no dos.
+    STAT_KINDS = ("in", "out", "move_in")
+
+    def movement_stats(self, start_date: str, end_date: str) -> list[dict]:
+        """Moviments de l'històric agrupats per dia, dins de [start_date,
+        end_date] (dates ISO "AAAA-MM-DD", tots dos dies inclosos).
+
+        Només llegeix: l'històric no es toca mai des d'aquí. Es calcula a
+        la base de dades a partir de `historic`, l'única font de veritat
+        dels moviments; el dia surt dels 10 primers caràcters de `ts`, que
+        sempre és una data ISO.
+
+        Retorna una llista ordenada per dia, amb els dies que TENEN algun
+        moviment: [{"day", "in", "out", "move", "total"}, ...].
+        """
+        placeholders = ",".join("?" for _ in self.STAT_KINDS)
+        rows = self.conn.execute(
+            "SELECT substr(ts, 1, 10) AS day, kind, COUNT(*) AS n FROM historic "
+            f"WHERE kind IN ({placeholders}) AND substr(ts, 1, 10) BETWEEN ? AND ? "  # noqa: S608
+            "GROUP BY day, kind ORDER BY day",
+            (*self.STAT_KINDS, start_date, end_date),
+        ).fetchall()
+
+        by_day: dict[str, dict] = {}
+        for r in rows:
+            day = by_day.setdefault(r["day"], {"day": r["day"], "in": 0, "out": 0, "move": 0})
+            key = "move" if r["kind"] == "move_in" else r["kind"]
+            day[key] += r["n"]
+        for day in by_day.values():
+            day["total"] = day["in"] + day["out"] + day["move"]
+        return [by_day[day] for day in sorted(by_day)]
+
+    def movement_stats_by_destination(self, start_date: str, end_date: str) -> list[dict]:
+        """Trasllats de l'interval comptats per posició de DESTÍ (la línia
+        move_in de cada trasllat, que és la que porta la posició on ha
+        anat a parar la peça). Mateix interval i mateixa font que
+        `movement_stats`; ordenat de més trasllats a menys.
+        """
+        rows = self.conn.execute(
+            "SELECT position, COUNT(*) AS n FROM historic "
+            "WHERE kind = 'move_in' AND substr(ts, 1, 10) BETWEEN ? AND ? "
+            "GROUP BY position",
+            (start_date, end_date),
+        ).fetchall()
+        return sorted(
+            ({"position": r["position"], "count": r["n"]} for r in rows),
+            key=lambda d: (-d["count"], str(d["position"])),
+        )
+
     def historic_ids_to_keep(self) -> list[int]:
         """Ids de l'històric que NO s'han d'esborrar en netejar-lo: l'ÚLTIMA
         entrada de cada material que ara mateix hi ha al Tauler.
@@ -499,6 +551,18 @@ class Repository:
     def list_desmagatzem(self) -> list[dict]:
         rows = self.conn.execute("SELECT * FROM desmagatzem ORDER BY row_order").fetchall()
         return [dict(r) for r in rows]
+
+    def count_desmagatzem_pieces(self) -> int:
+        """Quantes peces hi ha ara mateix a Desmagatzem: la SUMA de les
+        quantitats de totes les línies, no el nombre de línies (una línia
+        de 5 unitats són 5 peces, igual que compta l'històric, que hi
+        deixa una entrada per unitat).
+
+        Mateix criteri que `count_pieces` per al Tauler: es compta a la
+        base de dades, no al que hi hagi pintat a la pantalla, així que no
+        depèn de l'ordre, de l'scroll ni de cap cerca activa.
+        """
+        return self.conn.execute("SELECT COALESCE(SUM(quantity), 0) FROM desmagatzem").fetchone()[0]
 
     def add_desmagatzem_row(
         self, material_code: str, quantity: int, dimensions: str, cart_ref: str, custom_text: str | None = None

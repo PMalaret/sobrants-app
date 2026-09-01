@@ -36,7 +36,7 @@ from PySide6.QtWidgets import (
 
 from app.i18n import t
 from app.logic.repository import Repository
-from app.ui.position_panel import PositionPanel
+from app.ui.position_panel import DETAIL_ROW_HEIGHT, PositionPanel
 from app.ui.search_panel import SEARCH_COLORS, SearchPanel
 
 # (posició inicial, nombre de posicions) de cada bloc de columnes, igual que
@@ -48,6 +48,9 @@ TABLE_ROWS = max(count for _start, count in BLOCKS)
 # Mida de lletra de la taula (la mateixa que fixa el full d'estil de sota,
 # aquí com a constant perquè les dues no es desincronitzin).
 BOARD_FONT_PX = 12
+# Alçada de fila de la taula del tauler: l'habitual, i alhora el MÍNIM per
+# sota del qual no s'encongeixen quan reparteixen l'espai (veure _build_ui).
+BOARD_ROW_HEIGHT = 20
 # Notes: al tauler només se'n mostren els 8 primers caràcters (el mateix
 # màxim que ja imposa el panell de detall en escriure-les). Amb un límit
 # fix i curt, la columna no ha de ser més ampla que això.
@@ -116,6 +119,11 @@ class _BoardGridDelegate(QStyledItemDelegate):
 # padding) perquè quedin alineats; cadascun manté el seu color.
 FOOTER_BUTTON_STYLE = "padding: 5px 14px; font-size: 12px;"
 
+# Separació entre el cercador i la zona d'accions ("Imprimir tauler" i
+# "Materials tapats"): dues files de la taula de detall, perquè es vegi
+# clar que els botons no formen part del cercador.
+ACTIONS_ZONE_TOP_GAP = 2 * DETAIL_ROW_HEIGHT
+
 # La zona d'accions és una franja pròpia sota el cercador, amb un fons una
 # mica diferent perquè es vegi que és una altra cosa (i no part del
 # cercador). Discret, a joc amb la resta de la interfície.
@@ -166,7 +174,7 @@ class BoardTab(QWidget):
         # Files compactes i sense numeració de fila (ja hi ha la columna
         # "Posició") perquè les 61 posicions càpiguen sense fer scroll.
         self.table.verticalHeader().setVisible(False)
-        self.table.verticalHeader().setDefaultSectionSize(20)
+        self.table.verticalHeader().setDefaultSectionSize(BOARD_ROW_HEIGHT)
         # Capçalera més prima: es redueix el padding vertical de la secció,
         # no la mida de la lletra (que es queda igual, a 12px).
         self.table.setStyleSheet(
@@ -177,9 +185,18 @@ class BoardTab(QWidget):
         # però ara que la taula s'expandeix per ocupar l'espai vertical
         # sobrant, les files creixen (Stretch) en lloc d'aparèixer files
         # buides: mai canvia el nombre de files, només la seva alçada.
-        exact_height = TABLE_ROWS * 20 + 40
+        exact_height = TABLE_ROWS * BOARD_ROW_HEIGHT + 40
         self.table.setMinimumHeight(exact_height)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # Amb "Stretch" les files reparteixen l'alçada disponible, però Qt
+        # no les deixa baixar del seu mínim per defecte (uns 25 px, que surt
+        # de la lletra del sistema): amb la finestra petita, 27 files de 25
+        # px ja no cabien i sortia una barra de desplaçament vertical —
+        # justament el que aquesta pestanya no ha de tenir mai. Baixant el
+        # mínim a l'alçada de fila de sempre (20 px), les 27 files hi caben
+        # sempre, i el panell incrustat (que ocupa 20 d'aquestes files) es
+        # veu sencer sense haver de fer scroll.
+        self.table.verticalHeader().setMinimumSectionSize(BOARD_ROW_HEIGHT)
         self.table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self._configure_column_widths()
         self.table.setItemDelegate(_BoardGridDelegate(self._POSITION_COLUMNS, self.table))
@@ -239,6 +256,10 @@ class BoardTab(QWidget):
         for button in (self.print_button, self.covered_button):
             button.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
             actions_layout.addWidget(button, 0, Qt.AlignRight)
+        # Dues files de separació entre el cercador i la zona d'accions:
+        # són coses diferents i, enganxades, es podia clicar "Imprimir" o
+        # "Materials tapats" pensant que encara s'era al cercador.
+        footer_layout.addSpacing(ACTIONS_ZONE_TOP_GAP)
         footer_layout.addWidget(self.actions_zone)
         # Mateix ample per als dos: el del més ample dels dos continguts.
         shared_width = max(b.sizeHint().width() for b in (self.print_button, self.covered_button))
@@ -356,7 +377,7 @@ class BoardTab(QWidget):
                     item.setToolTip(notes_full)
                 self.table.setItem(row, col0 + field_idx, item)
 
-        self._reapply_all_highlights()
+        self.refresh_searches()
 
         # Si hi ha una posició carregada al panell, la refresquem (p. ex.
         # després de moure-hi una peça des d'una altra posició).
@@ -383,7 +404,18 @@ class BoardTab(QWidget):
         self._search_state[mode] = text
         self._run_search(mode, text)
 
-    def _reapply_all_highlights(self):
+    def refresh_searches(self):
+        """Torna a executar els cercadors que hi hagi actius i a repintar-ne
+        les coincidències.
+
+        És el mateix camí que ja se segueix quan es toca el Tauler
+        (`refresh_board`), publicat perquè també s'hi pugui cridar quan
+        canvien dades d'una altra pestanya: els resultats no són només del
+        Tauler —"Unitats a Desmagatzem" surt de la taula de desmagatzem—,
+        així que una alta o un canvi de quantitat allà també els fa
+        canviar. Sense això, amb una cerca activa els números es quedaven
+        com estaven fins a tornar a escriure al camp.
+        """
         self._clear_highlight()
         for mode, text in self._search_state.items():
             self._run_search(mode, text)

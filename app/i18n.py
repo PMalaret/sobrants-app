@@ -49,6 +49,16 @@ def set_language(lang: str) -> None:
         settings.set_value("language", lang)
 
 
+def format_number(value: int) -> str:
+    """El número amb els separadors de milers de l'idioma de l'aplicació
+    (1.248 en català, castellà i francès; 1,248 en anglès). Viu aquí, amb
+    la resta de coses que depenen de l'idioma, perquè tothom qui ensenyi
+    un total el pinti igual."""
+    from PySide6.QtCore import QLocale
+
+    return QLocale(get_language()).toString(value)
+
+
 def t(key: str, **kwargs) -> str:
     entry = TRANSLATIONS.get(key)
     if entry is None:
@@ -173,6 +183,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "tab.desmagatzem": {"ca": "Desmagatzem", "es": "Desmagatzem", "en": "Desmagatzem", "fr": "Desmagatzem"},
     "tab.historic": {"ca": "Històric", "es": "Histórico", "en": "History", "fr": "Historique"},
     "tab.materials": {"ca": "Materials", "es": "Materiales", "en": "Materials", "fr": "Matériaux"},
+    "tab.statistics": {
+        "ca": "Estadístiques", "es": "Estadísticas",
+        "en": "Statistics", "fr": "Statistiques",
+    },
 
     # -- Tauler ------------------------------------------------------------ #
     "board.piece_count": {
@@ -254,8 +268,24 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "fr": "Position {position}",
     },
     "position.move_button": {
-        "ca": "📤 Moure peça visible a posició →", "es": "📤 Mover pieza visible a posición →",
-        "en": "📤 Move visible piece to position →", "fr": "📤 Déplacer la pièce visible vers la position →",
+        "ca": "📤 Moure peça visible a posició...", "es": "📤 Mover pieza visible a posición...",
+        "en": "📤 Move visible piece to position...", "fr": "📤 Déplacer la pièce visible vers la position...",
+    },
+    "position.move.ask.title": {
+        "ca": "A quina posició?", "es": "¿A qué posición?",
+        "en": "To which position?", "fr": "Vers quelle position ?",
+    },
+    "position.move.ask.label": {
+        "ca": "Posició de destí (1-61) per a la peça de la posició {from_pos}:",
+        "es": "Posición de destino (1-61) para la pieza de la posición {from_pos}:",
+        "en": "Destination position (1-61) for the piece in position {from_pos}:",
+        "fr": "Position de destination (1-61) pour la pièce de la position {from_pos} :",
+    },
+    "position.move.only_last.tooltip": {
+        "ca": "Només es pot moure l'última peça de la posició: tria-la a la taula.",
+        "es": "Solo se puede mover la última pieza de la posición: selecciónala en la tabla.",
+        "en": "Only the last piece of the position can be moved: select it in the table.",
+        "fr": "Seule la dernière pièce de la position peut être déplacée : sélectionnez-la dans le tableau.",
     },
     "position.duplicate.title": {
         "ca": "Material duplicat", "es": "Material duplicado",
@@ -468,6 +498,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "desmagatzem.add_button": {
         "ca": "Registrar entrada", "es": "Registrar entrada",
         "en": "Register entry", "fr": "Enregistrer l'entrée",
+    },
+    "desmagatzem.piece_count": {
+        "ca": "Peces desmagatzem ({count})", "es": "Piezas desmagatzem ({count})",
+        "en": "Desmagatzem pieces ({count})", "fr": "Pièces desmagatzem ({count})",
     },
     "desmagatzem.new_qty_label": {
         "ca": "Nova quantitat per a la línia seleccionada:",
@@ -891,6 +925,18 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Enter the password to change how often the backup is made:",
         "fr": "Entrez le mot de passe pour changer la fréquence des sauvegardes :",
     },
+    "password.label_import": {
+        "ca": "Introdueix la contrasenya per importar dades:",
+        "es": "Introduce la contraseña para importar datos:",
+        "en": "Enter the password to import data:",
+        "fr": "Entrez le mot de passe pour importer des données :",
+    },
+    "password.wrong.text_import": {
+        "ca": "La contrasenya introduïda no és correcta. No s'ha importat res.",
+        "es": "La contraseña introducida no es correcta. No se ha importado nada.",
+        "en": "The password entered is not correct. Nothing has been imported.",
+        "fr": "Le mot de passe saisi est incorrect. Rien n'a été importé.",
+    },
     "password.label_change": {
         "ca": "Introdueix la contrasenya actual:", "es": "Introduce la contraseña actual:",
         "en": "Enter the current password:", "fr": "Entrez le mot de passe actuel :",
@@ -1126,5 +1172,66 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "materials.delete.success": {
         "ca": "Material esborrat correctament.", "es": "Material borrado correctamente.",
         "en": "Material deleted successfully.", "fr": "Matériau supprimé avec succès.",
+    },
+
+    # -- Estadístiques -------------------------------------------------------- #
+    "stats.title": {
+        "ca": "Moviments de l'històric", "es": "Movimientos del histórico",
+        "en": "Movements in the history", "fr": "Mouvements de l'historique",
+    },
+    "stats.from": {"ca": "Des de:", "es": "Desde:", "en": "From:", "fr": "Du :"},
+    "stats.to": {"ca": "Fins a:", "es": "Hasta:", "en": "To:", "fr": "Au :"},
+    "stats.apply": {
+        "ca": "🔎 Consultar", "es": "🔎 Consultar", "en": "🔎 Show", "fr": "🔎 Consulter",
+    },
+    "stats.range.today": {"ca": "Avui", "es": "Hoy", "en": "Today", "fr": "Aujourd'hui"},
+    "stats.range.week": {
+        "ca": "Últims 7 dies", "es": "Últimos 7 días",
+        "en": "Last 7 days", "fr": "7 derniers jours",
+    },
+    "stats.range.month": {
+        "ca": "Últims 30 dies", "es": "Últimos 30 días",
+        "en": "Last 30 days", "fr": "30 derniers jours",
+    },
+    "stats.range.year": {
+        "ca": "Últim any", "es": "Último año", "en": "Last year", "fr": "Dernière année",
+    },
+    "stats.col.day": {"ca": "Dia", "es": "Día", "en": "Day", "fr": "Jour"},
+    "stats.col.in": {"ca": "Entrades", "es": "Entradas", "en": "In", "fr": "Entrées"},
+    "stats.col.out": {"ca": "Sortides", "es": "Salidas", "en": "Out", "fr": "Sorties"},
+    "stats.col.move": {"ca": "Trasllats", "es": "Traslados", "en": "Moves", "fr": "Déplacements"},
+    "stats.col.total": {"ca": "Total", "es": "Total", "en": "Total", "fr": "Total"},
+    "stats.col.position": {"ca": "Posició de destí", "es": "Posición de destino",
+        "en": "Destination position", "fr": "Position de destination"},
+    "stats.total_row": {"ca": "TOTAL", "es": "TOTAL", "en": "TOTAL", "fr": "TOTAL"},
+    "stats.destinations_title": {
+        "ca": "Trasllats per posició de destí",
+        "es": "Traslados por posición de destino",
+        "en": "Moves by destination position",
+        "fr": "Déplacements par position de destination",
+    },
+    "stats.note": {
+        "ca": "Cada trasllat es compta una sola vegada, a la posició on ha anat a parar la peça.",
+        "es": "Cada traslado se cuenta una sola vez, en la posición donde ha ido a parar la pieza.",
+        "en": "Each move is counted once, at the position the piece ended up in.",
+        "fr": "Chaque déplacement est compté une seule fois, à la position où la pièce est arrivée.",
+    },
+    "stats.summary": {
+        "ca": "{days} dies amb moviment — {in_count} entrades, {out_count} sortides, {move_count} trasllats",
+        "es": "{days} días con movimiento — {in_count} entradas, {out_count} salidas, {move_count} traslados",
+        "en": "{days} days with movement — {in_count} in, {out_count} out, {move_count} moves",
+        "fr": "{days} jours avec mouvement — {in_count} entrées, {out_count} sorties, {move_count} déplacements",
+    },
+    "stats.empty": {
+        "ca": "No hi ha cap moviment en aquest interval de dates.",
+        "es": "No hay ningún movimiento en este intervalo de fechas.",
+        "en": "There are no movements in this date range.",
+        "fr": "Aucun mouvement dans cet intervalle de dates.",
+    },
+    "stats.invalid_range.text": {
+        "ca": "La data final és anterior a la inicial.",
+        "es": "La fecha final es anterior a la inicial.",
+        "en": "The end date is earlier than the start date.",
+        "fr": "La date de fin est antérieure à la date de début.",
     },
 }

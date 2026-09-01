@@ -32,7 +32,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.i18n import t
+from app.i18n import format_number, t
 from app.logic import rules
 from app.logic.repository import Repository, RuleViolation
 from app.logic.rules import quantity_change_kind
@@ -194,10 +194,6 @@ class DesmagatzemTab(QWidget):
         self.cart_input.setMaxLength(rules.DESMAGATZEM_NOTES_MAX_CHARS)
         self.cart_input.setFixedWidth(_NOTES_WIDTH)
         self.cart_input.setToolTip(t("desmagatzem.cart_placeholder"))
-        # Comptador discret al costat, perquè es vegi quant queda.
-        self.cart_counter = QLabel()
-        self.cart_counter.setStyleSheet("color: #8a8f98; font-size: 11px;")
-        self.cart_input.textChanged.connect(self._update_cart_counter)
 
         for label_key, widget, stretch in (
             ("desmagatzem.field.code", self.code_input, 0),
@@ -208,8 +204,6 @@ class DesmagatzemTab(QWidget):
         ):
             form.addWidget(QLabel(t(label_key)))
             form.addWidget(widget, stretch)
-            if widget is self.cart_input:
-                form.addWidget(self.cart_counter)
 
         self.add_button = QPushButton(t("desmagatzem.add_button"))
         self.add_button.clicked.connect(self._on_add_row)
@@ -219,7 +213,6 @@ class DesmagatzemTab(QWidget):
         # Enter passa al camp següent, d'esquerra a dreta, i al final de la
         # fila desa la línia (el mateix que el botó) i torna al principi:
         # es pot anar entrant material rere material sense tocar el ratolí.
-        self._update_cart_counter()
         self._enter_chain = [
             self.code_input,
             self.custom_text_input,
@@ -299,9 +292,16 @@ class DesmagatzemTab(QWidget):
             self._delete_shortcuts.append(shortcut)
         qty_row.addWidget(self.update_qty_button)
         qty_row.addStretch()
-        # Zona d'accions de la pestanya: imprimir la taula sencera.
+        # Zona d'accions de la pestanya: el total de peces i, a la seva
+        # dreta, imprimir la taula sencera. El total es pinta igual que el
+        # del Tauler (mateixa mida, mateix pes i mateix separador de
+        # milers), perquè els dos comptadors es llegeixin igual.
+        self.piece_count_label = QLabel()
+        self.piece_count_label.setStyleSheet("font-size: 13px; font-weight: 600; color: #1a1a1a;")
+        qty_row.addWidget(self.piece_count_label)
         qty_row.addWidget(self.print_button)
         layout.addLayout(qty_row)
+        self._update_piece_count()
 
     def printable_rows(self) -> tuple[list[str], list[list[ReportCell]]]:
         """Capçaleres i TOTES les files de la taula, en l'ordre en què es
@@ -381,6 +381,7 @@ class DesmagatzemTab(QWidget):
         self.table.sortByColumn(self._DATE_COL, Qt.AscendingOrder)
         self._reapply_highlights()
         self._update_qty_button_state()
+        self._update_piece_count()
 
     # ------------------------------------------------------------------ #
     # Ressaltat creuat amb els cercadors del Tauler (mateixos colors)
@@ -465,9 +466,14 @@ class DesmagatzemTab(QWidget):
         self.refresh()
         self.data_changed.emit()
 
-    def _update_cart_counter(self):
-        self.cart_counter.setText(
-            f"{len(self.cart_input.text())}/{rules.DESMAGATZEM_NOTES_MAX_CHARS}"
+    def _update_piece_count(self):
+        """Quantes peces hi ha ara a Desmagatzem (la suma de les quantitats
+        de totes les línies). Ve de la base de dades (`count_desmagatzem_pieces`),
+        no del que hi hagi pintat a la taula: es manté correcte amb
+        qualsevol ordenació o ressaltat de cerca."""
+        count = self.repo.count_desmagatzem_pieces()
+        self.piece_count_label.setText(
+            t("desmagatzem.piece_count", count=format_number(count))
         )
 
     def _update_qty_button_state(self):
