@@ -226,15 +226,16 @@ class MainWindow(QMainWindow):
         self._action(menu, t("menu.print_desmagatzem"), "print", self._print_desmagatzem)
         self._action(menu, t("menu.report_covered"), "eye", self._show_covered_report)
 
-        menu.addSeparator()
-        self._action(menu, t("menu.exit"), "exit", self.close)
-
+        # "Sobre" i la versió van juntes (les dues diuen el mateix: què és
+        # això i quina versió és), i "Sortir" al final de tot, que és on es
+        # busca en qualsevol aplicació.
         menu.addSeparator()
         self._action(menu, t("menu.about"), "info", self._show_about)
-
-        menu.addSeparator()
         version_action = menu.addAction(t("menu.version", version=APP_VERSION))
         version_action.setEnabled(False)  # només informatiu, no cal que faci res en clicar
+
+        menu.addSeparator()
+        self._action(menu, t("menu.exit"), "exit", self.close)
 
         # Menú d'importació, entre Fitxer i Còpies de seguretat.
         import_menu = self.menuBar().addMenu(t("menu.import"))
