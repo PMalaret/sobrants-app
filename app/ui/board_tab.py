@@ -125,9 +125,10 @@ class _BoardGridDelegate(QStyledItemDelegate):
 # que es fa poc i no s'ha de confondre amb imprimir.
 
 # Separació entre el cercador i la zona d'accions ("Imprimir tauler" i
-# "Materials tapats"): dues files de la taula de detall, perquè es vegi
-# clar que els botons no formen part del cercador.
-ACTIONS_ZONE_TOP_GAP = 2 * DETAIL_ROW_HEIGHT
+# "Materials tapats"): cap. La zona d'accions ja té fons propi i es
+# distingeix del cercador sense necessitat de deixar-hi un buit, i aquell
+# espai fa més falta a les files de la taula de detall, que és on s'escriu.
+ACTIONS_ZONE_TOP_GAP = 0
 
 # La zona d'accions és una franja pròpia sota el cercador, amb un fons una
 # mica diferent perquè es vegi que és una altra cosa (i no part del
@@ -297,9 +298,6 @@ class BoardTab(QWidget):
             button.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
             buttons_column.addWidget(button, 0, Qt.AlignRight)
         actions_layout.addLayout(buttons_column, 0)
-        # Dues files de separació entre el cercador i la zona d'accions:
-        # són coses diferents i, enganxades, es podia clicar "Imprimir" o
-        # "Materials tapats" pensant que encara s'era al cercador.
         footer_layout.addSpacing(ACTIONS_ZONE_TOP_GAP)
         footer_layout.addWidget(self.actions_zone)
         # Mateix ample per als dos: el del més ample dels dos continguts.

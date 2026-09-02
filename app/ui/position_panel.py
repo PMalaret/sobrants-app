@@ -75,7 +75,7 @@ from app.ui import dialogs, icons, theme
 # amb 20 px el que s'escrivia quedava escanyat. Deixar-la fixa és el que fa
 # que el panell càpiga sencer (amb els botons de sota) sense haver de fer
 # scroll, així que puja el mínim que fa falta, no més.
-DETAIL_ROW_HEIGHT = 26
+DETAIL_ROW_HEIGHT = 30
 # Files de la taula de detall: sempre 5 (el màxim de peces per posició),
 # tinguin dades o no.
 DETAIL_ROWS = 5
@@ -286,7 +286,12 @@ class PositionPanel(QFrame):
         # perquè les columnes aprofitin tot l'ample que té el panell (que
         # ja és el just i necessari).
         detail_header = self.detail_table.horizontalHeader()
-        detail_widths = [55, None, 62, 90]
+        # Mides i Notes s'eixamplen a costa de Material: són les dues
+        # columnes on s'escriu, i amb 62 i 90 px el text hi anava tan just
+        # que en escriure una mica més ja no s'hi veia sencer. Material,
+        # que és l'única "Stretch", es queda amb el que sobra i li'n queda
+        # de sobres per a una descripció normal.
+        detail_widths = [55, None, 78, 104]
         for col, width in enumerate(detail_widths):
             if width is None:
                 detail_header.setSectionResizeMode(col, QHeaderView.Stretch)

@@ -151,7 +151,10 @@ class DesmagatzemTab(QWidget):
         # pot redimensionar manualment (Qt en controla l'ample per omplir
         # l'espai sobrant), i totes s'han de poder canviar de mida.
         header = self.table.horizontalHeader()
-        widths = [70, 80, 200, 90, 200, 150]  # Quantitat, Núm., Material, Mides, Notes, Data
+        # Quantitat, Núm. material, Material, Mides, Notes, Data. El núm. de
+        # material té 6 xifres i el títol de la columna és llarg: amb 80 px
+        # es retallava la capçalera.
+        widths = [70, 105, 200, 90, 200, 150]
         for col, width in enumerate(widths):
             header.setSectionResizeMode(col, QHeaderView.Interactive)
             self.table.setColumnWidth(col, width)
@@ -210,9 +213,9 @@ class DesmagatzemTab(QWidget):
             form.addWidget(widget, stretch)
 
         self.add_button = QPushButton(t("desmagatzem.add_button"))
-        # Compacte: el botó ocupava 36 px d'alçada i aquí l'espai vertical
-        # és el que decideix quantes línies es veuen de la taula.
-        self.add_button.setProperty("compact", "true")
+        # El més pla de tots: aquest botó va dins de la fila de camps del
+        # formulari i no ha de cridar l'atenció per alçada.
+        self.add_button.setProperty("compact", "tight")
         self.add_button.clicked.connect(self._on_add_row)
         form.addWidget(self.add_button)
         layout.addWidget(form_box)

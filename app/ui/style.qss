@@ -241,6 +241,15 @@ QPushButton[compact="true"] {
     border-radius: 7px;
 }
 
+/* Encara més pla, per als botons que van dins d'una fila de camps i no
+   han de fer-la créixer. */
+QPushButton[compact="tight"] {
+    padding: 2px 12px;
+    min-height: 12px;
+    font-size: 12px;
+    border-radius: 6px;
+}
+
 QPushButton[variant="danger"] {
     background-color: $danger;
     color: $on_accent;
