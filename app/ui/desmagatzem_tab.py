@@ -171,8 +171,18 @@ class DesmagatzemTab(QWidget):
         # L'únic que s'estira és la descripció del material, que és
         # l'únic camp de llargada lliure.
         form_box = QGroupBox(t("desmagatzem.form_title"))
+        # Aquest apartat, ben arrapat: és una sola fila de camps i no li
+        # calen els 14+10 px de marge intern que el full d'estil dóna a
+        # qualsevol QGroupBox (pensats per a caixes de diverses línies).
+        # Només aquesta caixa —el full general no es toca, que l'altra
+        # QGroupBox de l'aplicació (Estadístiques) sí que en té, de línies.
+        form_box.setStyleSheet("QGroupBox { padding: 6px 12px 6px 12px; }")
         form = QHBoxLayout(form_box)
         form.setSpacing(6)
+        # I sense el marge que Qt posa per omissió a tot layout (9 px per
+        # banda): amunt i avall se suma al de la caixa i el fa el doble de
+        # gruixut del que sembla. Als costats, el de la caixa ja hi és.
+        form.setContentsMargins(0, 0, 0, 0)
 
         self.code_input = QLineEdit()
         self.code_input.setMaxLength(_CODE_MAX_CHARS)
@@ -213,9 +223,10 @@ class DesmagatzemTab(QWidget):
             form.addWidget(widget, stretch)
 
         self.add_button = QPushButton(t("desmagatzem.add_button"))
-        # El més pla de tots: aquest botó va dins de la fila de camps del
-        # formulari i no ha de cridar l'atenció per alçada.
-        self.add_button.setProperty("compact", "tight")
+        # Botó normal, el mateix que "Imprimir desmagatzem" del peu de la
+        # pestanya: són les dues accions de la pantalla i s'han de veure
+        # igual d'importants. L'alçada que costa surt del marge de la
+        # caixa, que s'ha aprimat aquí sobre.
         self.add_button.clicked.connect(self._on_add_row)
         form.addWidget(self.add_button)
         layout.addWidget(form_box)
@@ -275,6 +286,11 @@ class DesmagatzemTab(QWidget):
         # van bé i s'hi veuen dues o tres línies més de cop, que en aquesta
         # pestanya és el que es demana.
         self.table.verticalHeader().setDefaultSectionSize(DESMAGATZEM_ROW_HEIGHT)
+        # Sense la línia de sota que la regla `QHeaderView` del full d'estil
+        # posa per tancar la capçalera horitzontal: aquesta taula és
+        # l'única que ensenya els números de fila, i allà aquella línia
+        # cauria al capdavall de la columna dels números, on no separa res.
+        self.table.verticalHeader().setStyleSheet("QHeaderView { border: none; }")
         layout.addWidget(self.table)
 
         qty_row = QHBoxLayout()

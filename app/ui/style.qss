@@ -113,6 +113,16 @@ QGroupBox::title {
     color: $text_secondary;
 }
 
+/* La cantonada de dalt a l'esquerra, on es creuen els títols de columna i
+   els números de fila. Sense aquesta regla la pinta l'estil de Windows, que
+   hi fa un botó amb degradat: al costat d'unes capçaleres planes i grises
+   es veia com un pegat. Ara és una secció de capçalera més. */
+QTableCornerButton::section {
+    background-color: $surface_alt;
+    border: none;
+    border-bottom: 1px solid $border;
+}
+
 QTableWidget, QTableView {
     background: $surface;
     gridline-color: $grid;
@@ -132,8 +142,10 @@ QHeaderView::section {
     background-color: $surface_alt;
     color: $text;
     padding: 7px 4px;
+    /* Sense la línia de sota: ara la dibuixa el WIDGET capçalera (regla
+       `QHeaderView` d'aquí sota), un sol cop i d'una vora a l'altra. Posada
+       a cada secció, s'acabava allà on s'acabava l'última columna. */
     border: none;
-    border-bottom: 1px solid $border;
     font-weight: 600;
 }
 
@@ -141,13 +153,22 @@ QHeaderView::section:hover {
     color: $accent;
 }
 
-/* El fons del WIDGET capçalera (no de les seccions) es queda blanc: és el
-   que es veu més enllà de l'última columna i sota l'últim número de fila, i
-   amb el gris de les seccions quedaria una franja grisa buida al costat
-   d'una taula amb poques línies. */
+/* El fons del WIDGET capçalera (no de les seccions), que és el que es veu
+   allà on no hi ha cap secció: del color de la taula, no del gris de les
+   seccions, perquè el gris ha d'acabar amb l'última columna. Cap taula no
+   té columnes "Stretch" (totes són redimensionables a mà), o sigui que a la
+   dreta de l'última sempre hi sobra amplada, i omplir-la de gris fa
+   semblar que hi ha una columna més que no té títol. El mateix fons és el que es veu SOTA l'últim número de
+   fila, on el gris hi deixaria una columna grisa buida al costat d'una
+   taula amb poques línies. */
 QHeaderView {
     background: $surface;
     border: none;
+    /* La línia que separa la capçalera del contingut sí que travessa tota
+       l'amplada, també el tros de després de l'última columna: dibuixada
+       aquí i no a cada secció, no s'acaba de cop a mig aire i la cantonada
+       de dalt a la dreta queda tancada. */
+    border-bottom: 1px solid $border;
 }
 
 /* La capçalera vertical són els números de fila: la mateixa línia fina que
@@ -239,15 +260,6 @@ QPushButton[compact="true"] {
     min-height: 16px;
     font-size: 12px;
     border-radius: 7px;
-}
-
-/* Encara més pla, per als botons que van dins d'una fila de camps i no
-   han de fer-la créixer. */
-QPushButton[compact="tight"] {
-    padding: 2px 12px;
-    min-height: 12px;
-    font-size: 12px;
-    border-radius: 6px;
 }
 
 QPushButton[variant="danger"] {
@@ -390,6 +402,20 @@ QAbstractItemView QLineEdit {
     border: 1px solid $accent;
 }
 
+/* I EL MATEIX MENTRE S'HI ESCRIU. Sense aquesta segona regla, la d'aquí
+   sobre no arribava a fer efecte mai: `QLineEdit:focus` (el marge dels
+   camps de formulari, 9 px a banda i banda) és més específica —un
+   pseudo-estat pesa més que un selector de descendència— i l'editor d'una
+   cel·la té el focus SEMPRE que s'hi escriu. El resultat era que el text
+   arrencava 8 px més a la dreta que a la cel·la i, en una columna estreta
+   com Mides o Notes, el principi del que s'escrivia quedava amagat fora
+   del camp. */
+QAbstractItemView QLineEdit:focus {
+    padding: 0px 2px;
+    border-radius: 4px;
+    border: 1px solid $accent;
+}
+
 QSpinBox::up-button, QSpinBox::down-button {
     width: 0px;
     border: none;
@@ -428,7 +454,11 @@ QMenuBar {
 QMenuBar::item {
     background: transparent;
     color: $text;
-    padding: 6px 12px;
+    /* 4 px amunt i avall, no 6: la barra de menús és la primera franja de
+       la finestra i tot el que hi sobri és alçada que es menja a les
+       pestanyes de sota. Als costats es queden els 12 px, que són els que
+       separen "Arxiu" d'"Importar" i d'"Idiomes". */
+    padding: 4px 12px;
     border-radius: 6px;
 }
 
