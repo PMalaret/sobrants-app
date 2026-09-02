@@ -441,6 +441,39 @@ QDateEdit::drop-down, QComboBox::drop-down {
     width: 22px;
 }
 
+/* El desplegable s'obre com una LLISTA sota el camp, i no com un menú
+   damunt seu. Per omissió aquí surt tapant el camp, amb l'opció triada
+   just sota el cursor: és el comportament d'un menú de fa vint anys i a la
+   resta de l'aplicació no hi ha res que s'obri així. Amb `combobox-popup: 0`
+   la llista baixa des de sota del camp, que és el que s'espera d'un camp
+   de formulari. */
+QComboBox {
+    combobox-popup: 0;
+}
+
+/* La llista que baixa. Va amb la cantonada QUADRADA pel mateix motiu que
+   els menús (veure el comentari de `QMenu`): viu dins d'una finestreta
+   pròpia del sistema, i arrodonint-ne la vora a les cantonades s'hi veu el
+   fons d'aquella finestreta. Les opcions de dins sí que van arrodonides,
+   igual que a `QMenu::item`. */
+QComboBox QAbstractItemView {
+    background-color: $surface;
+    color: $text;
+    border: 1px solid $border;
+    padding: 4px;
+    /* Sense el rectangle de punts de l'element actiu, que damunt del fons
+       de selecció no s'entén què vol dir. */
+    outline: none;
+    selection-background-color: $accent_soft;
+    selection-color: $text;
+}
+
+QComboBox QAbstractItemView::item {
+    padding: 5px 10px;
+    border-radius: 6px;
+    min-height: 18px;
+}
+
 QStatusBar {
     background: $window;
     border: none;
