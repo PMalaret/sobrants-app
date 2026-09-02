@@ -222,15 +222,20 @@ class MainWindow(QMainWindow):
         return action
 
     def _build_menu(self):
+        # Fitxer, de dalt a baix: la contrasenya, les còpies de seguretat,
+        # què és això i sortir. Les tres opcions d'imprimir que hi havia
+        # aquí ja no hi són: cada botó d'imprimir viu dins de la pestanya
+        # que imprimeix, que és on l'usuari el busca.
         menu = self.menuBar().addMenu(t("menu.file"))
 
         self._action(menu, t("menu.change_password"), "lock", self._change_password)
 
+        # Les còpies de seguretat pugen aquí (abans tenien menú propi): fer-ne
+        # una ara i cada quantes hores es fan soles, les dues protegides amb
+        # la contrasenya d'administrador.
         menu.addSeparator()
-
-        self._action(menu, t("menu.print_board"), "print", self._print_board)
-        self._action(menu, t("menu.print_desmagatzem"), "print", self._print_desmagatzem)
-        self._action(menu, t("menu.report_covered"), "eye", self._show_covered_report)
+        self._action(menu, t("menu.backup_now"), "save", self._manual_backup)
+        self._action(menu, t("menu.backup_interval"), "settings", self._change_backup_interval)
 
         # "Sobre" i la versió van juntes (les dues diuen el mateix: què és
         # això i quina versió és), i "Sortir" al final de tot, que és on es
@@ -243,17 +248,10 @@ class MainWindow(QMainWindow):
         menu.addSeparator()
         self._action(menu, t("menu.exit"), "exit", self.close)
 
-        # Menú d'importació, entre Fitxer i Còpies de seguretat.
+        # Menú d'importació, entre Fitxer i Idioma.
         import_menu = self.menuBar().addMenu(t("menu.import"))
         self._action(import_menu, t("menu.import_excel"), "open_file", self._import_from_excel)
         self._action(import_menu, t("menu.import_database"), "database", self._import_from_database)
-
-        # Menú propi de còpies de seguretat, entre Fitxer i Idioma: tot el
-        # que hi té a veure (fer-ne una ara i cada quantes hores es fan
-        # soles) en un sol lloc, i les dues protegides amb la contrasenya.
-        backup_menu = self.menuBar().addMenu(t("menu.backups"))
-        self._action(backup_menu, t("menu.backup_now"), "save", self._manual_backup)
-        self._action(backup_menu, t("menu.backup_interval"), "settings", self._change_backup_interval)
 
         # Només text, com les altres tres entrades de la barra: posant-hi
         # una icona, Qt deixa d'ensenyar-hi el text i queda un globus solt

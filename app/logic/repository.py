@@ -10,12 +10,16 @@ from __future__ import annotations
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 
 from . import rules
 from app.i18n import t
 
 BOARD_POSITIONS = range(1, 62)  # 61 posicions, igual que Hoja1 (A2:A28, F2:F28, K2:K8)
+
+# Què s'escriu a la columna "posició" de l'històric per als moviments que no
+# són de cap posició del tauler, sinó de Desmagatzem.
+DESMAGATZEM_POSITION = "Desmagatzem"
 
 
 class RuleViolation(Exception):
@@ -226,7 +230,10 @@ class Repository:
                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (position, slot, material_code, desc, dimensions or None, notes or None, entered_at),
             )
-            self._log_historic(str(position), str(material_code), desc, 1, "in")
+            self._log_historic(
+                str(position), str(material_code), desc, 1, "in",
+                dimensions=dimensions, notes=notes,
+            )
         return {"position": position, "slot": slot, "material_code": material_code, "material_desc": desc}
 
     def delete_piece(self, position: int, slot: int) -> None:
@@ -244,7 +251,8 @@ class Repository:
         with self._transaction():
             self.conn.execute("DELETE FROM pieces WHERE position = ? AND slot = ?", (position, slot))
             self._log_historic(
-                str(position), str(piece["material_code"]), piece["material_desc"], -1, "out"
+                str(position), str(piece["material_code"]), piece["material_desc"], -1, "out",
+                dimensions=piece["dimensions"], notes=piece["notes"],
             )
 
     def update_piece_field(self, position: int, slot: int, field: str, value: str) -> None:
@@ -322,14 +330,11 @@ class Repository:
             # així que per a aquests es fa servir l'hora actual com a únic
             # valor disponible.
             ts = piece["entered_at"] or _now()
-            self.conn.execute(
-                "INSERT INTO historic(position, material_code, material_desc, ts, direction, kind) VALUES (?,?,?,?,?,?)",
-                (str(from_position), str(piece["material_code"]), piece["material_desc"], ts, None, "move_out"),
-            )
-            self.conn.execute(
-                "INSERT INTO historic(position, material_code, material_desc, ts, direction, kind) VALUES (?,?,?,?,?,?)",
-                (str(to_position), str(piece["material_code"]), piece["material_desc"], ts, None, "move_in"),
-            )
+            for position_text, kind in ((str(from_position), "move_out"), (str(to_position), "move_in")):
+                self._log_historic(
+                    position_text, str(piece["material_code"]), piece["material_desc"], None, kind,
+                    dimensions=piece["dimensions"], notes=piece["notes"], ts=ts,
+                )
         return {"from_position": from_position, "to_position": to_position, "piece": piece}
 
     # ------------------------------------------------------------------ #
@@ -395,10 +400,39 @@ class Repository:
     # ------------------------------------------------------------------ #
     # Històric (fulla "històric")
     # ------------------------------------------------------------------ #
-    def _log_historic(self, position: str, material_code, material_desc, direction: int, kind: str):
+    def _log_historic(
+        self,
+        position: str,
+        material_code,
+        material_desc,
+        direction: int,
+        kind: str,
+        dimensions: str | None = None,
+        notes: str | None = None,
+        ts: str | None = None,
+    ):
+        """Una línia d'històric. Hi van també les mides i les notes que
+        tenia la peça en aquell moment: així una línia sola ja descriu la
+        peça sencera, que és el que necessita `clear_historic` per deixar
+        l'històric amb l'estat actual sense inventar-se res.
+
+        `ts` és per a les línies que han de conservar una data que no és la
+        d'ara (el trasllat manté la data d'entrada de la peça); si no es
+        diu res, s'hi posa el moment actual.
+        """
         self.conn.execute(
-            "INSERT INTO historic(position, material_code, material_desc, ts, direction, kind) VALUES (?,?,?,?,?,?)",
-            (position, str(material_code) if material_code is not None else None, material_desc, _now(), direction, kind),
+            "INSERT INTO historic(position, material_code, material_desc, ts, direction, kind, dimensions, notes) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (
+                position,
+                str(material_code) if material_code is not None else None,
+                material_desc,
+                ts or _now(),
+                direction,
+                kind,
+                dimensions or None,
+                notes or None,
+            ),
         )
 
     # order_by="date" = més recents primer (per defecte). order_by="position"
@@ -431,102 +465,164 @@ class Repository:
         rows = self.conn.execute(sql, params).fetchall()
         return [dict(r) for r in rows]
 
-    # Moviments que compta la pestanya d'Estadístiques i com es compten.
-    # Un trasllat deixa DUES línies a l'històric (move_out a l'origen i
-    # move_in al destí): només es compta la del DESTÍ, així un trasllat és
-    # un moviment i no dos.
-    STAT_KINDS = ("in", "out", "move_in")
+    def movement_stats(self, start_date: str, end_date: str) -> dict:
+        """Què ha passat cada dia, entre `start_date` i `end_date` (dates
+        ISO "AAAA-MM-DD", tots dos dies inclosos).
 
-    def movement_stats(self, start_date: str, end_date: str) -> list[dict]:
-        """Moviments de l'històric agrupats per dia, dins de [start_date,
-        end_date] (dates ISO "AAAA-MM-DD", tots dos dies inclosos).
+        Per a cada dia amb moviment es dona, del TAULER: entrades, sortides,
+        trasllats i quantes peces hi havia al final del dia; i de
+        DESMAGATZEM: entrades, sortides i quantes unitats hi havia al final
+        del dia. A més, la mitjana de sortides del Tauler per dia de
+        l'interval.
 
-        Només llegeix: l'històric no es toca mai des d'aquí. Es calcula a
-        la base de dades a partir de `historic`, l'única font de veritat
-        dels moviments; el dia surt dels 10 primers caràcters de `ts`, que
-        sempre és una data ISO.
+        Com se sap quantes peces hi havia un dia que ja ha passat: no es
+        guarda enlloc, es dedueix. Se sap quantes n'hi ha ARA
+        (`count_pieces`), i l'històric diu què ha entrat i sortit cada dia;
+        anant enrere des d'avui i desfent els moviments de cada dia
+        s'arriba a quantes n'hi havia al final de qualsevol dia anterior.
+        Els trasllats no compten: mouen una peça de lloc, no en treuen ni
+        n'afegeixen (per això la línia d'origen i la de destí es
+        contraresten i aquí només es compta la de destí, com a "trasllat").
 
-        Retorna una llista ordenada per dia, amb els dies que TENEN algun
-        moviment: [{"day", "in", "out", "move", "total"}, ...].
+        Només llegeix: l'històric no es toca.
         """
-        placeholders = ",".join("?" for _ in self.STAT_KINDS)
+        daily = self._daily_movements(start_date)
+        board, desmagatzem = self.count_pieces(), self.count_desmagatzem_pieces()
+        # De més nou a més vell: el dia més nou acaba amb el que hi ha ara,
+        # i cada pas enrere desfà els moviments d'aquell dia.
+        for day in sorted(daily, reverse=True):
+            entry = daily[day]
+            entry["board_pieces"] = board
+            entry["desmagatzem_pieces"] = desmagatzem
+            board -= entry["board_in"] - entry["board_out"]
+            desmagatzem -= entry["desmagatzem_in"] - entry["desmagatzem_out"]
+
+        days = [daily[day] for day in sorted(daily) if start_date <= day <= end_date]
+        return {"days": days, "board_out_per_day": self._per_day(days, "board_out", start_date, end_date)}
+
+    def _daily_movements(self, since: str) -> dict:
+        """Els moviments de cada dia, de `since` en endavant, comptats per
+        tipus. Es demanen des de `since` i no només de l'interval perquè
+        per saber quantes peces hi havia un dia s'han de desfer TOTS els
+        moviments posteriors, també els de després de l'interval."""
         rows = self.conn.execute(
-            "SELECT substr(ts, 1, 10) AS day, kind, COUNT(*) AS n FROM historic "
-            f"WHERE kind IN ({placeholders}) AND substr(ts, 1, 10) BETWEEN ? AND ? "  # noqa: S608
-            "GROUP BY day, kind ORDER BY day",
-            (*self.STAT_KINDS, start_date, end_date),
+            "SELECT substr(ts, 1, 10) AS day, "
+            " SUM(CASE WHEN kind = 'in'  AND position <> ? THEN 1 ELSE 0 END) AS board_in, "
+            " SUM(CASE WHEN kind = 'out' AND position <> ? THEN 1 ELSE 0 END) AS board_out, "
+            " SUM(CASE WHEN kind = 'move_in' THEN 1 ELSE 0 END) AS moves, "
+            " SUM(CASE WHEN kind = 'in'  AND position = ? THEN 1 ELSE 0 END) AS desmagatzem_in, "
+            " SUM(CASE WHEN kind = 'out' AND position = ? THEN 1 ELSE 0 END) AS desmagatzem_out "
+            "FROM historic WHERE substr(ts, 1, 10) >= ? GROUP BY day",
+            (DESMAGATZEM_POSITION, DESMAGATZEM_POSITION, DESMAGATZEM_POSITION,
+             DESMAGATZEM_POSITION, since),
         ).fetchall()
+        return {
+            row["day"]: {
+                "day": row["day"],
+                "board_in": row["board_in"],
+                "board_out": row["board_out"],
+                "moves": row["moves"],
+                "desmagatzem_in": row["desmagatzem_in"],
+                "desmagatzem_out": row["desmagatzem_out"],
+            }
+            for row in rows
+        }
 
-        by_day: dict[str, dict] = {}
-        for r in rows:
-            day = by_day.setdefault(r["day"], {"day": r["day"], "in": 0, "out": 0, "move": 0})
-            key = "move" if r["kind"] == "move_in" else r["kind"]
-            day[key] += r["n"]
-        for day in by_day.values():
-            day["total"] = day["in"] + day["out"] + day["move"]
-        return [by_day[day] for day in sorted(by_day)]
+    @staticmethod
+    def _per_day(days: list, field: str, start_date: str, end_date: str) -> float:
+        """Mitjana diària d'un dels comptadors dins de l'interval TRIAT.
 
-    def movement_stats_by_destination(self, start_date: str, end_date: str) -> list[dict]:
-        """Trasllats de l'interval comptats per posició de DESTÍ (la línia
-        move_in de cada trasllat, que és la que porta la posició on ha
-        anat a parar la peça). Mateix interval i mateixa font que
-        `movement_stats`; ordenat de més trasllats a menys.
+        Es divideix pels dies de l'interval, no pels dies que han tingut
+        moviment: si en 10 dies hi ha hagut 20 sortides, la mitjana és 2 al
+        dia encara que 6 d'aquells dies fossin festius i no se'n mogués cap.
         """
-        rows = self.conn.execute(
-            "SELECT position, COUNT(*) AS n FROM historic "
-            "WHERE kind = 'move_in' AND substr(ts, 1, 10) BETWEEN ? AND ? "
-            "GROUP BY position",
-            (start_date, end_date),
-        ).fetchall()
-        return sorted(
-            ({"position": r["position"], "count": r["n"]} for r in rows),
-            key=lambda d: (-d["count"], str(d["position"])),
-        )
+        total = sum(day[field] for day in days)
+        try:
+            span = (date.fromisoformat(end_date) - date.fromisoformat(start_date)).days + 1
+        except ValueError:
+            span = 0
+        return total / span if span > 0 else 0.0
 
-    def historic_ids_to_keep(self) -> list[int]:
-        """Ids de l'històric que NO s'han d'esborrar en netejar-lo: l'ÚLTIMA
-        entrada de cada material que ara mateix hi ha al Tauler.
+    def current_state_entries(self) -> list[dict]:
+        """L'estat d'ARA mateix, escrit com a línies d'històric: una per
+        cada peça que hi ha al Tauler i una per cada unitat que hi ha a
+        Desmagatzem.
 
-        Com es lliguen les dues taules: el Tauler és `pieces` (una fila per
-        peça col·locada, amb `material_code` numèric) i l'històric és
-        `historic` (auditoria append-only, amb `material_code` com a text i
-        `ts` en ISO). El material és, doncs, el codi; i la seva "última
-        entrada" és la fila de `historic` amb el `ts` més gran d'aquell
-        codi — amb l'`id` més alt per desempatar, perquè `ts` només té
-        precisió de segon i dos moviments seguits hi poden coincidir. No es
-        mira l'ordre en què es veu la taula a la pantalla.
+        De cada peça del Tauler se'n guarda tot el que la descriu —material,
+        posició, mides, notes i la seva data d'entrada—, que és exactament
+        el que caldria per tornar-la a col·locar. De Desmagatzem, una línia
+        per unitat (una línia de 5 unitats són 5 peces, igual que compta
+        l'històric quan s'hi registren), amb les seves mides, el carro/lot i
+        la data de la línia.
+
+        Les dates són les de debò de cada peça, no la d'ara: netejar
+        l'històric no ha de canviar quan va entrar res. Si alguna peça no en
+        té (els materials no registrats no en guarden), s'hi posa el moment
+        actual, que és l'únic valor disponible.
         """
-        codes = self.conn.execute(
-            "SELECT DISTINCT material_code FROM pieces WHERE material_code IS NOT NULL"
+        now = _now()
+        entries = []
+        board = self.conn.execute(
+            "SELECT position, material_code, material_desc, dimensions, notes, entered_at "
+            "FROM pieces ORDER BY position, slot"
         ).fetchall()
-        keep = []
-        for row in codes:
-            last = self.conn.execute(
-                "SELECT id FROM historic WHERE material_code = ? ORDER BY ts DESC, id DESC LIMIT 1",
-                (str(row["material_code"]),),
-            ).fetchone()
-            if last is not None:
-                keep.append(last["id"])
-        return keep
+        for piece in board:
+            entries.append(
+                {
+                    "position": str(piece["position"]),
+                    "material_code": str(piece["material_code"]),
+                    "material_desc": piece["material_desc"],
+                    "dimensions": piece["dimensions"],
+                    "notes": piece["notes"],
+                    "ts": piece["entered_at"] or now,
+                }
+            )
+        for row in self.list_desmagatzem():
+            for _ in range(row["quantity"] or 0):
+                entries.append(
+                    {
+                        "position": DESMAGATZEM_POSITION,
+                        "material_code": row["material_code"],
+                        "material_desc": row["material_desc"],
+                        "dimensions": row["dimensions"],
+                        "notes": row["cart_ref"],
+                        "ts": row["ts"] or now,
+                    }
+                )
+        return entries
 
     def clear_historic(self) -> dict:
-        """Neteja l'històric conservant l'última entrada de cada material que
-        segueix al Tauler (veure `historic_ids_to_keep`).
+        """Neteja l'històric i el deixa amb una foto de l'estat actual.
+
+        Abans es conservava una sola línia per material del Tauler (l'última
+        que hi hagués), i amb això l'històric deixava de descriure el que hi
+        ha: d'una posició amb tres peces del mateix material en quedava una,
+        i de Desmagatzem no en quedava res.
+
+        Ara s'esborra tot i s'hi escriu de nou l'estat d'ara mateix
+        (`current_state_entries`): una línia d'entrada per cada peça del
+        Tauler —amb la seva posició, mides, notes i data— i una per cada
+        unitat de Desmagatzem. Així, després de netejar, l'històric segueix
+        explicant senceres totes les peces que hi ha.
 
         Tot dins d'una sola transacció: si peta pel camí no queda l'històric
         mig esborrat, es desfà sencer.
         """
-        keep = self.historic_ids_to_keep()
+        entries = self.current_state_entries()
         with self._transaction():
-            if keep:
-                placeholders = ",".join("?" for _ in keep)
-                cursor = self.conn.execute(
-                    f"DELETE FROM historic WHERE id NOT IN ({placeholders})", tuple(keep)  # noqa: S608
+            deleted = self.conn.execute("DELETE FROM historic").rowcount
+            for entry in entries:
+                self._log_historic(
+                    entry["position"],
+                    entry["material_code"],
+                    entry["material_desc"],
+                    1,
+                    "in",
+                    dimensions=entry["dimensions"],
+                    notes=entry["notes"],
+                    ts=entry["ts"],
                 )
-            else:
-                cursor = self.conn.execute("DELETE FROM historic")
-            deleted = cursor.rowcount
-        return {"deleted": deleted, "kept": len(keep)}
+        return {"deleted": deleted, "kept": len(entries)}
 
     def covered_materials_report(self) -> list[dict]:
         """Informe 'Materials tapats' (ComprovarIMostrarTapats_Correcte).
@@ -592,7 +688,10 @@ class Repository:
                 ),
             )
             for _ in range(quantity):
-                self._log_historic("Desmagatzem", code_str, desc, 1, "in")
+                self._log_historic(
+                    DESMAGATZEM_POSITION, code_str, desc, 1, "in",
+                    dimensions=dimensions, notes=cart_ref,
+                )
         return {"row_order": next_order, "material_desc": desc}
 
     def update_desmagatzem_field(self, row_id: int, field: str, value: str) -> None:
@@ -638,7 +737,10 @@ class Repository:
         with self._transaction():
             if change == "delete":
                 for _ in range(row["quantity"]):
-                    self._log_historic("Desmagatzem", row["material_code"], row["material_desc"], -1, "out")
+                    self._log_historic(
+                        DESMAGATZEM_POSITION, row["material_code"], row["material_desc"], -1, "out",
+                        dimensions=row["dimensions"], notes=row["cart_ref"],
+                    )
                 self.conn.execute("DELETE FROM desmagatzem WHERE id = ?", (row_id,))
                 self._compact_desmagatzem()
             else:
@@ -646,7 +748,10 @@ class Repository:
                 direction = 1 if change == "increase" else -1
                 kind = "in" if change == "increase" else "out"
                 for _ in range(diff):
-                    self._log_historic("Desmagatzem", row["material_code"], row["material_desc"], direction, kind)
+                    self._log_historic(
+                        DESMAGATZEM_POSITION, row["material_code"], row["material_desc"], direction, kind,
+                        dimensions=row["dimensions"], notes=row["cart_ref"],
+                    )
                 self.conn.execute("UPDATE desmagatzem SET quantity = ? WHERE id = ?", (new_qty, row_id))
 
         return change

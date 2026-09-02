@@ -1,26 +1,27 @@
-"""Pestanya 'Estadístiques': quants moviments hi ha hagut i quan.
+"""Pestanya 'Estadístiques': quants moviments hi ha hagut, quan, i quantes
+peces hi havia cada dia.
 
-Es calcula TOT a partir de l'històric (`Repository.movement_stats` i
-`movement_stats_by_destination`), que és l'única font de veritat dels
-moviments de l'aplicació: aquesta pestanya només llegeix — no escriu, no
-esborra i no toca cap dada.
+Es calcula TOT a partir de l'històric (`Repository.movement_stats`), que és
+l'única font de veritat dels moviments de l'aplicació: aquesta pestanya
+només llegeix — no escriu, no esborra i no toca cap dada.
 
 L'usuari tria un interval de dates (dos camps de data, amb uns quants
 intervals fets per als casos de sempre: avui, els últims 7/30 dies, l'últim
-any) i s'hi veu, dia a dia:
+any) i s'hi veu, dia a dia i en una sola taula, el que ha passat al TAULER i
+el que ha passat a DESMAGATZEM:
 
-  - Entrades  -> línies "in" de l'històric (peces col·locades al Tauler i
-                 unitats registrades a Desmagatzem).
-  - Sortides  -> línies "out" (peces esborrades i unitats retirades).
-  - Trasllats -> línies "move_in", és a dir la banda del DESTÍ. Un trasllat
-                 deixa dues línies a l'històric (origen i destí) i comptant
-                 només la del destí surt un moviment per trasllat, no dos,
-                 i alhora es pot dir a quina posició ha anat a parar (la
-                 taula de la dreta).
+  - Entrades  -> peces col·locades (al Tauler) o unitats registrades (a
+                 Desmagatzem: una línia de 5 unitats són 5 entrades).
+  - Sortides  -> peces esborrades o unitats retirades.
+  - Trasllats -> peces mogudes de posició, comptades una sola vegada: es
+                 compta la banda del DESTÍ, perquè un trasllat deixa dues
+                 línies a l'històric (origen i destí) i és un sol moviment.
+  - Peces     -> quantes n'hi havia al final d'aquell dia. Això no es guarda
+                 enlloc: se sap quantes n'hi ha ara i es va desfent el que
+                 diu l'històric cap enrere (veure `movement_stats`).
 
-És la primera versió, a posta senzilla: la taula de dies i el repartiment
-per posició de destí. Qualsevol estadística nova hauria de sortir d'aquí
-mateix, del mateix interval de dates i de les mateixes consultes.
+Al costat del títol, la mitjana de sortides del Tauler per dia de
+l'interval, que és el número que diu a quin ritme es buida el tauler.
 """
 from __future__ import annotations
 
@@ -56,14 +57,21 @@ QUICK_RANGES = (
     ("stats.range.year", 365),
 )
 
-# Columnes de la taula de dies: (clau de traducció, clau de la dada).
-DAY_COLUMNS = (
+# Columnes de la taula: (clau de traducció, clau de la dada). Primer el dia,
+# després el que ha passat al Tauler i, al final, el de Desmagatzem.
+COLUMNS = (
     ("stats.col.day", "day"),
-    ("stats.col.in", "in"),
-    ("stats.col.out", "out"),
-    ("stats.col.move", "move"),
-    ("stats.col.total", "total"),
+    ("stats.col.in", "board_in"),
+    ("stats.col.out", "board_out"),
+    ("stats.col.move", "moves"),
+    ("stats.col.board_pieces", "board_pieces"),
+    ("stats.col.desmagatzem_in", "desmagatzem_in"),
+    ("stats.col.desmagatzem_out", "desmagatzem_out"),
+    ("stats.col.desmagatzem_pieces", "desmagatzem_pieces"),
 )
+# Les columnes de moviments se sumen a la fila de totals; les de "quantes
+# peces hi havia" no (sumar l'estat de cada dia no voldria dir res).
+TOTAL_COLUMNS = ("board_in", "board_out", "moves", "desmagatzem_in", "desmagatzem_out")
 
 
 class StatisticsTab(QWidget):
@@ -87,11 +95,7 @@ class StatisticsTab(QWidget):
         note.setStyleSheet(theme.css("color: $text_muted; font-size: 11px;"))
         layout.addWidget(note)
 
-        tables = QHBoxLayout()
-        tables.setSpacing(9)
-        tables.addWidget(self._build_days_table(), 3)
-        tables.addWidget(self._build_destinations_box(), 1)
-        layout.addLayout(tables)
+        layout.addWidget(self._build_days_table())
 
     def _build_filters(self) -> QWidget:
         box = QGroupBox(t("stats.title"))
@@ -137,35 +141,18 @@ class StatisticsTab(QWidget):
         return edit
 
     def _build_days_table(self) -> QTableWidget:
-        self.days_table = QTableWidget(0, len(DAY_COLUMNS))
-        self.days_table.setHorizontalHeaderLabels([t(key) for key, _field in DAY_COLUMNS])
+        self.days_table = QTableWidget(0, len(COLUMNS))
+        self.days_table.setHorizontalHeaderLabels([t(key) for key, _field in COLUMNS])
         self.days_table.setAlternatingRowColors(True)
         self.days_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.days_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.days_table.verticalHeader().setVisible(False)
         header = self.days_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Interactive)
-        self.days_table.setColumnWidth(0, 140)
-        for col in range(1, len(DAY_COLUMNS)):
+        self.days_table.setColumnWidth(0, 120)
+        for col in range(1, len(COLUMNS)):
             header.setSectionResizeMode(col, QHeaderView.Stretch)
         return self.days_table
-
-    def _build_destinations_box(self) -> QWidget:
-        box = QGroupBox(t("stats.destinations_title"))
-        column = QVBoxLayout(box)
-        self.destinations_table = QTableWidget(0, 2)
-        self.destinations_table.setHorizontalHeaderLabels(
-            [t("stats.col.position"), t("stats.col.move")]
-        )
-        self.destinations_table.setAlternatingRowColors(True)
-        self.destinations_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.destinations_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.destinations_table.verticalHeader().setVisible(False)
-        destinations_header = self.destinations_table.horizontalHeader()
-        for col in range(2):
-            destinations_header.setSectionResizeMode(col, QHeaderView.Stretch)
-        column.addWidget(self.destinations_table)
-        return box
 
     # ------------------------------------------------------------------ #
     def _apply_quick_range(self, days: int):
@@ -189,48 +176,42 @@ class StatisticsTab(QWidget):
         Un interval al revés (la data final abans que la inicial) no obre
         cap finestra d'avís —això es crida sol, i un avís enmig d'una alta
         de peça seria una interrupció— sinó que es diu allà mateix, on van
-        els resultats, i les taules es queden buides fins que es corregeix.
+        els resultats, i la taula es queda buida fins que es corregeix.
         """
         if self.from_date.date() > self.to_date.date():
             self.days_table.setRowCount(0)
-            self.destinations_table.setRowCount(0)
             self.summary_label.setText(t("stats.invalid_range.text"))
             return
-        start, end = self._iso(self.from_date), self._iso(self.to_date)
-        days = self.repo.movement_stats(start, end)
-        self._fill_days_table(days)
-        self._fill_destinations_table(self.repo.movement_stats_by_destination(start, end))
-        self._update_summary(days)
+        stats = self.repo.movement_stats(self._iso(self.from_date), self._iso(self.to_date))
+        self._fill_days_table(stats["days"])
+        self._update_summary(stats)
 
-    def _fill_days_table(self, days: list[dict]):
+    def _fill_days_table(self, days: list):
         # Una fila per dia amb moviment i, al final, la fila de totals (en
         # negreta): els dies sense cap moviment no hi surten, per no omplir
-        # la taula de zeros.
+        # la taula de zeros — i tampoc s'hi perd res, perquè un dia sense
+        # moviment acaba amb les mateixes peces que el dia anterior.
         self.days_table.setRowCount(len(days) + (1 if days else 0))
         for r, day in enumerate(days):
-            for c, (_key, field) in enumerate(DAY_COLUMNS):
+            for c, (_key, field) in enumerate(COLUMNS):
                 value = day[field] if field == "day" else format_number(day[field])
                 self.days_table.setItem(r, c, self._cell(value, numeric=(field != "day")))
         if days:
             self._fill_totals_row(len(days), days)
 
-    def _fill_totals_row(self, row: int, days: list[dict]):
-        totals = {field: sum(day[field] for day in days) for _key, field in DAY_COLUMNS[1:]}
-        values = [t("stats.total_row")] + [format_number(totals[field]) for _k, field in DAY_COLUMNS[1:]]
-        for c, value in enumerate(values):
-            item = self._cell(value, numeric=(c > 0))
+    def _fill_totals_row(self, row: int, days: list):
+        for c, (_key, field) in enumerate(COLUMNS):
+            if field == "day":
+                text = t("stats.total_row")
+            elif field in TOTAL_COLUMNS:
+                text = format_number(sum(day[field] for day in days))
+            else:
+                text = ""     # sumar les peces de cada dia no voldria dir res
+            item = self._cell(text, numeric=(field != "day"))
             font = item.font()
             font.setBold(True)
             item.setFont(font)
             self.days_table.setItem(row, c, item)
-
-    def _fill_destinations_table(self, destinations: list[dict]):
-        self.destinations_table.setRowCount(len(destinations))
-        for r, entry in enumerate(destinations):
-            self.destinations_table.setItem(r, 0, self._cell(str(entry["position"])))
-            self.destinations_table.setItem(
-                r, 1, self._cell(format_number(entry["count"]), numeric=True)
-            )
 
     @staticmethod
     def _cell(text: str, numeric: bool = False) -> QTableWidgetItem:
@@ -239,16 +220,10 @@ class StatisticsTab(QWidget):
             item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         return item
 
-    def _update_summary(self, days: list[dict]):
-        if not days:
-            self.summary_label.setText(t("stats.empty"))
-            return
+    def _update_summary(self, stats: dict):
+        """El número que resumeix l'interval: a quin ritme surten peces del
+        Tauler. Es reparteix entre TOTS els dies de l'interval triat, no
+        només entre els que han tingut moviment."""
         self.summary_label.setText(
-            t(
-                "stats.summary",
-                days=format_number(len(days)),
-                in_count=format_number(sum(day["in"] for day in days)),
-                out_count=format_number(sum(day["out"] for day in days)),
-                move_count=format_number(sum(day["move"] for day in days)),
-            )
+            t("stats.board_out_per_day", value=f"{stats['board_out_per_day']:.2f}")
         )

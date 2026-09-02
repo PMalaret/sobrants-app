@@ -36,7 +36,9 @@ CREATE TABLE IF NOT EXISTS historic (
     material_desc TEXT,
     ts            TEXT NOT NULL,      -- ISO datetime
     direction     INTEGER,            -- 1 = entrada, -1 = sortida, NULL si kind és move_*
-    kind          TEXT NOT NULL CHECK (kind IN ('in','out','move_out','move_in'))
+    kind          TEXT NOT NULL CHECK (kind IN ('in','out','move_out','move_in')),
+    dimensions    TEXT,               -- mides de la peça en aquell moment
+    notes         TEXT                -- notes de la peça (a Desmagatzem, el carro/lot)
 );
 CREATE INDEX IF NOT EXISTS idx_historic_ts ON historic(ts);
 CREATE INDEX IF NOT EXISTS idx_historic_position ON historic(position);

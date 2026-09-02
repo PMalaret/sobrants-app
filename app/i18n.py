@@ -86,20 +86,6 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Backup now",
         "fr": "Sauvegarder maintenant",
     },
-    "menu.print_board": {
-        "ca": "Imprimir tauler", "es": "Imprimir tablero",
-        "en": "Print board", "fr": "Imprimer le tableau",
-    },
-    "menu.print_desmagatzem": {
-        "ca": "Imprimir desmagatzem", "es": "Imprimir desmagatzem",
-        "en": "Print desmagatzem", "fr": "Imprimer desmagatzem",
-    },
-    "menu.report_covered": {
-        "ca": "Informe de materials tapats",
-        "es": "Informe de materiales tapados",
-        "en": "Hidden materials report",
-        "fr": "Rapport des matériaux masqués",
-    },
     "menu.exit": {"ca": "Sortir", "es": "Salir", "en": "Exit", "fr": "Quitter"},
     "menu.version": {
         "ca": "Versió {version}", "es": "Versión {version}",
@@ -398,6 +384,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ca": "Núm. material", "es": "Núm. material", "en": "Material no.", "fr": "N° matériau",
     },
     "historic.col.material": {"ca": "Material", "es": "Material", "en": "Material", "fr": "Matériau"},
+    "historic.col.dimensions": {"ca": "Mides", "es": "Medidas", "en": "Dimensions", "fr": "Dimensions"},
+    "historic.col.notes": {"ca": "Notes", "es": "Notas", "en": "Notes", "fr": "Notes"},
     "historic.col.datetime": {"ca": "Data/hora", "es": "Fecha/hora", "en": "Date/time", "fr": "Date/heure"},
     "historic.col.movement": {"ca": "Moviment", "es": "Movimiento", "en": "Movement", "fr": "Mouvement"},
     "historic.kind.in": {"ca": "Entrada", "es": "Entrada", "en": "In", "fr": "Entrée"},
@@ -909,10 +897,6 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "No backup has been saved.\n\n{error}",
         "fr": "Aucune sauvegarde n'a été enregistrée.\n\n{error}",
     },
-    "menu.backups": {
-        "ca": "&Còpies de seguretat", "es": "&Copias de seguridad",
-        "en": "&Backups", "fr": "&Sauvegardes",
-    },
     "menu.backup_interval": {
         "ca": "Configuració...", "es": "Configuración...",
         "en": "Settings...", "fr": "Configuration...",
@@ -1050,23 +1034,23 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Clear the history", "fr": "Nettoyer l'historique",
     },
     "historic.clear.confirm.text": {
-        "ca": "Ja has exportat totes les dades a Excel?\n\nS'esborrarà tot l'històric excepte "
-              "l'última entrada de cada material que encara hi ha al Tauler. No es pot desfer.",
-        "es": "¿Ya has exportado todos los datos a Excel?\n\nSe borrará todo el histórico excepto "
-              "la última entrada de cada material que todavía está en el Tauler. No se puede deshacer.",
-        "en": "Have you already exported all the data to Excel?\n\nThe whole history will be deleted "
-              "except the last entry of each material still on the board. This cannot be undone.",
-        "fr": "Avez-vous déjà exporté toutes les données en Excel ?\n\nTout l'historique sera supprimé "
-              "sauf la dernière entrée de chaque matériau encore sur le tableau. Irréversible.",
+        "ca": "Ja has exportat totes les dades a Excel?\n\nS'esborraran tots els moviments i l'històric es quedarà "
+              "amb una línia per cada peça que ara hi ha al Tauler i a Desmagatzem. No es pot desfer.",
+        "es": "¿Ya has exportado todos los datos a Excel?\n\nSe borrarán todos los movimientos y el histórico se quedará "
+              "con una línea por cada pieza que hay ahora en el Tauler y en Desmagatzem. No se puede deshacer.",
+        "en": "Have you already exported all the data to Excel?\n\nEvery movement will be deleted and the history will keep "
+              "one line for each piece currently on the board and in Desmagatzem. This cannot be undone.",
+        "fr": "Avez-vous déjà exporté toutes les données en Excel ?\n\nTous les mouvements seront supprimés et l'historique gardera "
+              "une ligne pour chaque pièce actuellement sur le tableau et dans Desmagatzem. Irréversible.",
     },
     "historic.clear.done": {
-        "ca": "S'han esborrat {deleted} moviments. Se n'han conservat {kept} "
-              "(l'últim de cada material que hi ha al Tauler).",
-        "es": "Se han borrado {deleted} movimientos. Se han conservado {kept} "
-              "(el último de cada material que hay en el Tauler).",
-        "en": "{deleted} movements deleted. {kept} kept (the last one of each material on the board).",
-        "fr": "{deleted} mouvements supprimés. {kept} conservés "
-              "(le dernier de chaque matériau présent sur le tableau).",
+        "ca": "S'han esborrat {deleted} moviments. L'històric es queda amb {kept} línies: "
+              "una per cada peça que ara hi ha al Tauler i a Desmagatzem.",
+        "es": "Se han borrado {deleted} movimientos. El histórico se queda con {kept} líneas: "
+              "una por cada pieza que hay ahora en el Tauler y en Desmagatzem.",
+        "en": "{deleted} movements deleted. The history keeps {kept} lines: one for each piece currently on the board and in Desmagatzem.",
+        "fr": "{deleted} mouvements supprimés. L'historique garde {kept} lignes : "
+              "une pour chaque pièce actuellement sur le tableau et dans Desmagatzem.",
     },
     "historic.clear.error": {
         "ca": "No s'ha pogut netejar l'històric; no s'hi ha tocat res.\n\n{error}",
@@ -1081,10 +1065,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "fr": "Mot de passe administrateur (sauvegardes et nettoyage)",
     },
     "password.scope.worker": {
-        "ca": "Contrasenya treballador (afegir i esborrar materials)",
-        "es": "Contraseña trabajador (añadir y borrar materiales)",
-        "en": "Worker password (adding and deleting materials)",
-        "fr": "Mot de passe travailleur (ajouter et supprimer des matériaux)",
+        "ca": "Contrasenya nivell A (afegir i esborrar materials)",
+        "es": "Contraseña nivel A (añadir y borrar materiales)",
+        "en": "Level A password (adding and deleting materials)",
+        "fr": "Mot de passe niveau A (ajouter et supprimer des matériaux)",
     },
     "password.change.which": {
         "ca": "Quina contrasenya vols canviar?", "es": "¿Qué contraseña quieres cambiar?",
@@ -1214,33 +1198,34 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "stats.col.in": {"ca": "Entrades", "es": "Entradas", "en": "In", "fr": "Entrées"},
     "stats.col.out": {"ca": "Sortides", "es": "Salidas", "en": "Out", "fr": "Sorties"},
     "stats.col.move": {"ca": "Trasllats", "es": "Traslados", "en": "Moves", "fr": "Déplacements"},
-    "stats.col.total": {"ca": "Total", "es": "Total", "en": "Total", "fr": "Total"},
-    "stats.col.position": {"ca": "Posició de destí", "es": "Posición de destino",
-        "en": "Destination position", "fr": "Position de destination"},
+    "stats.col.board_pieces": {
+        "ca": "Peces al tauler", "es": "Piezas en tablero",
+        "en": "Pieces on board", "fr": "Pièces au tableau",
+    },
+    "stats.col.desmagatzem_in": {
+        "ca": "Entrades desmag.", "es": "Entradas desmag.",
+        "en": "Desmag. in", "fr": "Entrées desmag.",
+    },
+    "stats.col.desmagatzem_out": {
+        "ca": "Sortides desmag.", "es": "Salidas desmag.",
+        "en": "Desmag. out", "fr": "Sorties desmag.",
+    },
+    "stats.col.desmagatzem_pieces": {
+        "ca": "Peces a desmag.", "es": "Piezas en desmag.",
+        "en": "Pieces in desmag.", "fr": "Pièces en desmag.",
+    },
     "stats.total_row": {"ca": "TOTAL", "es": "TOTAL", "en": "TOTAL", "fr": "TOTAL"},
-    "stats.destinations_title": {
-        "ca": "Trasllats per posició de destí",
-        "es": "Traslados por posición de destino",
-        "en": "Moves by destination position",
-        "fr": "Déplacements par position de destination",
-    },
     "stats.note": {
-        "ca": "Cada trasllat es compta una sola vegada, a la posició on ha anat a parar la peça.",
-        "es": "Cada traslado se cuenta una sola vez, en la posición donde ha ido a parar la pieza.",
-        "en": "Each move is counted once, at the position the piece ended up in.",
-        "fr": "Chaque déplacement est compté une seule fois, à la position où la pièce est arrivée.",
+        "ca": "Els trasllats es compten una sola vegada. Les peces són les que hi havia al final de cada dia.",
+        "es": "Los traslados se cuentan una sola vez. Las piezas son las que había al final de cada día.",
+        "en": "Each move is counted once. The pieces are those at the end of each day.",
+        "fr": "Chaque déplacement est compté une seule fois. Les pièces sont celles de la fin de journée.",
     },
-    "stats.summary": {
-        "ca": "{days} dies amb moviment — {in_count} entrades, {out_count} sortides, {move_count} trasllats",
-        "es": "{days} días con movimiento — {in_count} entradas, {out_count} salidas, {move_count} traslados",
-        "en": "{days} days with movement — {in_count} in, {out_count} out, {move_count} moves",
-        "fr": "{days} jours avec mouvement — {in_count} entrées, {out_count} sorties, {move_count} déplacements",
-    },
-    "stats.empty": {
-        "ca": "No hi ha cap moviment en aquest interval de dates.",
-        "es": "No hay ningún movimiento en este intervalo de fechas.",
-        "en": "There are no movements in this date range.",
-        "fr": "Aucun mouvement dans cet intervalle de dates.",
+    "stats.board_out_per_day": {
+        "ca": "Mitjana de sortides del tauler: {value} al dia",
+        "es": "Media de salidas del tablero: {value} al día",
+        "en": "Average board exits: {value} per day",
+        "fr": "Moyenne de sorties du tableau : {value} par jour",
     },
     "stats.invalid_range.text": {
         "ca": "La data final és anterior a la inicial.",

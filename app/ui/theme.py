@@ -197,6 +197,20 @@ def qt_palette() -> QPalette:
     return qp
 
 
+def font_size_css(font) -> str:
+    """La mida d'una lletra, escrita com a full d'estil.
+
+    Fa falta perquè, amb full d'estil pel mig, `setFont()` no serveix de
+    res: una regla del full (aquí, la general de `* { font-size: 13px }`)
+    guanya sempre a la lletra que se li posi al widget des del codi. Per
+    fer que un editor de cel·la escrigui amb la mateixa mida que la cel·la,
+    doncs, se li ha de dir també amb un full d'estil.
+    """
+    if font.pixelSize() > 0:
+        return f"font-size: {font.pixelSize()}px;"
+    return f"font-size: {font.pointSizeF():g}pt;"
+
+
 def occupancy_colors(level: int) -> tuple:
     """(fons, text) amb què es pinta una posició segons com d'ocupada
     estigui (`rules.occupancy_level`, d'1 a 5).

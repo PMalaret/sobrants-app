@@ -10,6 +10,14 @@ SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 # Taules que ha de tenir qualsevol base de dades de l'aplicació.
 REQUIRED_TABLES = ("materials", "pieces", "historic", "desmagatzem")
 
+# Columnes que s'han afegit a una taula després que hi hagués bases de dades
+# al carrer. `CREATE TABLE IF NOT EXISTS` no toca les taules que ja
+# existeixen, així que a una base de dades antiga s'hi han d'afegir a mà
+# (veure `_add_missing_columns`); a una de nova ja hi són i no es fa res.
+ADDED_COLUMNS = {
+    "historic": (("dimensions", "TEXT"), ("notes", "TEXT")),
+}
+
 
 class IncompatibleDatabaseError(Exception):
     """El fitxer triat no és una base de dades d'aquesta aplicació."""
@@ -66,5 +74,23 @@ def connect(db_path: str | Path) -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA synchronous = FULL")
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+    _add_missing_columns(conn)
     conn.commit()
     return conn
+
+
+def _add_missing_columns(conn: sqlite3.Connection) -> None:
+    """Afegeix a les taules que ja existien les columnes noves.
+
+    Obrir una base de dades d'una versió anterior de l'aplicació ha de
+    seguir funcionant: l'esquema es torna a aplicar sencer a cada
+    arrencada, però `CREATE TABLE IF NOT EXISTS` no toca les taules que ja
+    hi són, o sigui que les columnes noves s'hi afegeixen aquí. Les files
+    que ja hi havia es queden amb la columna nova buida, que és el que
+    toca: d'aquelles no en sabem el valor.
+    """
+    for table, columns in ADDED_COLUMNS.items():
+        existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}  # noqa: S608
+        for name, kind in columns:
+            if name not in existing:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {kind}")  # noqa: S608

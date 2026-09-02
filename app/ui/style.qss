@@ -374,7 +374,9 @@ QLineEdit:disabled, QSpinBox:disabled, QDateEdit:disabled {
    quedava tallat. Dins d'una taula, l'editor ha de ser tan alt com la
    fila. */
 QAbstractItemView QLineEdit {
-    padding: 0px 4px;
+    /* Marge lateral mínim: dins d'una columna estreta, cada píxel de marge
+       és un caràcter menys que es veu del que s'està escrivint. */
+    padding: 0px 2px;
     border-radius: 4px;
     border: 1px solid $accent;
 }

@@ -13,6 +13,8 @@ També és aquí on es decideix com es VEUEN, i per això hi passa tothom:
     va ple de color i el que la deixa córrer (Cancel·lar, No) va buit
     (`style_buttons`, que ho decideix pel PAPER de cada botó, no pel seu
     text, així val per a qualsevol idioma).
+  - Prémer Enter és prémer aquest mateix botó afirmatiu, mai el de
+    cancel·lar (`enter_accepts`).
   - La icona no és la del sistema (un cercle ple de color, d'aspecte antic)
     sinó la mateixa família d'icones de línia que els botons
     (`app.ui.icons`), amb el color que li toca a cada tipus d'avís.
@@ -77,10 +79,53 @@ def style_buttons(dialog: QWidget) -> None:
                 _mark_secondary(button)
 
 
+def _dialog_buttons(dialog: QWidget) -> list:
+    """(paper, botó) de tots els botons d'un diàleg, sigui un QMessageBox o
+    un diàleg propi amb el seu QDialogButtonBox."""
+    if isinstance(dialog, QMessageBox):
+        return [(dialog.buttonRole(button), button) for button in dialog.buttons()]
+    return [
+        (box.buttonRole(button), button)
+        for box in dialog.findChildren(QDialogButtonBox)
+        for button in box.buttons()
+    ]
+
+
+def _role_value(role):
+    """El número que hi ha sota un `ButtonRole`, vingui de la enumeració
+    que vingui."""
+    return getattr(role, "value", role)
+
+
+def enter_accepts(dialog: QWidget) -> None:
+    """Prémer Enter fa el mateix que clicar el botó afirmatiu.
+
+    Qt marca com a "per defecte" (el que respon a Enter) el primer botó que
+    li sembla, i als avisos de Sí/No era el "No". Aquí es diu explícitament:
+    el botó que continua l'acció és el de per defecte, i als altres se'ls
+    treu la possibilitat de ser-ho, de manera que Enter no pot acabar mai
+    cancel·lant.
+
+    Es decideix pel PAPER del botó, com a `style_buttons`, no pel seu text.
+    I només es marca UN botó per defecte, així una sola premuda no pot
+    disparar l'acció dues vegades.
+    """
+    # Es comparen els VALORS dels papers: un QMessageBox i un
+    # QDialogButtonBox tenen cadascun la seva enumeració, però amb els
+    # mateixos números a sota.
+    affirmative = {_role_value(QDialogButtonBox.AcceptRole), _role_value(QDialogButtonBox.YesRole)}
+    for role, button in _dialog_buttons(dialog):
+        is_affirmative = _role_value(role) in affirmative
+        button.setAutoDefault(is_affirmative)
+        button.setDefault(is_affirmative)
+
+
 def prepare_dialog(dialog: QWidget, icon=None) -> None:
-    """El que s'aplica a TOTS els diàlegs: botons amb jerarquia, marges amb
-    aire i, si n'hi ha, la icona pròpia en comptes de la del sistema."""
+    """El que s'aplica a TOTS els diàlegs: botons amb jerarquia, Enter que
+    accepta, marges amb aire i, si n'hi ha, la icona pròpia en comptes de
+    la del sistema."""
     style_buttons(dialog)
+    enter_accepts(dialog)
     layout = dialog.layout()
     if layout is not None:
         layout.setContentsMargins(*_MARGINS)
@@ -111,9 +156,12 @@ def error(parent: QWidget, title: str, text: str) -> None:
 
 
 def confirm(parent: QWidget, title: str, text: str) -> bool:
-    """Sí/No traduïts. True només si s'ha triat que sí."""
+    """Sí/No traduïts. True només si s'ha triat que sí.
+
+    Enter fa que sí (veure `enter_accepts`): abans el botó preseleccionat
+    era el "No" i qui premés Enter es trobava que no havia passat res.
+    """
     box = QMessageBox(QMessageBox.Question, title, text, QMessageBox.Yes | QMessageBox.No, parent)
-    box.setDefaultButton(QMessageBox.No)
     _translate_buttons(box)
     prepare_dialog(box, QMessageBox.Question)
     return box.exec() == QMessageBox.Yes

@@ -33,6 +33,11 @@ from app.ui import theme
 
 _POLL_MS = 3000
 
+# Mida del widget. Les pestanyes del costat fan uns 35 px d'alt: aquesta es
+# queda just per sota, així es veu bé i no és ella qui marca l'alçada de la
+# fila.
+ICON_SIZE = 30
+
 # Windows: valor de GetDriveTypeW per a una unitat extraïble (llapis USB).
 _DRIVE_REMOVABLE = 2
 # macOS/Linux: on hi pengen els volums externs.
@@ -85,9 +90,11 @@ class UsbIndicator(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        # Petita: el dibuix és relatiu a la mida, així que es veu igual
-        # de nítida però ocupa molt menys a la fila d'accions.
-        self.setFixedSize(20, 20)
+        # A la mida de les pestanyes del costat (una mica per sota), que és
+        # el que li dona la presència que ha de tenir sense fer créixer la
+        # fila: el dibuix és relatiu a la mida del widget, així que es veu
+        # igual de nítid a qualsevol mida.
+        self.setFixedSize(ICON_SIZE, ICON_SIZE)
         self._drives: list[str] = []
 
         self._timer = QTimer(self)

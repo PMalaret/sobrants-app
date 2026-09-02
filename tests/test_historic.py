@@ -32,51 +32,73 @@ def historic_rows(repo):
     return repo.get_historic()
 
 
-def test_last_entry_of_a_material_is_the_newest_one_not_the_first_row(repo):
-    """L'última entrada es decideix per data (i per id en cas d'empat), no
-    per com es veu ordenada la taula."""
-    repo.add_piece(3, 41011)          # entrada 1
-    repo.add_piece(4, 41011, confirm_duplicate=True)   # entrada 2 (la més nova)
-    keep = repo.historic_ids_to_keep()
-    newest = max(r["id"] for r in historic_rows(repo) if r["material_code"] == "41011")
-    assert keep == [newest]
-
-
-def test_clear_keeps_the_last_entry_of_every_material_on_the_board(repo):
-    repo.add_piece(3, 41011)
+def test_clear_keeps_every_piece_on_the_board_not_one_per_material(repo):
+    """Tres peces del mateix material a la mateixa posició són TRES peces:
+    després de netejar hi han de continuar sent les tres, no una."""
+    for _ in range(3):
+        repo.add_piece(3, 41011, confirm_duplicate=True)
     repo.add_piece(4, 41012)
-    repo.add_piece(5, 41013)
-    # moviments extra que sí que s'han d'esborrar
-    repo.update_piece_field(3, 1, "notes", "x")
-    repo.add_piece(3, 41012, confirm_duplicate=True)
-    repo.delete_piece(3, 2)           # el 41012 surt de la posició 3
-    # i un material que ja no és al Tauler
-    repo.add_piece(6, 41013, confirm_duplicate=True)
-    repo.delete_piece(6, 1)
+
+    result = repo.clear_historic()
+    after = historic_rows(repo)
+
+    assert len(after) == 4 == result["kept"]
+    assert sorted(r["material_code"] for r in after) == ["41011", "41011", "41011", "41012"]
+    assert sorted(r["position"] for r in after) == ["3", "3", "3", "4"]
+
+
+def test_clear_keeps_all_the_data_of_each_piece(repo):
+    """De cada peça s'hi ha de quedar tot el que la descriu: material,
+    posició, mides, notes i la seva data d'entrada."""
+    repo.add_piece(7, 41011, dimensions="2600x3210", notes="lot-1")
+    entered_at = repo.get_position_detail(7)[0]["entered_at"]
+
+    repo.clear_historic()
+
+    kept = historic_rows(repo)[0]
+    assert kept["position"] == "7"
+    assert kept["material_code"] == "41011"
+    assert kept["material_desc"] == "Vidre A"
+    assert kept["dimensions"] == "2600x3210"
+    assert kept["notes"] == "lot-1"
+    assert kept["ts"] == entered_at          # la data de la peça, no la de netejar
+    assert kept["kind"] == "in"
+
+
+def test_clear_keeps_the_pieces_in_desmagatzem_one_per_unit(repo):
+    repo.add_desmagatzem_row(material_code="41011", quantity=3, dimensions="10x20", cart_ref="carro 1")
+    repo.add_desmagatzem_row(material_code="41012", quantity=1, dimensions="", cart_ref="carro 2")
+
+    repo.clear_historic()
+    after = historic_rows(repo)
+
+    assert len(after) == 4                    # 3 unitats + 1 unitat
+    assert {r["position"] for r in after} == {"Desmagatzem"}
+    first = next(r for r in after if r["material_code"] == "41011")
+    assert first["dimensions"] == "10x20"
+    assert first["notes"] == "carro 1"        # a Desmagatzem, les notes són el carro
+
+
+def test_clear_keeps_the_board_and_desmagatzem_together(repo):
+    repo.add_piece(3, 41011, dimensions="100x200", notes="lot-1")
+    repo.add_piece(4, 41012)
+    repo.add_desmagatzem_row(material_code="41013", quantity=2, dimensions="", cart_ref="carro")
+    # moviments que sí que s'han d'esborrar
+    repo.add_piece(5, 41013, confirm_duplicate=True)
+    repo.delete_piece(5, 1)
 
     before = len(historic_rows(repo))
     result = repo.clear_historic()
     after = historic_rows(repo)
 
-    on_board = {str(p["material_code"]) for p in repo.conn.execute("SELECT material_code FROM pieces")}
-    assert on_board == {"41011", "41012", "41013"}
-    # queda exactament una entrada per material del Tauler
-    assert len(after) == len(on_board) == result["kept"]
-    assert {r["material_code"] for r in after} == on_board
-    assert result["deleted"] == before - len(after)
-    # i la que queda és, per a cada material, la més nova
-    for code in on_board:
-        kept_row = next(r for r in after if r["material_code"] == code)
-        assert kept_row["id"] == max(
-            r["id"] for r in repo.conn.execute(
-                "SELECT id FROM historic WHERE material_code = ?", (code,)
-            ).fetchall()
-        )
+    assert len(after) == 4 == result["kept"]  # 2 peces del Tauler + 2 unitats
+    assert result["deleted"] == before
+    assert sorted(r["position"] for r in after) == ["3", "4", "Desmagatzem", "Desmagatzem"]
 
 
-def test_clear_removes_everything_when_the_board_is_empty(repo):
+def test_clear_removes_everything_when_there_are_no_pieces_left(repo):
     repo.add_piece(3, 41011)
-    repo.delete_piece(3, 1)           # el Tauler es queda buit
+    repo.delete_piece(3, 1)           # el Tauler i Desmagatzem es queden buits
     assert historic_rows(repo) != []
 
     result = repo.clear_historic()
@@ -185,3 +207,44 @@ def test_export_error_does_not_touch_the_history(repo, tmp_path):
         export_historic_xlsx(before, ["A"], ["position"], str(impossible))
 
     assert historic_rows(repo) == before
+
+
+def test_an_old_database_gets_the_new_columns(tmp_path):
+    """Una base de dades feta amb una versió anterior (sense les columnes
+    de mides i notes a l'històric) s'ha de poder obrir igual, i les seves
+    dades s'han de quedar on eren."""
+    import sqlite3
+
+    old_db = tmp_path / "antiga.db"
+    legacy = sqlite3.connect(old_db)
+    legacy.executescript(
+        """
+        CREATE TABLE materials (code INTEGER PRIMARY KEY, description TEXT NOT NULL);
+        CREATE TABLE pieces (id INTEGER PRIMARY KEY AUTOINCREMENT, position INTEGER NOT NULL,
+            slot INTEGER NOT NULL CHECK (slot BETWEEN 1 AND 5), material_code INTEGER,
+            material_desc TEXT, dimensions TEXT, notes TEXT, entered_at TEXT,
+            UNIQUE (position, slot));
+        CREATE TABLE historic (id INTEGER PRIMARY KEY AUTOINCREMENT, position TEXT NOT NULL,
+            material_code TEXT, material_desc TEXT, ts TEXT NOT NULL, direction INTEGER,
+            kind TEXT NOT NULL CHECK (kind IN ('in','out','move_out','move_in')));
+        CREATE TABLE desmagatzem (id INTEGER PRIMARY KEY AUTOINCREMENT, row_order INTEGER NOT NULL,
+            quantity INTEGER NOT NULL DEFAULT 0, material_code TEXT, material_desc TEXT,
+            custom_text TEXT, dimensions TEXT, cart_ref TEXT, ts TEXT);
+        INSERT INTO historic(position, material_code, material_desc, ts, direction, kind)
+            VALUES ('7', '41011', 'Vidre A', '2026-01-02 10:00:00', 1, 'in');
+        """
+    )
+    legacy.commit()
+    legacy.close()
+
+    repo = Repository(connect(old_db))          # com obrir-la amb la versió nova
+
+    columns = {row[1] for row in repo.conn.execute("PRAGMA table_info(historic)")}
+    assert {"dimensions", "notes"} <= columns
+    old_row = repo.get_historic()[0]
+    assert old_row["position"] == "7"           # la línia que ja hi havia, intacta
+    assert old_row["dimensions"] is None        # d'aquella no en sabem les mides
+    # i els moviments nous ja hi guarden les mides
+    repo.conn.execute("INSERT INTO materials(code, description) VALUES (41011, 'Vidre A')")
+    repo.add_piece(3, 41011, dimensions="100x200", notes="lot")
+    assert repo.get_historic()[0]["dimensions"] == "100x200"

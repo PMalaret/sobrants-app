@@ -48,6 +48,9 @@ _CODE_WIDTH = 70
 _QTY_WIDTH = 60
 _DIMS_WIDTH = 95
 _NOTES_WIDTH = 110
+# Alçada de les files de la taula: prou per llegir-les bé amb la lletra de
+# 13 px, i prou justa per veure'n unes quantes més d'un cop d'ull.
+DESMAGATZEM_ROW_HEIGHT = 26
 
 
 class _MaxLengthDelegate(QStyledItemDelegate):
@@ -60,6 +63,8 @@ class _MaxLengthDelegate(QStyledItemDelegate):
 
     def createEditor(self, parent, option, index):
         editor = super().createEditor(parent, option, index)
+        # La mateixa lletra que la cel·la (veure `theme.font_size_css`).
+        editor.setStyleSheet(theme.font_size_css(option.font))
         if isinstance(editor, QLineEdit):
             editor.setMaxLength(self._max_length)
         return editor
@@ -205,6 +210,9 @@ class DesmagatzemTab(QWidget):
             form.addWidget(widget, stretch)
 
         self.add_button = QPushButton(t("desmagatzem.add_button"))
+        # Compacte: el botó ocupava 36 px d'alçada i aquí l'espai vertical
+        # és el que decideix quantes línies es veuen de la taula.
+        self.add_button.setProperty("compact", "true")
         self.add_button.clicked.connect(self._on_add_row)
         form.addWidget(self.add_button)
         layout.addWidget(form_box)
@@ -260,6 +268,10 @@ class DesmagatzemTab(QWidget):
         self.table.cellClicked.connect(self._on_cell_clicked)
         self.table.itemChanged.connect(self._on_item_changed)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        # Files una mica més justes (30 -> 26 px): amb la lletra de 13 px hi
+        # van bé i s'hi veuen dues o tres línies més de cop, que en aquesta
+        # pestanya és el que es demana.
+        self.table.verticalHeader().setDefaultSectionSize(DESMAGATZEM_ROW_HEIGHT)
         layout.addWidget(self.table)
 
         qty_row = QHBoxLayout()

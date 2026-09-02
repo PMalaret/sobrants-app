@@ -44,6 +44,8 @@ COLUMNS = [
     ("historic.col.position", "position"),
     ("historic.col.code", "material_code"),
     ("historic.col.material", "material_desc"),
+    ("historic.col.dimensions", "dimensions"),
+    ("historic.col.notes", "notes"),
     ("historic.col.datetime", "ts"),
     ("historic.col.movement", "kind"),
 ]
@@ -179,7 +181,8 @@ class HistoricTab(QWidget):
         # Ordre clicant la capçalera, amb la fletxa d'ascendent/descendent.
         self.table.setSortingEnabled(True)
         self.table.horizontalHeader().setSortIndicatorShown(True)
-        self.table.sortByColumn(3, Qt.DescendingOrder)  # data, de la més nova a la més vella
+        date_column = next(i for i, (_key, field) in enumerate(COLUMNS) if field == "ts")
+        self.table.sortByColumn(date_column, Qt.DescendingOrder)  # de la més nova a la més vella
         self._configure_column_widths()
         layout.addWidget(self.table)
 
@@ -188,7 +191,8 @@ class HistoricTab(QWidget):
         # l'ample automàtic de Qt i el text es talla. Interactive perquè
         # l'usuari encara les pugui reajustar arrossegant la vora.
         header = self.table.horizontalHeader()
-        widths = [70, 90, 320, 150, 110]  # Posició, Núm., Material, Data/hora, Moviment
+        # Posició, Núm., Material, Mides, Notes, Data/hora, Moviment
+        widths = [70, 90, 260, 100, 130, 150, 110]
         for col, width in enumerate(widths):
             header.setSectionResizeMode(col, QHeaderView.Interactive)
             self.table.setColumnWidth(col, width)

@@ -127,6 +127,14 @@ class _CellEditDelegate(QStyledItemDelegate):
 
     def createEditor(self, parent, option, index):
         editor = super().createEditor(parent, option, index)
+        # La MATEIXA lletra que la cel·la. Sense això, l'editor agafava la
+        # lletra general de l'aplicació (13 px) mentre la taula de detall
+        # escriu a 11: en començar a escriure, el text creixia de cop i ja
+        # no cabia a l'ample de la columna, o sigui que el camp s'escapava
+        # cap a la dreta i el principi del que s'escrivia quedava amagat.
+        # Va per full d'estil i no amb `setFont` perquè, amb un full pel
+        # mig, la regla general del full guanya a la lletra del widget.
+        editor.setStyleSheet(theme.font_size_css(option.font))
         if isinstance(editor, QLineEdit) and self._max_length is not None:
             editor.setMaxLength(self._max_length)
         # De quina cel·la és aquest editor: dins d'eventFilter ja no hi ha

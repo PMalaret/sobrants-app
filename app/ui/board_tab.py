@@ -47,9 +47,13 @@ BLOCKS = [(1, 27), (28, 27), (55, 7)]
 FIELDS_PER_BLOCK = 5
 TABLE_ROWS = max(count for _start, count in BLOCKS)
 
-# Mida de lletra de la taula (la mateixa que fixa el full d'estil de sota,
-# aquí com a constant perquè les dues no es desincronitzin).
-BOARD_FONT_PX = 12
+# Mida de lletra de les cel·les del tauler (la mateixa que fixa el full
+# d'estil de sota, aquí com a constant perquè les dues no es desincronitzin).
+BOARD_FONT_PX = 13
+# La columna "Posició" es queda a la mida d'abans: és un número de 2 xifres
+# en negreta que ja es llegeix de sobres, i fer-lo créixer només li menjaria
+# ample a Material.
+BOARD_POSITION_FONT_PX = 12
 # Alçada de fila de la taula del tauler: l'habitual, i alhora el MÍNIM per
 # sota del qual no s'encongeixen quan reparteixen l'espai (veure _build_ui).
 BOARD_ROW_HEIGHT = 20
@@ -199,7 +203,7 @@ class BoardTab(QWidget):
         # totes sense scroll.
         self.table.setStyleSheet(
             f"QTableWidget {{ font-size: {BOARD_FONT_PX}px; }}"
-            f"QHeaderView::section {{ font-size: {BOARD_FONT_PX}px; padding: 1px 4px;"
+            f"QHeaderView::section {{ font-size: {BOARD_POSITION_FONT_PX}px; padding: 1px 4px;"
             f" border-bottom: 1px solid {theme.color('border')}; }}"
         )
         # El tauler sempre té exactament 61 posicions (mai més, mai menys),
@@ -403,6 +407,7 @@ class BoardTab(QWidget):
                     item.setTextAlignment(Qt.AlignCenter)
                     font = item.font()
                     font.setBold(True)
+                    font.setPixelSize(BOARD_POSITION_FONT_PX)
                     item.setFont(font)
                 if entry["inconsistent"]:
                     if field_idx != 0:

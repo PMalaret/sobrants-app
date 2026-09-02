@@ -132,7 +132,10 @@ altura y los mismos estados. El desactivado es un fondo claro con borde
 fino, no un bloque gris relleno.
 
 **Diálogos** (`app/ui/dialogs.py`, por donde ya pasaban todos para tener los
-botones traducidos): fondo blanco como el resto de superficies de contenido,
+botones traducidos): **Enter hace lo mismo que pulsar el botón afirmativo**,
+nunca cancelar (`enter_accepts`, que lo decide por el papel de cada botón y
+marca uno solo como predeterminado, así una pulsación no dispara la acción
+dos veces); fondo blanco como el resto de superficies de contenido,
 más margen interior, y dos cosas nuevas —el botón que continúa la acción
 (Aceptar, Sí) va relleno y el que la deja correr (Cancelar, No) va vacío,
 decidido por el **papel** de cada botón (`ButtonRole`) y no por su texto,
@@ -177,11 +180,16 @@ mano: `setProperty("variant", "ghost")` deja el botón con el mismo tamaño
 pero sin rellenar, para los que acompañan a la acción principal (los
 intervalos hechos de Estadísticas, al lado de "Consultar").
 
-Dos detalles de las tablas que se editan en línea: el **editor de celda**
+Tres detalles de las tablas que se editan en línea. El **editor de celda**
 (el `QLineEdit` que Qt mete dentro al editar) lleva su propio margen —con el
-de los campos de formulario no cabía en la fila y el texto salía cortado—, y
-las filas del detalle de posición tienen la altura justa para que el texto
-respire **también mientras se escribe**.
+de los campos de formulario no cabía en la fila y el texto salía cortado— y
+escribe **con la misma letra que la celda**: heredaba la de la aplicación
+(13 px) mientras la tabla de detalle escribe a 11, así que al empezar a
+escribir el texto crecía y ya no cabía en la columna, y se veía cortado por
+la izquierda. Se le pone con hoja de estilo (`theme.font_size_css`) y no con
+`setFont`, porque con una hoja de estilo por medio la regla de la hoja gana
+siempre a la letra del widget. Y las filas del detalle de posición tienen la
+altura justa para que el texto respire **también mientras se escribe**.
 
 **Lo que la hoja de estilo NO puede tocar: `QTableView::item`.** En cuanto
 se le da estilo a los ítems, Qt se encarga de pintarlos y deja de aplicar el
@@ -216,8 +224,7 @@ de partida:
 - `security.ADMIN` — *contraseña administrador*: copias de seguridad
   (manual e intervalo), limpiar el histórico e **importar datos** (de
   Excel o de otra base de datos).
-- `security.WORKER` — *contraseña trabajador*: alta y borrado de
-  materiales.
+- `security.WORKER` — *contraseña nivel A*: alta y borrado de materiales.
 
 Cambiar una no toca la otra. Se cambian las dos desde un único diálogo,
 **Archivo → Cambiar contraseña** (`ChangePasswordDialog`), donde se elige
@@ -413,6 +420,11 @@ sin contraseña.
 
 ## Imprimir
 
+Las tres opciones de impresión ya no están en el menú Archivo: cada botón
+vive en su pestaña, que es donde se buscan. En el menú Archivo quedan la
+contraseña, las **copias de seguridad** (que antes tenían menú propio), el
+"Acerca de" y salir.
+
 Cada botón vive en su pestaña: **Imprimir tauler** y **Materials tapats**
 debajo del buscador del Tauler, en una zona de acciones propia (fondo gris
 suave, botones alineados a la derecha, los dos del mismo tamaño y cada uno
@@ -485,12 +497,26 @@ columnas, no lo que se ve), con `openpyxl` en modo *write_only*, y propone
 `historic_AAAA-MM-DD.xlsx`.
 
 **Netejar** pide la contraseña de administrador, luego confirma que ya se ha
-exportado a Excel, y entonces borra el histórico **conservando la última
-entrada de cada material que sigue en el Tauler**: los materiales son los
-`material_code` de `pieces`, y su "última entrada" es la fila de `historic`
-con el `ts` más alto (desempatando por `id`, porque `ts` va por segundos) —
-no el orden en que se ve la tabla. Todo dentro de una transacción: si algo
-falla, rollback y el histórico queda intacto (`Repository.clear_historic`).
+exportado a Excel, y entonces **borra los movimientos y deja el histórico
+con una foto del estado actual**: una línea por cada pieza que hay en el
+Tauler —con su posición, material, medidas, notas y su fecha de entrada— y
+una por cada unidad que hay en Desmagatzem
+(`Repository.current_state_entries`). Así, después de limpiar, el histórico
+sigue describiendo enteras todas las piezas que existen.
+
+Antes conservaba una sola línea por material del Tauler, y con eso el
+histórico dejaba de representar lo que hay: de una posición con tres piezas
+del mismo material quedaba una, y de Desmagatzem no quedaba nada.
+
+Para poder guardar medidas y notas, la tabla `historic` tiene dos columnas
+más, que **todos** los movimientos rellenan (no sólo la limpieza), y que se
+ven en la tabla y salen en la exportación a Excel. Una base de datos hecha
+con una versión anterior se abre igual: las columnas que falten se añaden al
+abrirla (`db._add_missing_columns`) y sus filas antiguas se quedan con esos
+campos vacíos, que es lo que corresponde.
+
+Todo dentro de una transacción: si algo falla, rollback y el histórico queda
+intacto (`Repository.clear_historic`).
 
 ## Estadísticas
 
@@ -501,21 +527,33 @@ ha habido y cuándo. Se calcula **sólo leyendo** el histórico
 nada.
 
 Se elige un **intervalo de fechas** (dos campos con calendario, más los
-intervalos hechos: hoy, últimos 7 / 30 días, último año) y sale, día a día:
+intervalos hechos: hoy, últimos 7 / 30 días, último año) y sale, día a día y
+en una sola tabla, lo que ha pasado en el **Tauler** y en **Desmagatzem**:
 
-- **Entradas** — líneas `in` (piezas colocadas en el Tauler y unidades
-  registradas en Desmagatzem: una por unidad).
-- **Salidas** — líneas `out` (piezas borradas y unidades retiradas).
-- **Traslados** — líneas `move_in`, es decir el lado del **destino**. Un
-  traslado deja dos líneas en el histórico (origen y destino) y contando
-  sólo la del destino sale **un movimiento por traslado**, no dos, y además
-  se puede decir a qué posición ha ido a parar la pieza: eso es la tabla de
-  la derecha, "Traslados por posición de destino".
+| Columna | Qué cuenta |
+|---|---|
+| Entradas / Salidas | piezas colocadas o borradas del Tauler |
+| Traslados | piezas movidas de posición, contadas **una vez**: se cuenta el lado del destino, porque un traslado deja dos líneas (origen y destino) y es un solo movimiento |
+| Piezas en tablero | cuántas había al final de ese día |
+| Entradas / Salidas desmag. | unidades registradas o retiradas (una línea de 5 unidades son 5 movimientos) |
+| Piezas en desmag. | cuántas unidades había al final de ese día |
 
-Los días sin ningún movimiento no ocupan fila, y al final va la fila de
-totales. Es la primera versión, a propósito sencilla: cualquier estadística
-nueva debería salir de aquí mismo, del mismo intervalo y de las mismas
-consultas.
+Las **piezas de cada día** no se guardan en ningún sitio: se sabe cuántas hay
+ahora y se va deshaciendo hacia atrás lo que dice el histórico
+(`Repository.movement_stats`). Por eso se consultan también los movimientos
+posteriores al intervalo: sin ellos no se puede llegar al estado de un día
+pasado. Los traslados no cuentan ahí, porque mueven una pieza de sitio pero
+no la añaden ni la quitan.
+
+Al lado del título, la **media de salidas del Tauler por día**, repartida
+entre todos los días del intervalo elegido —no sólo entre los que tuvieron
+movimiento—: 20 salidas en 10 días son 2 al día aunque se hicieran todas en
+dos jornadas.
+
+Los días sin ningún movimiento no ocupan fila (tampoco se pierde nada: un día
+sin movimiento acaba con las mismas piezas que el anterior), y al final va la
+fila de totales, que suma los movimientos pero no las columnas de piezas —
+sumar el estado de cada día no querría decir nada.
 
 ## Guardado: cada cambio va al disco al momento
 
