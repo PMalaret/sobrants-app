@@ -25,15 +25,17 @@ l'interval, que és el número que diu a quin ritme es buida el tauler.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import QDate, Qt
+from PySide6.QtCore import QDate, Qt, QTimer
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QComboBox,
     QDateEdit,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QPushButton,
+    QSplitter,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -43,6 +45,7 @@ from PySide6.QtWidgets import (
 from app.i18n import format_number, t
 from app.logic.repository import Repository
 from app.ui import icons, theme
+from app.ui.bar_chart import Bar, BarChart
 
 # Format en què es veuen i s'escriuen les dates dels dos camps (el de la
 # base de dades és sempre ISO, veure `_iso`).
@@ -73,6 +76,37 @@ COLUMNS = (
 # peces hi havia" no (sumar l'estat de cada dia no voldria dir res).
 TOTAL_COLUMNS = ("board_in", "board_out", "moves", "desmagatzem_in", "desmagatzem_out")
 
+# El gràfic ensenya UNA columna a la vegada, la que es triï al desplegable:
+# totes menys el dia, que és el que va a l'eix horitzontal. Posar-les totes
+# juntes no serviria de res, perquè "quantes peces hi havia" es compta per
+# centenars i els moviments d'un dia per unitats: al costat de les primeres,
+# les barres dels moviments quedarien totes arran de terra.
+CHART_COLUMNS = tuple((key, field) for key, field in COLUMNS if field != "day")
+# De quin color va la barra segons què s'ensenyi: els mateixos colors amb
+# què l'històric pinta els moviments, per no haver-ne d'aprendre uns altres.
+# Verd el que entra, vermell el que surt, i el color d'acció per als
+# trasllats i per als recomptes, que no són ni una cosa ni l'altra.
+CHART_COLORS = {
+    "board_in": "movement_in",
+    "board_out": "movement_out",
+    "moves": "accent",
+    "board_pieces": "accent",
+    "desmagatzem_in": "movement_in",
+    "desmagatzem_out": "movement_out",
+    "desmagatzem_pieces": "accent",
+}
+# La data de sota l'eix va curta, que n'hi han de cabre moltes; la del rètol
+# que surt en passar-hi el ratolí, sencera (DATE_DISPLAY_FORMAT), perquè un
+# interval pot passar d'any.
+CHART_LABEL_FORMAT = "dd/MM"
+# Marge que es deixa a l'ample de la taula per a la barra de desplaçament
+# vertical, que hi surt en quant l'interval passa dels dies que hi caben.
+# Sense això, l'última columna quedava sota la barra i es veia retallada.
+_SCROLLBAR_ALLOWANCE = 20
+# Per estreta que quedi la taula, prou per veure-hi el dia i un parell de
+# columnes; la resta, amb la barra de sota.
+_TABLE_MIN_WIDTH = 320
+
 
 class StatisticsTab(QWidget):
     """Només lectura: no emet cap senyal de canvi de dades perquè no en
@@ -81,6 +115,12 @@ class StatisticsTab(QWidget):
     def __init__(self, repo: Repository, parent=None):
         super().__init__(parent)
         self.repo = repo
+        # Els dies de l'última consulta. Es guarden perquè canviar què
+        # ensenya el gràfic només ha de tornar a pintar, no a consultar.
+        self._days: list = []
+        # Cert un cop la taula ja té l'ample de les seves columnes (veure
+        # `_fit_table_width`).
+        self._table_sized = False
         self._build_ui()
         self.refresh()
 
@@ -95,7 +135,95 @@ class StatisticsTab(QWidget):
         note.setStyleSheet(theme.css("color: $text_muted; font-size: 11px;"))
         layout.addWidget(note)
 
-        layout.addWidget(self._build_days_table())
+        # La taula i el gràfic es reparteixen l'amplada, amb una nansa al mig
+        # per si es vol donar més espai a l'un o a l'altre. La taula és de
+        # columnes estretes —números de dues o tres xifres— i no necessita
+        # mitja pantalla; el gràfic sí que se n'aprofita.
+        self.content = QSplitter(Qt.Horizontal)
+        self.content.addWidget(self._build_days_table())
+        self.content.addWidget(self._build_chart())
+        # Tota l'amplada que sobri, per al gràfic: la taula ja té la seva
+        # (veure `_fit_table_width`) i eixamplar-la més només li deixaria un
+        # marge buit a la dreta.
+        self.content.setStretchFactor(0, 0)
+        self.content.setStretchFactor(1, 1)
+        # Que la nansa no pugui amagar del tot cap dels dos: mitja pantalla
+        # buida sembla que l'aplicació s'hagi trencat.
+        self.content.setChildrenCollapsible(False)
+        layout.addWidget(self.content)
+
+    def _build_chart(self) -> QWidget:
+        """El gràfic i el desplegable que diu quina columna s'hi veu."""
+        panel = QWidget()
+        box = QVBoxLayout(panel)
+        box.setContentsMargins(9, 0, 0, 0)   # només la separació amb la taula
+
+        picker = QHBoxLayout()
+        picker.addWidget(QLabel(t("stats.chart.metric")))
+        self.metric_picker = QComboBox()
+        for key, field in CHART_COLUMNS:
+            self.metric_picker.addItem(t(key), field)
+        # Comença per les sortides del tauler: és el número del qual ja es
+        # dona la mitjana aquí dalt, o sigui el que es mira més.
+        self.metric_picker.setCurrentIndex(
+            [field for _key, field in CHART_COLUMNS].index("board_out")
+        )
+        picker.addWidget(self.metric_picker)
+        # A l'ample que li demani el nom més llarg, no a tot l'ample del
+        # gràfic: és un tria-i-para, no un camp per escriure-hi.
+        picker.addStretch()
+        box.addLayout(picker)
+
+        self.chart = BarChart()
+        box.addWidget(self.chart, 1)
+        # El senyal, l'últim de tot: `_update_chart` pinta a `self.chart`, o
+        # sigui que no es pot deixar connectat abans que el gràfic existeixi.
+        self.metric_picker.currentIndexChanged.connect(self._update_chart)
+        # Per estret que es deixi el gràfic, prou per veure-hi les barres.
+        panel.setMinimumWidth(260)
+        return panel
+
+    def _fit_table_width(self):
+        """Dona a la taula l'ample de les seves columnes i la resta al
+        gràfic.
+
+        Es fa un sol cop, la primera vegada que hi ha files: les columnes són
+        "ResizeToContents" i fins que no hi ha res a dins encara no tenen
+        l'ample bo. I només un cop, perquè si es repetís a cada consulta
+        desfaria la nansa cada vegada que l'usuari l'hagués mogut.
+        """
+        # Mentre la pestanya no es vegi, `width()` no és l'ample de debò sinó
+        # el de per omissió (640 px), i el repartiment sortiria d'aquell. La
+        # primera consulta es fa des del constructor, o sigui abans de veure
+        # res: aquella s'ha de deixar passar de llarg.
+        available = self.content.width()
+        if self._table_sized or not self.isVisible() or available <= 0:
+            return
+        if self.days_table.rowCount() == 0:
+            return
+        columns = sum(
+            self.days_table.columnWidth(col) for col in range(self.days_table.columnCount())
+        )
+        natural = columns + 2 * self.days_table.frameWidth() + _SCROLLBAR_ALLOWANCE
+        # Mai més de la meitat, encara que les capçaleres siguin llargues:
+        # l'ample d'una columna depèn de la lletra del sistema i de l'idioma
+        # (en francès els títols són més llargs), i el gràfic ha de tenir
+        # espai sempre. Si la taula no hi cap, li surt la barra de sota; i la
+        # nansa és allà mateix per a qui la vulgui més ampla.
+        natural = min(natural, max(_TABLE_MIN_WIDTH, available // 2))
+        self.content.setSizes([natural, available - natural])
+        self._table_sized = True
+
+    def showEvent(self, event):
+        """L'ample de debò no se sap fins que la pestanya es veu: quan es
+        construeix encara no té mida.
+
+        I ni tan sols aquí: dins de `showEvent` el splitter encara no ha
+        repartit res i `width()` dona el valor de per omissió. Es demana per
+        al tomb següent del bucle d'esdeveniments, quan la geometria ja està
+        feta."""
+        super().showEvent(event)
+        QTimer.singleShot(0, self._fit_table_width)
 
     def _build_filters(self) -> QWidget:
         box = QGroupBox(t("stats.title"))
@@ -149,9 +277,12 @@ class StatisticsTab(QWidget):
         self.days_table.verticalHeader().setVisible(False)
         header = self.days_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Interactive)
-        self.days_table.setColumnWidth(0, 120)
+        self.days_table.setColumnWidth(0, 100)
+        # A l'ample just de la capçalera, no estirades: ara la taula comparteix
+        # l'amplada amb el gràfic i el que hi va són números de dues o tres
+        # xifres. Estirades es menjaven l'espai que ara fa servir el gràfic.
         for col in range(1, len(COLUMNS)):
-            header.setSectionResizeMode(col, QHeaderView.Stretch)
+            header.setSectionResizeMode(col, QHeaderView.ResizeToContents)
         return self.days_table
 
     # ------------------------------------------------------------------ #
@@ -180,11 +311,33 @@ class StatisticsTab(QWidget):
         """
         if self.from_date.date() > self.to_date.date():
             self.days_table.setRowCount(0)
+            self._days = []
+            self._update_chart()
             self.summary_label.setText(t("stats.invalid_range.text"))
             return
         stats = self.repo.movement_stats(self._iso(self.from_date), self._iso(self.to_date))
-        self._fill_days_table(stats["days"])
+        self._days = stats["days"]
+        self._fill_days_table(self._days)
+        self._fit_table_width()
+        self._update_chart()
         self._update_summary(stats)
+
+    def _update_chart(self):
+        """Torna a pintar el gràfic amb la columna que hi hagi triada al
+        desplegable. No consulta res: fa servir els dies de l'última
+        consulta, que per això es guarden."""
+        field = self.metric_picker.currentData()
+        bars = []
+        for day in self._days:
+            when = QDate.fromString(day["day"], "yyyy-MM-dd")
+            bars.append(
+                Bar(
+                    label=when.toString(CHART_LABEL_FORMAT),
+                    caption=when.toString(DATE_DISPLAY_FORMAT),
+                    value=day[field],
+                )
+            )
+        self.chart.set_series(bars, theme.qcolor(CHART_COLORS[field]), t("stats.chart.empty"))
 
     def _fill_days_table(self, days: list):
         # Una fila per dia amb moviment i, al final, la fila de totals (en

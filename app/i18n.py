@@ -1227,6 +1227,16 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Average board exits: {value} per day",
         "fr": "Moyenne de sorties du tableau : {value} par jour",
     },
+    "stats.chart.metric": {
+        "ca": "Gràfic de:", "es": "Gráfico de:",
+        "en": "Chart of:", "fr": "Graphique de :",
+    },
+    "stats.chart.empty": {
+        "ca": "Cap moviment en aquest interval.",
+        "es": "Ningún movimiento en este intervalo.",
+        "en": "No movements in this range.",
+        "fr": "Aucun mouvement sur cette période.",
+    },
     "stats.invalid_range.text": {
         "ca": "La data final és anterior a la inicial.",
         "es": "La fecha final es anterior a la inicial.",
