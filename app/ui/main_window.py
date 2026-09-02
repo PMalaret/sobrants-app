@@ -60,6 +60,9 @@ BACKUP_INTERVAL_SETTING = "backup_interval_hours"
 # només té sentit quan es veu el Tauler (és el que explica), així que només
 # hi surt quan aquesta és la pestanya activa.
 BOARD_TAB_INDEX = 0
+# L'última de les cinc (Tauler, Desmagatzem, Històric, Materials,
+# Estadístiques): és la que ensenya la nota de com es compten els moviments.
+STATISTICS_TAB_INDEX = 4
 
 
 class MainWindow(QMainWindow):
@@ -183,17 +186,21 @@ class MainWindow(QMainWindow):
                 child.deleteLater()
 
         self.db_label = QLabel(t("status.db", path=self.db_path))
-        # La llegenda explica els colors del Tauler: només hi surt quan la
-        # pestanya que es veu és aquella.
+        # La llegenda explica els colors del Tauler i la nota diu com es
+        # compten els moviments a Estadístiques: cadascuna només surt quan
+        # la pestanya que es veu és la seva.
         self.legend_widget = self.board_tab.build_legend_widget()
-        for widget in (self.db_label, self.legend_widget):
+        self.stats_note_widget = self.statistics_tab.build_note_widget()
+        for widget in (self.db_label, self.legend_widget, self.stats_note_widget):
             widget._sobrants_status_widget = True
         status.addWidget(self.db_label)
         status.addPermanentWidget(self.legend_widget)
+        status.addPermanentWidget(self.stats_note_widget)
         self._update_legend_visibility(BOARD_TAB_INDEX)
 
     def _update_legend_visibility(self, index: int):
         self.legend_widget.setVisible(index == BOARD_TAB_INDEX)
+        self.stats_note_widget.setVisible(index == STATISTICS_TAB_INDEX)
 
     def refresh_piece_count(self):
         """Torna a comptar les peces del Tauler. El número es veu dins de la

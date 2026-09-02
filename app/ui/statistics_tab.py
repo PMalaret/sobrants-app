@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QSplitter,
     QTableWidget,
     QTableWidgetItem,
@@ -129,11 +130,10 @@ class StatisticsTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(9, 3, 9, 9)  # el mateix marge que la resta de pestanyes
 
+        # Sense separació entre els filtres i el que filtren: la caixa dels
+        # filtres ja té vora pròpia i es distingeix sense deixar-hi un buit.
+        layout.setSpacing(0)
         layout.addWidget(self._build_filters())
-
-        note = QLabel(t("stats.note"))
-        note.setStyleSheet(theme.css("color: $text_muted; font-size: 11px;"))
-        layout.addWidget(note)
 
         # La taula i el gràfic es reparteixen l'amplada, amb una nansa al mig
         # per si es vol donar més espai a l'un o a l'altre. La taula és de
@@ -151,6 +151,14 @@ class StatisticsTab(QWidget):
         # buida sembla que l'aplicació s'hagi trencat.
         self.content.setChildrenCollapsible(False)
         layout.addWidget(self.content)
+
+    def build_note_widget(self) -> QWidget:
+        """La nota de com es compten els moviments, per posar-la a la barra
+        d'estat de la finestra —com la llegenda del Tauler—, i no damunt de
+        la taula: es llegeix un cop i després només fa nosa."""
+        note = QLabel(t("stats.note"))
+        note.setStyleSheet(theme.css("color: $text_muted; font-size: 11px;"))
+        return note
 
     def _build_chart(self) -> QWidget:
         """El gràfic i el desplegable que diu quina columna s'hi veu."""
@@ -227,8 +235,18 @@ class StatisticsTab(QWidget):
 
     def _build_filters(self) -> QWidget:
         box = QGroupBox(t("stats.title"))
+        # Que no creixi: sense això la caixa s'enduia tota l'alçada que
+        # sobrava (219 px per a una sola fila de camps) i la deixava buida
+        # amunt i avall dels controls, que és alçada que li fa falta a la
+        # taula i al gràfic.
+        box.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        # I el mateix marge intern arrapat que a "Nova entrada" de
+        # Desmagatzem: una sola fila no necessita els 14+10 px que el full
+        # d'estil dona a qualsevol QGroupBox.
+        box.setStyleSheet("QGroupBox { padding: 5px 12px 5px 12px; }")
         row = QHBoxLayout(box)
         row.setSpacing(6)
+        row.setContentsMargins(0, 0, 0, 0)
 
         today = QDate.currentDate()
         row.addWidget(QLabel(t("stats.from")))
@@ -245,10 +263,12 @@ class StatisticsTab(QWidget):
             # Secundaris: acompanyen "Consultar", que és l'acció principal
             # de la fila i l'únic botó que va ple de color.
             button.setProperty("variant", "ghost")
+            button.setProperty("compact", "true")
             button.clicked.connect(lambda _checked=False, d=days: self._apply_quick_range(d))
             row.addWidget(button)
 
         self.apply_button = QPushButton(t("stats.apply"))
+        self.apply_button.setProperty("compact", "true")
         icons.apply_to(self.apply_button, "search")
         self.apply_button.clicked.connect(self.refresh)
         row.addWidget(self.apply_button)
@@ -266,6 +286,8 @@ class StatisticsTab(QWidget):
         edit = QDateEdit(value)
         edit.setCalendarPopup(True)          # amb calendari, per no haver d'escriure la data
         edit.setDisplayFormat(DATE_DISPLAY_FORMAT)
+        # Pla, com els botons del costat: van tots a la mateixa fila.
+        edit.setProperty("compact", "true")
         return edit
 
     def _build_days_table(self) -> QTableWidget:

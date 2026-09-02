@@ -383,6 +383,21 @@ QLineEdit:focus, QSpinBox:focus, QDateEdit:focus, QComboBox:focus {
     padding: 6px 9px;
 }
 
+/* La versió plana d'aquests camps, per a les barres de filtres: una fila
+   que només serveix per triar què es vol veure no s'ha de menjar l'alçada
+   d'allò que filtra. Va DESPRÉS de la regla de `:focus` i amb el seu propi
+   `:focus`, perquè si no el marge del camp normal (que és igual de
+   específic) tornaria a guanyar en el moment d'escriure-hi. */
+QLineEdit[compact="true"], QSpinBox[compact="true"],
+QDateEdit[compact="true"], QComboBox[compact="true"] {
+    padding: 3px 8px;
+}
+
+QLineEdit[compact="true"]:focus, QSpinBox[compact="true"]:focus,
+QDateEdit[compact="true"]:focus, QComboBox[compact="true"]:focus {
+    padding: 2px 7px;
+}
+
 QLineEdit:disabled, QSpinBox:disabled, QDateEdit:disabled {
     background: $surface_alt;
     color: $text_disabled;
