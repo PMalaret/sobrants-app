@@ -43,9 +43,10 @@ def _ensure_database(data_dir: Path) -> Path:
 
 
 def _app_icon() -> QIcon:
-    """Icona de l'app: el logotip (RIOU. Vidresif, sobre fons blanc) per a
-    mides grans, i el favicon (marca "R.") per a mides petites (barra de
-    tasques, títol de finestra), on el logotip sencer no es llegiria."""
+    """Icona de l'app, la mateixa il·lustració a dues resolucions: la de 512
+    px per a mides grans i la de 64 per a les petites (barra de tasques,
+    títol de finestra). Amb les dues al mateix QIcon, Qt tria la que li ve
+    més a prop del que li demanen en comptes d'encongir sempre la gran."""
     assets_dir = Path(__file__).with_name("assets")
     icon = QIcon()
     favicon_path = assets_dir / "favicon.png"
