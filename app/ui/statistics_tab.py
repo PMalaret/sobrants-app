@@ -176,6 +176,7 @@ class StatisticsTab(QWidget):
         self.metric_picker.setCurrentIndex(
             [field for _key, field in CHART_COLUMNS].index("board_out")
         )
+        self._make_picker_popup_opaque()
         picker.addWidget(self.metric_picker)
         # A l'ample que li demani el nom més llarg, no a tot l'ample del
         # gràfic: és un tria-i-para, no un camp per escriure-hi.
@@ -190,6 +191,33 @@ class StatisticsTab(QWidget):
         # Per estret que es deixi el gràfic, prou per veure-hi les barres.
         panel.setMinimumWidth(260)
         return panel
+
+    def _make_picker_popup_opaque(self):
+        """Que la llista del desplegable surti OPACA ja el primer cop.
+
+        La finestreta que conté la llista és un QFrame que no es pinta cap
+        fons: el fons el posa la llista de dins, amb la regla
+        `QComboBox QAbstractItemView` del full d'estil. La primera vegada
+        que s'obre, però, la finestra es mostra abans que la llista hagi
+        arribat a pintar, i durant aquell moment s'hi veu el que hi ha a
+        sota —una barra del gràfic, posem— com si la llista hi passés per
+        darrere. De la segona vegada en endavant ja no passa, perquè la
+        llista ja està pintada.
+
+        Es demana la vista (`view()`) aquí, en construir-ho, i no la primera
+        vegada que s'obre: només així la finestreta ja existeix per poder-li
+        donar el fons.
+
+        Va per full d'estil i no amb `setAutoFillBackground`: amb un full pel
+        mig, Qt marca la finestreta com a "fons d'estil"
+        (`WA_StyledBackground`) i deixa `autoFillBackground` a fals, o sigui
+        que la crida no serviria de res.
+        """
+        popup = self.metric_picker.view().parentWidget()
+        # Pel nom, per no pintar de retruc la llista que porta a dins (que
+        # també és un QFrame i ja té el seu fons del full d'estil).
+        popup.setObjectName("metricPickerPopup")
+        popup.setStyleSheet(theme.css("#metricPickerPopup { background-color: $surface; }"))
 
     def _fit_table_width(self):
         """Dona a la taula l'ample de les seves columnes i la resta al
